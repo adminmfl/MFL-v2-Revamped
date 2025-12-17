@@ -1,5 +1,6 @@
 "use client";
 
+
 import * as React from "react";
 
 import { SectionCards } from "@/components/dashboard/section-cards";
@@ -10,6 +11,9 @@ import { Card, CardFooter, CardHeader } from "@/components/ui/card";
 import { useAdminStats } from "@/hooks/admin";
 
 import data from "./data/data.json";
+
+//config
+export const dynamic = "force-dynamic";
 
 // ============================================================================
 // Default Stats (shown when data is unavailable or on error)

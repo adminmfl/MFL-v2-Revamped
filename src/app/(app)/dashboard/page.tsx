@@ -55,6 +55,9 @@ import {
 } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 
+//config
+export const dynamic = "force-dynamic";
+
 // ============================================================================
 // Types
 // ============================================================================
