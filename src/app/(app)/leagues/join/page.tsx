@@ -90,23 +90,58 @@ export default function JoinLeaguePage() {
     return (
       <div className="flex flex-col gap-6 py-4 md:py-6">
         <div className="px-4 lg:px-6">
-          <Card className="max-w-lg mx-auto">
-            <CardContent className="pt-8 pb-8 text-center">
-              <div className="size-20 mx-auto rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4">
-                <Trophy className="size-10 text-green-600" />
+          <Card className="max-w-lg mx-auto overflow-hidden">
+            {/* Gradient Header */}
+            <div className="p-8 text-center dark:text-white text-black relative overflow-hidden">
+              {/* Decorative circles */}
+              <div className="absolute -top-10 -left-10 size-40 rounded-full bg-white/10 blur-xl" />
+              <div className="absolute -bottom-10 -right-10 size-40 rounded-full bg-white/10 blur-xl" />
+
+              <div className="relative">
+                <div className="size-20 mx-auto rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center mb-4 ring-4 ring-white/30 animate-bounce">
+                  <Trophy className="size-10 dark:text-white text-black" />
+                </div>
+                <h2 className="text-2xl font-bold mb-1">Welcome Aboard!</h2>
+                <p className="dark:text-white text-black">You've successfully joined the league</p>
               </div>
-              <h2 className="text-2xl font-semibold mb-2">Successfully Joined!</h2>
-              <p className="text-muted-foreground mb-6">
-                You have joined {joinedLeagueName}. Start your fitness journey!
-              </p>
-              <div className="flex gap-3 justify-center">
-                <Button variant="outline" asChild>
-                  <Link href="/dashboard">Go to Dashboard</Link>
+            </div>
+
+            <CardContent className="p-6 text-center">
+              <div className="mb-6">
+                <h3 className="text-xl font-semibold text-foreground mb-2">
+                  {joinedLeagueName}
+                </h3>
+                <p className="text-muted-foreground">
+                  Your fitness journey starts now. Get ready to compete, stay active, and earn rewards!
+                </p>
+              </div>
+
+              {/* Quick info cards */}
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border">
+                  <Users className="size-5 mx-auto mb-1 text-primary" />
+                  <p className="text-xs text-muted-foreground">Join a Team</p>
+                </div>
+                <div className="p-3 rounded-xl bg-gradient-to-br from-green-500/10 to-green-500/5 border">
+                  <Sparkles className="size-5 mx-auto mb-1 text-green-600" />
+                  <p className="text-xs text-muted-foreground">Log Activities</p>
+                </div>
+                <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500/10 to-amber-500/5 border">
+                  <Trophy className="size-5 mx-auto mb-1 text-amber-600" />
+                  <p className="text-xs text-muted-foreground">Win Rewards</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button variant="outline" asChild className="flex-1">
+                  <Link href="/dashboard">
+                    Go to Dashboard
+                  </Link>
                 </Button>
                 {joinedLeagueId && (
-                  <Button asChild>
+                  <Button asChild className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700">
                     <Link href={`/leagues/${joinedLeagueId}`}>
-                      View League
+                      Enter League
                       <ArrowRight className="ml-2 size-4" />
                     </Link>
                   </Button>

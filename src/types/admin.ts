@@ -196,7 +196,7 @@ export interface DashboardStats {
   revenueChange: number;
 }
 
-export interface FinancialStats {
+export interface RevenueStats {
   totalRevenue: number;
   totalRevenueChange: number;
   monthlyRevenue: number;

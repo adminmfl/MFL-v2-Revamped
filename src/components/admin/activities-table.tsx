@@ -242,6 +242,9 @@ export function ActivitiesTable() {
     },
   ];
 
+  // Use empty array if there's an error
+  const displayData = error ? [] : activities;
+
   const table = useReactTable({
     data: displayData,
     columns,
@@ -259,9 +262,6 @@ export function ActivitiesTable() {
   if (isLoading) {
     return <TableSkeleton />;
   }
-
-  // Use empty array if there's an error
-  const displayData = error ? [] : activities;
 
   return (
     <div className="space-y-4">

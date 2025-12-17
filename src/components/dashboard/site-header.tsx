@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Home } from "lucide-react";
@@ -25,11 +26,9 @@ const routeTitles: Record<string, string> = {
   "/admin": "Dashboard",
   "/admin/users": "Users",
   "/admin/leagues": "Leagues",
-  "/admin/submissions": "Submissions",
-  "/admin/financial": "Financial",
+  "/admin/revenue": "Revenue",
   "/admin/pricing": "Pricing",
   "/admin/activities": "Activities",
-  "/admin/challenges": "Challenges",
   "/admin/settings": "Settings",
   "/admin/roles": "Roles",
   "/admin/dashboard": "Dashboard",
@@ -99,18 +98,18 @@ export function SiteHeader() {
         <Breadcrumb className="hidden sm:flex">
           <BreadcrumbList>
             {breadcrumbs.map((crumb, index) => (
-              <BreadcrumbItem key={crumb.href}>
-                {index === breadcrumbs.length - 1 ? (
-                  <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-                ) : (
-                  <>
+              <React.Fragment key={crumb.href}>
+                <BreadcrumbItem>
+                  {index === breadcrumbs.length - 1 ? (
+                    <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                  ) : (
                     <BreadcrumbLink asChild>
                       <Link href={crumb.href}>{crumb.label}</Link>
                     </BreadcrumbLink>
-                    <BreadcrumbSeparator />
-                  </>
-                )}
-              </BreadcrumbItem>
+                  )}
+                </BreadcrumbItem>
+                {index < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
+              </React.Fragment>
             ))}
           </BreadcrumbList>
         </Breadcrumb>
@@ -122,14 +121,6 @@ export function SiteHeader() {
         <div className="ml-auto flex items-center gap-2">
           {/* Theme Toggle */}
           <ThemeToggle />
-
-          {/* Main Dashboard Link */}
-          <Button variant="ghost" asChild size="sm" className="hidden sm:flex">
-            <Link href="/dashboard">
-              <Home className="mr-1 size-4" />
-              Main Dashboard
-            </Link>
-          </Button>
         </div>
       </div>
     </header>

@@ -1,12 +1,11 @@
 'use client';
 
-import React, { use, useState, useMemo } from 'react';
+import React, { use, useState, useMemo, useEffect } from 'react';
 import {
   Users,
   Trophy,
   TrendingUp,
   TrendingDown,
-  Medal,
   Zap,
   Target,
   Crown,
@@ -16,13 +15,15 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Shield,
-  Activity,
-  Calendar,
   Flame,
   MoreVertical,
+  UserMinus,
+  Loader2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { useLeague } from '@/contexts/league-context';
+import { useRole } from '@/contexts/role-context';
 import {
   Card,
   CardAction,
@@ -60,40 +61,83 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+import { TeamsTable } from '@/components/teams';
+import { useLeagueTeams, type TeamMember } from '@/hooks/use-league-teams';
 
 // ============================================================================
-// Team Page
+// Loading Skeleton
 // ============================================================================
 
-export default function TeamPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const { activeLeague } = useLeague();
+function PageSkeleton() {
+  return (
+    <div className="@container/main flex flex-1 flex-col gap-4 lg:gap-6">
+      <div className="flex flex-col gap-4 px-4 lg:px-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-4">
+          <Skeleton className="size-14 rounded-xl" />
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 md:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-32 rounded-lg" />
+        ))}
+      </div>
+      <div className="px-4 lg:px-6">
+        <Skeleton className="h-96 rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Team Member View (for players/captains)
+// ============================================================================
+
+interface TeamMemberViewProps {
+  leagueId: string;
+  teamId: string;
+  teamName: string;
+  teamSize: number;
+  isCaptain: boolean;
+}
+
+function TeamMemberView({ leagueId, teamId, teamName, teamSize, isCaptain }: TeamMemberViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock team data for demo
-  const teamData = {
-    name: activeLeague?.team_name || 'Fitness Fanatics',
-    rank: 3,
-    totalPoints: 2450,
-    avgPoints: 490,
-    submissions: 118,
-    streak: 7,
-    members: [
-      { id: '1', name: 'John Smith', role: 'captain', points: 580, submissions: 28, streak: 12, lastActive: '2 hours ago', change: 15.2 },
-      { id: '2', name: 'Sarah Johnson', role: 'player', points: 520, submissions: 25, streak: 8, lastActive: '1 hour ago', change: 8.5 },
-      { id: '3', name: 'Mike Wilson', role: 'player', points: 480, submissions: 23, streak: 5, lastActive: '3 hours ago', change: -2.1 },
-      { id: '4', name: 'Emily Brown', role: 'player', points: 450, submissions: 22, streak: 6, lastActive: '30 min ago', change: 4.7 },
-      { id: '5', name: 'David Lee', role: 'player', points: 420, submissions: 20, streak: 3, lastActive: 'Yesterday', change: -1.8 },
-    ],
-  };
+  // Fetch team members
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const response = await fetch(`/api/leagues/${leagueId}/teams/${teamId}/members`);
+        const result = await response.json();
+        if (result.success) {
+          setMembers(result.data);
+        }
+      } catch (err) {
+        console.error('Error fetching team members:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchMembers();
+  }, [leagueId, teamId]);
 
   // Filter members based on search
   const filteredMembers = useMemo(() => {
-    return teamData.members.filter(member =>
-      member.name.toLowerCase().includes(searchQuery.toLowerCase())
+    return members.filter(member =>
+      member.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      member.email.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [searchQuery]);
+  }, [searchQuery, members]);
 
   // Pagination
   const paginatedMembers = useMemo(() => {
@@ -103,35 +147,35 @@ export default function TeamPage({ params }: { params: Promise<{ id: string }> }
 
   const pageCount = Math.ceil(filteredMembers.length / pagination.pageSize);
 
-  // Section cards stats
+  // Stats (mock data for now - can be replaced with real stats)
   const stats = [
     {
       title: 'Team Rank',
-      value: `#${teamData.rank}`,
-      change: 2,
-      changeLabel: 'Moved up 2 spots',
-      description: 'League standing',
+      value: '#--',
+      change: 0,
+      changeLabel: 'League standing',
+      description: 'Rank updates daily',
       icon: Trophy,
     },
     {
-      title: 'Total Points',
-      value: teamData.totalPoints.toLocaleString(),
-      change: 12.5,
-      changeLabel: 'Trending up',
-      description: 'Cumulative team score',
-      icon: Zap,
+      title: 'Team Members',
+      value: `${members.length}/${teamSize}`,
+      change: 0,
+      changeLabel: 'Current roster',
+      description: 'Active members',
+      icon: Users,
     },
     {
       title: 'Submissions',
-      value: teamData.submissions.toString(),
-      change: 8.2,
-      changeLabel: 'Strong activity',
+      value: '--',
+      change: 0,
+      changeLabel: 'This week',
       description: 'Total activities logged',
       icon: Target,
     },
     {
       title: 'Team Streak',
-      value: `${teamData.streak} days`,
+      value: '-- days',
       change: 0,
       changeLabel: 'Keep it up!',
       description: 'Consecutive active days',
@@ -139,7 +183,11 @@ export default function TeamPage({ params }: { params: Promise<{ id: string }> }
     },
   ];
 
-  const maxPoints = Math.max(...teamData.members.map(m => m.points));
+  const captain = members.find(m => m.is_captain);
+
+  if (isLoading) {
+    return <PageSkeleton />;
+  }
 
   return (
     <div className="@container/main flex flex-1 flex-col gap-4 lg:gap-6">
@@ -150,24 +198,24 @@ export default function TeamPage({ params }: { params: Promise<{ id: string }> }
             <Users className="size-7 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">{teamData.name}</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{teamName}</h1>
             <p className="text-muted-foreground">
-              View your team members and performance
+              {isCaptain ? 'Manage your team and validate submissions' : 'View your team members and performance'}
             </p>
           </div>
         </div>
-        <Badge variant="outline" className="w-fit">
-          <Crown className="size-3 mr-1" />
-          Rank #{teamData.rank} in League
-        </Badge>
+        {captain && (
+          <Badge variant="outline" className="w-fit bg-amber-500/10 text-amber-600 border-amber-200">
+            <Crown className="size-3 mr-1" />
+            Captain: {captain.username}
+          </Badge>
+        )}
       </div>
 
-      {/* Section Cards - Admin Dashboard Style */}
+      {/* Stats Cards */}
       <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
         {stats.map((stat, index) => {
           const StatIcon = stat.icon;
-          const isPositive = stat.change >= 0;
-          const TrendIcon = isPositive ? TrendingUp : TrendingDown;
           return (
             <Card key={index} className="@container/card">
               <CardHeader>
@@ -178,17 +226,10 @@ export default function TeamPage({ params }: { params: Promise<{ id: string }> }
                 <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
                   {stat.value}
                 </CardTitle>
-                <CardAction>
-                  <Badge variant="outline" className={stat.change === 0 ? 'text-amber-600' : isPositive ? 'text-green-600' : 'text-red-600'}>
-                    {stat.change !== 0 && <TrendIcon className="size-3" />}
-                    {stat.change === 0 ? <Flame className="size-3" /> : null}
-                    {stat.change !== 0 ? (isPositive ? '+' : '') + stat.change + '%' : 'Active'}
-                  </Badge>
-                </CardAction>
               </CardHeader>
               <CardFooter className="flex-col items-start gap-1.5 text-sm">
                 <div className="line-clamp-1 flex gap-2 font-medium">
-                  {stat.changeLabel} {stat.change !== 0 && <TrendIcon className="size-4" />}
+                  {stat.changeLabel}
                 </div>
                 <div className="text-muted-foreground">{stat.description}</div>
               </CardFooter>
@@ -197,47 +238,12 @@ export default function TeamPage({ params }: { params: Promise<{ id: string }> }
         })}
       </div>
 
-      {/* Team Performance Summary */}
-      <div className="px-4 lg:px-6">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold">Team Performance</h2>
-          <p className="text-sm text-muted-foreground">Individual contributions to team score</p>
-        </div>
-
-        <div className="rounded-lg border p-4">
-          <div className="grid gap-4 md:grid-cols-5">
-            {teamData.members.slice(0, 5).map((member, index) => {
-              const percentage = Math.round((member.points / teamData.totalPoints) * 100);
-              return (
-                <div key={member.id} className="flex flex-col items-center text-center">
-                  <div className="relative">
-                    <Avatar className="size-16 mb-2 ring-2 ring-offset-2 ring-primary/20">
-                      <AvatarFallback className="text-lg">
-                        {member.name.split(' ').map(n => n[0]).join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    {member.role === 'captain' && (
-                      <div className="absolute -top-1 -right-1 size-6 rounded-full bg-amber-500 flex items-center justify-center">
-                        <Crown className="size-3 text-white" />
-                      </div>
-                    )}
-                  </div>
-                  <p className="font-medium text-sm truncate max-w-full">{member.name.split(' ')[0]}</p>
-                  <p className="text-xs text-muted-foreground">{percentage}% of team</p>
-                  <Progress value={percentage * 2} className="h-1.5 w-full mt-2" />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Data Table Section */}
+      {/* Team Members Table */}
       <div className="px-4 lg:px-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
           <div>
             <h2 className="text-lg font-semibold">Team Members</h2>
-            <p className="text-sm text-muted-foreground">{teamData.members.length} members in this team</p>
+            <p className="text-sm text-muted-foreground">{members.length} members in this team</p>
           </div>
 
           <div className="relative flex-1 sm:max-w-xs">
@@ -259,95 +265,53 @@ export default function TeamPage({ params }: { params: Promise<{ id: string }> }
                 <TableHead className="w-12">#</TableHead>
                 <TableHead>Member</TableHead>
                 <TableHead>Role</TableHead>
-                <TableHead className="text-center">Submissions</TableHead>
-                <TableHead className="text-center">Streak</TableHead>
-                <TableHead className="text-right">Points</TableHead>
-                <TableHead className="text-right">Change</TableHead>
-                <TableHead className="w-12"></TableHead>
+                <TableHead className="text-center">Email</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedMembers.length > 0 ? (
-                paginatedMembers.map((member, index) => {
-                  const isPositive = member.change >= 0;
-                  const percentage = Math.round((member.points / maxPoints) * 100);
-                  return (
-                    <TableRow key={member.id}>
-                      <TableCell className="text-muted-foreground">
-                        {pagination.pageIndex * pagination.pageSize + index + 1}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="relative">
-                            <Avatar className="size-10">
-                              <AvatarFallback>
-                                {member.name.split(' ').map(n => n[0]).join('')}
-                              </AvatarFallback>
-                            </Avatar>
-                            {member.role === 'captain' && (
-                              <div className="absolute -bottom-0.5 -right-0.5 size-4 rounded-full bg-amber-500 flex items-center justify-center ring-2 ring-background">
-                                <Crown className="size-2.5 text-white" />
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <span className="font-medium">{member.name}</span>
-                            <p className="text-xs text-muted-foreground">{member.lastActive}</p>
-                          </div>
+                paginatedMembers.map((member, index) => (
+                  <TableRow key={member.league_member_id}>
+                    <TableCell className="text-muted-foreground">
+                      {pagination.pageIndex * pagination.pageSize + index + 1}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <Avatar className="size-10">
+                            <AvatarFallback>
+                              {member.username.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                            </AvatarFallback>
+                          </Avatar>
+                          {member.is_captain && (
+                            <div className="absolute -bottom-0.5 -right-0.5 size-4 rounded-full bg-amber-500 flex items-center justify-center ring-2 ring-background">
+                              <Crown className="size-2.5 text-white" />
+                            </div>
+                          )}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        {member.role === 'captain' ? (
-                          <Badge className="bg-amber-500/10 text-amber-600 border-amber-200">
-                            <Shield className="size-3 mr-1" />
-                            Captain
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline">Player</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline">{member.submissions}</Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <Flame className="size-4 text-orange-500" />
-                          <span className="font-medium">{member.streak}</span>
+                        <div>
+                          <span className="font-medium">{member.username}</span>
                         </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="space-y-1">
-                          <span className="font-bold tabular-nums">{member.points}</span>
-                          <Progress value={percentage} className="h-1.5 w-16 ml-auto" />
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Badge variant="outline" className={isPositive ? 'text-green-600' : 'text-red-600'}>
-                          {isPositive ? <TrendingUp className="size-3 mr-1" /> : <TrendingDown className="size-3 mr-1" />}
-                          {isPositive ? '+' : ''}{member.change}%
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {member.is_captain ? (
+                        <Badge className="bg-amber-500/10 text-amber-600 border-amber-200">
+                          <Shield className="size-3 mr-1" />
+                          Captain
                         </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="size-8">
-                              <MoreVertical className="size-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>View Profile</DropdownMenuItem>
-                            <DropdownMenuItem>View Submissions</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem>Send Message</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
+                      ) : (
+                        <Badge variant="outline">Player</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center text-muted-foreground text-sm">
+                      {member.email}
+                    </TableCell>
+                  </TableRow>
+                ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
+                  <TableCell colSpan={4} className="h-24 text-center">
                     No members found.
                   </TableCell>
                 </TableRow>
@@ -421,6 +385,88 @@ export default function TeamPage({ params }: { params: Promise<{ id: string }> }
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Team Page
+// ============================================================================
+
+export default function TeamPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: leagueId } = use(params);
+  const { activeLeague } = useLeague();
+  const { activeRole, isHost, isGovernor, isCaptain } = useRole();
+
+  // Determine what view to show
+  const canManageTeams = isHost || isGovernor;
+
+  // If user has a team assigned, show team member view
+  // For now, check if activeLeague has team info
+  const userTeamId = activeLeague?.team_id;
+  const userTeamName = activeLeague?.team_name;
+
+  // If user is host/governor, show management view
+  // If user is player/captain with a team, show team view
+  // If user is player without a team, show "not assigned" message
+
+  if (canManageTeams) {
+    // Show team management view
+    return (
+      <div className="@container/main flex flex-1 flex-col gap-4 lg:gap-6">
+        {/* Header */}
+        <div className="flex flex-col gap-4 px-4 lg:px-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="size-14 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shrink-0 shadow-lg">
+              <Users className="size-7 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Team Management</h1>
+              <p className="text-muted-foreground">
+                Create teams, assign members, and manage captains
+              </p>
+            </div>
+          </div>
+          <Badge variant="outline" className="w-fit">
+            <Shield className="size-3 mr-1" />
+            {isHost ? 'Host' : 'Governor'}
+          </Badge>
+        </div>
+
+        {/* Teams Table */}
+        <div className="px-4 lg:px-6">
+          <TeamsTable leagueId={leagueId} isHost={isHost} isGovernor={isGovernor} />
+        </div>
+      </div>
+    );
+  }
+
+  // Player/Captain view
+  if (userTeamId && userTeamName) {
+    return (
+      <TeamMemberView
+        leagueId={leagueId}
+        teamId={userTeamId}
+        teamName={userTeamName}
+        teamSize={activeLeague?.team_size || 5}
+        isCaptain={isCaptain}
+      />
+    );
+  }
+
+  // User not assigned to a team
+  return (
+    <div className="@container/main flex flex-1 flex-col items-center justify-center gap-4 min-h-[400px]">
+      <div className="flex size-16 items-center justify-center rounded-full bg-muted">
+        <Users className="size-8 text-muted-foreground" />
+      </div>
+      <div className="text-center">
+        <h2 className="text-xl font-semibold">Not Assigned to a Team</h2>
+        <p className="text-muted-foreground mt-1 max-w-md">
+          You haven't been assigned to a team yet. Please wait for the host or governor
+          to assign you to a team.
+        </p>
       </div>
     </div>
   );

@@ -202,7 +202,7 @@ export function RevenueChart() {
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
-                tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
               />
               <ChartTooltip
                 cursor={false}
@@ -218,8 +218,8 @@ export function RevenueChart() {
                       <span>
                         {name === "revenue" ? "Revenue" : "Transactions"}:{" "}
                         {name === "revenue"
-                          ? `$${Number(value).toLocaleString()}`
-                          : Number(value).toLocaleString()}
+                          ? `₹${Number(value).toLocaleString('en-IN')}`
+                          : Number(value).toLocaleString('en-IN')}
                       </span>
                     )}
                     indicator="dot"

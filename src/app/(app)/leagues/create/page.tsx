@@ -374,10 +374,8 @@ export default function CreateLeaguePage() {
           </DialogContent>
         </Dialog>
 
-        {/* Background content while dialog is open */}
-        <div className="flex flex-1 flex-col items-center justify-center p-4 opacity-50">
-          <Sparkles className="size-16 text-primary animate-pulse" />
-        </div>
+        {/* Empty background while dialog is open */}
+        <div className="flex flex-1 flex-col items-center justify-center p-4" />
       </>
     );
   }

@@ -1,8 +1,13 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
+
+/* ============================================================================
+   MFL - My Fitness League
+   Professional Fitness Application Theme
+   ============================================================================ */
 
 @theme inline {
   --color-background: var(--background);
@@ -10,12 +15,15 @@
   --font-sans: 'Inter', var(--font-geist-sans), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
 
-  /* RFL Brand Colors */
-  --color-rfl-peach: #F7E2D5;
-  --color-rfl-navy: #0F1E46;
-  --color-rfl-coral: #E85C49;
-  --color-rfl-light-blue: #4A90E2;
-  --color-rfl-white: #FFFFFF;
+  /* MFL Brand Colors */
+  --color-mfl-dark: #0A1628;
+  --color-mfl-navy: #1E3A5F;
+  --color-mfl-coral: #FF6B35;
+  --color-mfl-teal: #00C9A7;
+  --color-mfl-gold: #FFB800;
+  --color-mfl-purple: #7C3AED;
+
+  /* Sidebar */
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -24,11 +32,15 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+
+  /* Charts */
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+
+  /* Core */
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -45,151 +57,309 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+
+  /* Border Radius */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* ============================================================================
+   Light Mode - Clean, Professional, Energetic
+   ============================================================================ */
 :root {
-  --radius: 0.625rem;
-  --background: #faf9f8; /* RFL Peach background */
-  /* --foreground: #070607; RFL Navy text */
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #0F1E46; /* RFL Navy */
-  --primary-foreground: #FFFFFF; /* White text on navy */
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: #E85C49; /* RFL Coral */
-  --accent-foreground: #FFFFFF; /* White text on coral */
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --radius: 0.75rem;
+
+  /* Backgrounds */
+  --background: #F8FAFC;
+  --foreground: #0F172A;
+
+  /* Cards & Popovers */
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
+  --popover: #FFFFFF;
+  --popover-foreground: #0F172A;
+
+  /* Primary - Deep Navy Blue (Strength & Trust) */
+  --primary: #1E3A5F;
+  --primary-foreground: #FFFFFF;
+
+  /* Secondary - Light slate */
+  --secondary: #F1F5F9;
+  --secondary-foreground: #1E293B;
+
+  /* Muted */
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
+
+  /* Accent - Energetic Coral (Motivation & Energy) */
+  --accent: #FF6B35;
+  --accent-foreground: #FFFFFF;
+
+  /* Destructive */
+  --destructive: #EF4444;
+
+  /* Borders & Inputs */
+  --border: #E2E8F0;
+  --input: #E2E8F0;
+  --ring: #1E3A5F;
+
+  /* Charts - Vibrant fitness palette */
+  --chart-1: #FF6B35;
+  --chart-2: #00C9A7;
+  --chart-3: #7C3AED;
+  --chart-4: #FFB800;
+  --chart-5: #1E3A5F;
+
+  /* Sidebar */
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #0F172A;
+  --sidebar-primary: #1E3A5F;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F1F5F9;
+  --sidebar-accent-foreground: #1E293B;
+  --sidebar-border: #E2E8F0;
+  --sidebar-ring: #1E3A5F;
 }
 
+/* ============================================================================
+   Dark Mode - Premium, Bold, Immersive (Nike/Peloton inspired)
+   ============================================================================ */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* Backgrounds - Deep immersive dark */
+  --background: #0A1628;
+  --foreground: #F8FAFC;
+
+  /* Cards & Popovers */
+  --card: #111D32;
+  --card-foreground: #F8FAFC;
+  --popover: #111D32;
+  --popover-foreground: #F8FAFC;
+
+  /* Primary - Bright for dark mode visibility */
+  --primary: #3B82F6;
+  --primary-foreground: #FFFFFF;
+
+  /* Secondary */
+  --secondary: #1E293B;
+  --secondary-foreground: #F1F5F9;
+
+  /* Muted */
+  --muted: #1E293B;
+  --muted-foreground: #94A3B8;
+
+  /* Accent - Vibrant Coral */
+  --accent: #FF6B35;
+  --accent-foreground: #FFFFFF;
+
+  /* Destructive */
+  --destructive: #F87171;
+
+  /* Borders & Inputs */
+  --border: #1E3A5F;
+  --input: #1E3A5F;
+  --ring: #3B82F6;
+
+  /* Charts */
+  --chart-1: #FF6B35;
+  --chart-2: #00D9B5;
+  --chart-3: #A78BFA;
+  --chart-4: #FBBF24;
+  --chart-5: #60A5FA;
+
+  /* Sidebar - Darker than main */
+  --sidebar: #070E1A;
+  --sidebar-foreground: #F8FAFC;
+  --sidebar-primary: #3B82F6;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #1E293B;
+  --sidebar-accent-foreground: #F1F5F9;
+  --sidebar-border: #1E3A5F;
+  --sidebar-ring: #3B82F6;
 }
 
-/* @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-} */
+/* ============================================================================
+   Base Styles
+   ============================================================================ */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
-  body {
-    /* fallback for old browsers */
-    background: #abbaab;
-    /* Chrome 10-25, Safari 5.1-6 */
-    background: -webkit-linear-gradient(to right, #ffffff, #abbaab);
-    /* Modern browsers */
-    background: linear-gradient(to right, #ffffff, #abbaab);
-    @apply text-foreground;
-  }
-  .navbar-gradient {
 
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01";
+    font-variation-settings: "opsz" 32;
+  }
+
+  /* Light mode subtle gradient */
+  :root body {
+    background: linear-gradient(135deg, #F8FAFC 0%, #EFF6FF 50%, #F0FDF4 100%);
+    background-attachment: fixed;
+  }
+
+  /* Dark mode gradient - premium fitness feel */
+  .dark body {
+    background: linear-gradient(135deg, #0A1628 0%, #0F172A 50%, #0A1628 100%);
+    background-attachment: fixed;
   }
 }
 
-.gradient-box {
-  background: #e1ece1;
+/* ============================================================================
+   Utility Classes
+   ============================================================================ */
+
+/* Gradient backgrounds for cards/sections */
+.gradient-primary {
+  background: linear-gradient(135deg, #1E3A5F 0%, #3B82F6 100%);
 }
 
-/* Hide scrollbar for team column horizontal scroll */
+.gradient-accent {
+  background: linear-gradient(135deg, #FF6B35 0%, #F97316 100%);
+}
+
+.gradient-success {
+  background: linear-gradient(135deg, #00C9A7 0%, #10B981 100%);
+}
+
+.gradient-premium {
+  background: linear-gradient(135deg, #7C3AED 0%, #A855F7 100%);
+}
+
+.gradient-gold {
+  background: linear-gradient(135deg, #FFB800 0%, #F59E0B 100%);
+}
+
+/* Dark mode hero gradient */
+.dark .gradient-hero {
+  background: linear-gradient(135deg, #0A1628 0%, #1E3A5F 50%, #0A1628 100%);
+}
+
+/* Glass effect */
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.dark .glass {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Fitness stat card glow */
+.stat-glow {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+}
+
+.dark .stat-glow {
+  box-shadow: 0 0 30px rgba(59, 130, 246, 0.2);
+}
+
+/* Energy pulse animation for active states */
+@keyframes energy-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(255, 107, 53, 0);
+  }
+}
+
+.energy-pulse {
+  animation: energy-pulse 2s infinite;
+}
+
+/* ============================================================================
+   Scrollbar Styling - Modern & Sleek
+   ============================================================================ */
+
+/* Hide scrollbar utility */
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* Internet Explorer 10+ */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 .scrollbar-hide::-webkit-scrollbar {
-  display: none;  /* Safari and Chrome */
+  display: none;
 }
 
-/* Custom scrollbar styling */
+/* Custom scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: hsl(var(--primary) / 0.5) transparent;
+  scrollbar-color: #94A3B8 transparent;
+}
+
+.dark * {
+  scrollbar-color: #475569 transparent;
 }
 
 *::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 *::-webkit-scrollbar-track {
   background: transparent;
+  border-radius: 10px;
 }
 
 *::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary) / 0.3);
-  border-radius: 4px;
+  background: #CBD5E1;
+  border-radius: 10px;
+  transition: background 0.2s ease;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.5);
+  background: #94A3B8;
 }
 
 .dark *::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary) / 0.4);
+  background: #334155;
 }
 
 .dark *::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.6);
+  background: #475569;
+}
+
+/* ============================================================================
+   Focus & Selection Styles
+   ============================================================================ */
+::selection {
+  background: #FF6B35;
+  color: white;
+}
+
+.dark ::selection {
+  background: #3B82F6;
+  color: white;
+}
+
+/* Focus visible ring */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* ============================================================================
+   Typography Enhancements
+   ============================================================================ */
+.text-gradient {
+  background: linear-gradient(135deg, #1E3A5F 0%, #3B82F6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.dark .text-gradient {
+  background: linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-accent {
+  background: linear-gradient(135deg, #FF6B35 0%, #F97316 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }

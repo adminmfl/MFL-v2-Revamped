@@ -359,6 +359,9 @@ export function UsersTable() {
   // Table Instance
   // ============================================================================
 
+  // Use empty array if there's an error
+  const displayData = error ? [] : filteredData;
+
   const table = useReactTable({
     data: displayData,
     columns,
@@ -380,9 +383,6 @@ export function UsersTable() {
   if (isLoading) {
     return <TableSkeleton />;
   }
-
-  // Use empty array if there's an error
-  const displayData = error ? [] : filteredData;
 
   return (
     <div className="space-y-4">

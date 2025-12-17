@@ -273,6 +273,9 @@ export function RolesTable() {
     },
   ];
 
+  // Use empty array if there's an error
+  const displayData = error ? [] : roles;
+
   const table = useReactTable({
     data: displayData,
     columns,
@@ -290,9 +293,6 @@ export function RolesTable() {
   if (isLoading) {
     return <TableSkeleton />;
   }
-
-  // Use empty array if there's an error
-  const displayData = error ? [] : roles;
 
   return (
     <div className="space-y-4">

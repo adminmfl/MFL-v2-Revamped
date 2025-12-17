@@ -17,8 +17,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "MFL Dashboard - My Fitness League",
-  description: "Dashboard for My Fitness League team management and workout tracking",
+  title: "MFL - My Fitness League",
+  description: "My Fitness League",
 };
 
 export default async function RootLayout({

@@ -56,13 +56,8 @@ const adminNavItems = [
     icon: Trophy,
   },
   {
-    title: "Submissions",
-    url: "/admin/submissions",
-    icon: FileCheck,
-  },
-  {
-    title: "Financial",
-    url: "/admin/financial",
+    title: "Revenue",
+    url: "/admin/revenue",
     icon: DollarSign,
   },
   {
@@ -74,11 +69,6 @@ const adminNavItems = [
     title: "Activities",
     url: "/admin/activities",
     icon: Activity,
-  },
-  {
-    title: "Challenges",
-    url: "/admin/challenges",
-    icon: Flag,
   },
   {
     title: "Roles",

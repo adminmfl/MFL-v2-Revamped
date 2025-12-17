@@ -38,57 +38,79 @@ export async function GET(
       .select('*', { count: 'exact', head: true })
       .eq('league_id', leagueId);
 
-    // Get team count
+    // Get team count via teamleagues junction table
     const { count: teamCount } = await supabase
-      .from('teams')
+      .from('teamleagues')
       .select('*', { count: 'exact', head: true })
       .eq('league_id', leagueId);
 
-    // Get total submissions
+    // Get league member IDs for this league
+    const { data: leagueMembers } = await supabase
+      .from('leaguemembers')
+      .select('league_member_id')
+      .eq('league_id', leagueId);
+
+    const memberIds = (leagueMembers || []).map((m) => m.league_member_id);
+
+    if (memberIds.length === 0) {
+      // No members, return zeros
+      return NextResponse.json({
+        success: true,
+        stats: {
+          totalPoints: 0,
+          memberCount: 0,
+          teamCount: teamCount || 0,
+          submissionCount: 0,
+          pendingCount: 0,
+          activeMembers: 0,
+          dailyAverage: 0,
+          maxCapacity: (league.num_teams || 0) * (league.team_size || 0),
+        },
+      });
+    }
+
+    // Get total submissions from effortentry table
     const { count: submissionCount } = await supabase
-      .from('efforts')
+      .from('effortentry')
       .select('*', { count: 'exact', head: true })
-      .eq('league_id', leagueId);
+      .in('league_member_id', memberIds);
 
-    // Get approved submissions for total points
-    const { data: approvedEfforts } = await supabase
-      .from('efforts')
-      .select('points')
-      .eq('league_id', leagueId)
+    // Get approved submissions count (1 point per approved entry per PRD)
+    const { count: approvedCount } = await supabase
+      .from('effortentry')
+      .select('*', { count: 'exact', head: true })
+      .in('league_member_id', memberIds)
       .eq('status', 'approved');
 
-    const totalPoints = (approvedEfforts || []).reduce(
-      (sum, e) => sum + (Number(e.points) || 0),
-      0
-    );
+    const totalPoints = approvedCount || 0;
 
     // Get pending submissions count
     const { count: pendingCount } = await supabase
-      .from('efforts')
+      .from('effortentry')
       .select('*', { count: 'exact', head: true })
-      .eq('league_id', leagueId)
+      .in('league_member_id', memberIds)
       .eq('status', 'pending');
 
     // Calculate active members (members who have submitted in the last 7 days)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const { data: activeSubmitters } = await supabase
-      .from('efforts')
-      .select('submitted_by')
-      .eq('league_id', leagueId)
+    const { data: recentSubmissions } = await supabase
+      .from('effortentry')
+      .select('league_member_id')
+      .in('league_member_id', memberIds)
       .gte('created_date', sevenDaysAgo.toISOString());
 
-    const activeMembers = new Set((activeSubmitters || []).map(e => e.submitted_by)).size;
+    const activeMembers = new Set((recentSubmissions || []).map(e => e.league_member_id)).size;
 
     // Calculate daily average (last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const { count: last30DaysSubmissions } = await supabase
-      .from('efforts')
+      .from('effortentry')
       .select('*', { count: 'exact', head: true })
-      .eq('league_id', leagueId)
+      .in('league_member_id', memberIds)
       .gte('created_date', thirtyDaysAgo.toISOString());
 
     const dailyAverage = ((last30DaysSubmissions || 0) / 30).toFixed(1);

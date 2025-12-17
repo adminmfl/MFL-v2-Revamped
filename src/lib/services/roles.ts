@@ -3,7 +3,7 @@
  * Handles role management, custom roles, and role-based permissions.
  */
 
-import { getSupabase } from '@/lib/supabase/client';
+import { getSupabaseServiceRole } from '@/lib/supabase/client';
 
 export interface Role {
   role_id: string;
@@ -20,7 +20,7 @@ export interface Role {
  */
 export async function getAllRoles(): Promise<Role[]> {
   try {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getSupabaseServiceRole()
       .from('roles')
       .select('*');
 
@@ -43,7 +43,7 @@ export async function getAllRoles(): Promise<Role[]> {
  */
 export async function getRoleByName(roleName: string): Promise<Role | null> {
   try {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getSupabaseServiceRole()
       .from('roles')
       .select('*')
       .eq('role_name', roleName)
@@ -72,7 +72,7 @@ export async function createRole(roleName: string, createdBy: string): Promise<R
       return existing;
     }
 
-    const { data, error } = await getSupabase()
+    const { data, error } = await getSupabaseServiceRole()
       .from('roles')
       .insert({
         role_name: roleName,
@@ -127,14 +127,14 @@ export async function userHasRole(
   roleName: string
 ): Promise<boolean> {
   try {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getSupabaseServiceRole()
       .from('assignedrolesforleague')
       .select('id')
       .eq('user_id', userId)
       .eq('league_id', leagueId)
       .in('role_id', [
         // Get role_id for the given role_name
-        (await getSupabase()
+        (await getSupabaseServiceRole()
           .from('roles')
           .select('role_id')
           .eq('role_name', roleName)
@@ -163,7 +163,26 @@ export async function userHasAnyRole(
   roleNames: string[]
 ): Promise<boolean> {
   try {
-    const userRoles = await getSupabase()
+    const supabase = getSupabaseServiceRole();
+
+    // Special check for 'host' role - host is the league creator (created_by)
+    // Also check assignedrolesforleague since host role is assigned there too
+    if (roleNames.includes('host')) {
+      const { data: league, error: leagueError } = await supabase
+        .from('leagues')
+        .select('created_by')
+        .eq('league_id', leagueId)
+        .single();
+
+      console.log('[userHasAnyRole] Checking host - userId:', userId, 'leagueId:', leagueId, 'created_by:', league?.created_by, 'error:', leagueError?.message);
+
+      if (league?.created_by === userId) {
+        return true;
+      }
+    }
+
+    // Check assignedrolesforleague for other roles
+    const userRoles = await supabase
       .from('assignedrolesforleague')
       .select('roles(role_name)')
       .eq('user_id', userId)
@@ -192,7 +211,7 @@ export async function userHasAllRoles(
   roleNames: string[]
 ): Promise<boolean> {
   try {
-    const userRoles = await getSupabase()
+    const userRoles = await getSupabaseServiceRole()
       .from('assignedrolesforleague')
       .select('roles(role_name)')
       .eq('user_id', userId)

@@ -1,10 +1,10 @@
 /**
  * Admin Stats Service
- * Handles dashboard and financial statistics
+ * Handles dashboard and revenue statistics
  */
 
 import { getSupabaseServiceRole } from '@/lib/supabase/client';
-import type { DashboardStats, FinancialStats } from '@/types/admin';
+import type { DashboardStats, RevenueStats } from '@/types/admin';
 
 // ============================================================================
 // Chart Data Types
@@ -141,9 +141,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 }
 
 /**
- * Get financial statistics
+ * Get revenue statistics
  */
-export async function getFinancialStats(): Promise<FinancialStats> {
+export async function getRevenueStats(): Promise<RevenueStats> {
   try {
     const supabase = getSupabaseServiceRole();
 

@@ -365,6 +365,9 @@ export function LeaguesTable() {
   // Table Instance
   // ============================================================================
 
+  // Use empty array if there's an error
+  const displayData = error ? [] : filteredData;
+
   const table = useReactTable({
     data: displayData,
     columns,
@@ -386,9 +389,6 @@ export function LeaguesTable() {
   if (isLoading) {
     return <TableSkeleton />;
   }
-
-  // Use empty array if there's an error
-  const displayData = error ? [] : filteredData;
 
   return (
     <div className="space-y-4">

@@ -221,25 +221,45 @@ export default function InvitePage({
   if (joined) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="size-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4 animate-bounce">
-              <CheckCircle2 className="size-8 text-green-600" />
+        <Card className="w-full max-w-md overflow-hidden">
+          {/* Animated gradient header */}
+          <div className="p-8 text-center dark:text-white text-black relative overflow-hidden">
+            {/* Decorative elements */}
+            <div className="absolute top-0 left-0 w-full h-full">
+              <div className="absolute -top-6 -left-6 size-24 rounded-full bg-white/10 blur-lg animate-pulse" />
+              <div className="absolute -bottom-6 -right-6 size-24 rounded-full bg-white/10 blur-lg animate-pulse delay-500" />
             </div>
-            <CardTitle>
-              {alreadyMember ? 'Already a Member!' : 'Successfully Joined!'}
-            </CardTitle>
-            <CardDescription>
+
+            <div className="relative">
+              <div className="size-20 mx-auto rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center mb-4 ring-4 ring-white/30">
+                <CheckCircle2 className="size-10 dark:text-white text-black animate-pulse" />
+              </div>
+              <h2 className="text-2xl font-bold mb-1">
+                {alreadyMember ? 'Welcome Back!' : 'You\'re In!'}
+              </h2>
+              <p className="dark:text-white text-black">
+                {alreadyMember
+                  ? `You're already part of the team`
+                  : `Successfully joined the league`}
+              </p>
+            </div>
+          </div>
+
+          <CardContent className="p-6 text-center">
+            <h3 className="text-xl font-semibold mb-2">{league?.name}</h3>
+            <p className="text-muted-foreground mb-6">
               {alreadyMember
-                ? `You're already part of ${league?.name}`
-                : `You've joined ${league?.name}`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center">
-            <p className="text-sm text-muted-foreground mb-4">
-              Redirecting you to the league...
+                ? 'Taking you back to your league...'
+                : 'Get ready to compete, stay fit, and win together!'}
             </p>
-            <Loader2 className="size-6 animate-spin mx-auto text-primary" />
+
+            {/* Progress indicator */}
+            <div className="flex items-center justify-center gap-3 p-4 rounded-xl bg-muted/50 border">
+              <Loader2 className="size-5 animate-spin text-primary" />
+              <span className="text-sm text-muted-foreground">
+                Redirecting to league...
+              </span>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -251,12 +271,12 @@ export default function InvitePage({
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex items-center justify-center p-4">
       <Card className="w-full max-w-md overflow-hidden">
         {/* Header with gradient */}
-        <div className="bg-gradient-to-br from-primary to-primary/60 p-6 text-center text-primary-foreground">
+        <div className="p-6 text-center dark:text-white text-black">
           <div className="size-16 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-4">
             <Trophy className="size-8" />
           </div>
           <h1 className="text-2xl font-bold mb-1">You're Invited!</h1>
-          <p className="text-primary-foreground/80">
+          <p className="dark:text-white text-black">
             Join the fitness competition
           </p>
         </div>

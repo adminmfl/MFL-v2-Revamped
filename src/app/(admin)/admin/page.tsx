@@ -39,7 +39,7 @@ const defaultStats = [
   },
   {
     title: "Revenue",
-    value: "$0",
+    value: "₹0",
     change: 0,
     changeLabel: "No data available",
     description: "This month's revenue",
@@ -82,7 +82,7 @@ function safeNumber(value: unknown, defaultValue: number = 0): number {
 
 function formatCurrency(value: unknown): string {
   const num = safeNumber(value, 0);
-  return `$${num.toLocaleString()}`;
+  return `₹${num.toLocaleString()}`;
 }
 
 function formatNumber(value: unknown): string {

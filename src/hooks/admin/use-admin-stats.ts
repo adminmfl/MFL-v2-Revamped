@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type { DashboardStats, FinancialStats } from "@/types/admin";
+import type { DashboardStats, RevenueStats } from "@/types/admin";
 import type { RevenueChartDataPoint } from "@/lib/services/admin/admin-stats";
 
 interface UseAdminStatsReturn {
@@ -11,8 +11,8 @@ interface UseAdminStatsReturn {
   refetch: () => Promise<void>;
 }
 
-interface UseFinancialStatsReturn {
-  stats: FinancialStats | null;
+interface UseRevenueStatsReturn {
+  stats: RevenueStats | null;
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -60,10 +60,10 @@ export function useAdminStats(): UseAdminStatsReturn {
 }
 
 /**
- * Hook for fetching financial statistics
+ * Hook for fetching revenue statistics
  */
-export function useFinancialStats(): UseFinancialStatsReturn {
-  const [stats, setStats] = useState<FinancialStats | null>(null);
+export function useRevenueStats(): UseRevenueStatsReturn {
+  const [stats, setStats] = useState<RevenueStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,11 +72,11 @@ export function useFinancialStats(): UseFinancialStatsReturn {
     setError(null);
 
     try {
-      const response = await fetch("/api/admin/financial");
+      const response = await fetch("/api/admin/revenue");
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to fetch financial stats");
+        throw new Error(result.error || "Failed to fetch revenue stats");
       }
 
       setStats(result.data);

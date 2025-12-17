@@ -256,6 +256,7 @@ COMMENT ON TABLE public.leagueinvites IS 'Tracks user invitations to leagues';
 CREATE TABLE IF NOT EXISTS public.teams (
   team_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   team_name varchar NOT NULL UNIQUE,
+  invite_code varchar(12) UNIQUE,
   created_by uuid REFERENCES public.users(user_id) ON DELETE SET NULL,
   created_date timestamptz DEFAULT CURRENT_TIMESTAMP,
   modified_by uuid REFERENCES public.users(user_id) ON DELETE SET NULL,
@@ -265,6 +266,7 @@ CREATE TABLE IF NOT EXISTS public.teams (
 );
 
 CREATE INDEX IF NOT EXISTS idx_teams_name ON public.teams(team_name);
+CREATE INDEX IF NOT EXISTS idx_teams_invite_code ON public.teams(invite_code);
 
 COMMENT ON TABLE public.teams IS 'Team entities that participate in leagues';
 
@@ -381,6 +383,7 @@ CREATE TABLE IF NOT EXISTS public.effortentry (
   rr_value numeric,
   status effort_status DEFAULT 'pending',
   proof_url varchar,
+  notes text,
   created_by uuid REFERENCES public.users(user_id) ON DELETE SET NULL,
   created_date timestamptz DEFAULT CURRENT_TIMESTAMP,
   modified_by uuid REFERENCES public.users(user_id) ON DELETE SET NULL,
@@ -650,6 +653,34 @@ CREATE TRIGGER payments_updated_at BEFORE UPDATE ON public.payments
 -- SEED DATA
 -- =====================================================================================
 
+/**
+ * ADMIN USER SETUP
+ * -----------------
+ * Default admin credentials:
+ * - Email: admin@myfitnessleague.com
+ * - Password: Admin@123
+ *
+ * IMPORTANT: Change the password after first login!
+ * To generate a new password hash: https://bcrypt-generator.com/ (use rounds: 10)
+ */
+INSERT INTO public.users (
+  username,
+  email,
+  password_hash,
+  platform_role,
+  is_active,
+  created_date
+)
+VALUES (
+  'admin',
+  'admin@myfitnessleague.com',
+  '$2b$10$hdCr.XL7NgL/umLa1SfEiuIet1RcHi/XGqUkQ9ERwMJTTNPPf8Cxu', -- Password: Admin@123
+  'admin',
+  true,
+  CURRENT_TIMESTAMP
+)
+ON CONFLICT (email) DO NOTHING;
+
 -- Insert default roles for RBAC
 INSERT INTO public.roles (role_name) VALUES
   ('host'),
@@ -671,8 +702,9 @@ INSERT INTO public.activities (activity_name, description) VALUES
 ON CONFLICT (activity_name) DO NOTHING;
 
 -- Insert default pricing (can be updated via admin panel)
+-- Base: ₹499, Platform Fee: ₹99, GST: 18%
 INSERT INTO public.pricing (base_price, platform_fee, gst_percentage, is_active) VALUES
-  (499, 50, 18, true)
+  (499, 99, 18, true)
 ON CONFLICT DO NOTHING;
 
 -- =====================================================================================

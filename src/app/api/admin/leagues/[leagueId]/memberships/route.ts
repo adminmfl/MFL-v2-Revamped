@@ -7,9 +7,10 @@ import { Role } from '@/contexts/role-context';
 // GET /api/admin/leagues/[leagueId]/memberships
 export async function GET(
   request: NextRequest,
-  { params }: { params: { leagueId: string } }
+  { params }: { params: Promise<{ leagueId: string }> }
 ) {
   try {
+    const { leagueId } = await params;
     const session = (await getServerSession(authOptions as any)) as { user: { id: string } } | null;
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -21,7 +22,7 @@ export async function GET(
     const { data: league } = await supabase
       .from('leagues')
       .select('created_by')
-      .eq('league_id', params.leagueId)
+      .eq('league_id', leagueId)
       .single();
 
     const { data: leagueRole } = await supabase
@@ -32,7 +33,7 @@ export async function GET(
           role_name
         )
       `)
-      .eq('league_id', params.leagueId)
+      .eq('league_id', leagueId)
       .eq('user_id', session.user.id)
       .single();
 
@@ -54,7 +55,7 @@ export async function GET(
           email
         )
       `)
-      .eq('league_id', params.leagueId);
+      .eq('league_id', leagueId);
 
     if (error) {
       console.error('Error fetching league members:', error);
@@ -73,7 +74,7 @@ export async function GET(
             role_name
           )
         `)
-        .eq('league_id', params.leagueId)
+        .eq('league_id', leagueId)
         .eq('user_id', member.user_id)
         .single();
 
@@ -107,7 +108,7 @@ export async function GET(
               .from('teamleagues')
               .select('id')
               .eq('team_id', tm.team_id)
-              .eq('league_id', params.leagueId)
+              .eq('league_id', leagueId)
               .single();
 
             if (teamLeague) {

@@ -56,7 +56,7 @@ const defaultStats: StatCard[] = [
   },
   {
     title: "Revenue",
-    value: "$12,450",
+    value: "₹12,450",
     change: 8.5,
     changeLabel: "Steady growth",
     description: "Monthly recurring revenue",

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
 
 // ============================================================================
@@ -29,12 +29,30 @@ export interface LeagueWithRoles {
 }
 
 interface LeagueContextType {
+  // League state
   activeLeague: LeagueWithRoles | null;
   userLeagues: LeagueWithRoles[];
   setActiveLeague: (league: LeagueWithRoles | null) => void;
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+
+  // Role switching
+  currentRole: LeagueRole | null;
+  setCurrentRole: (role: LeagueRole) => void;
+  availableRoles: LeagueRole[];
+
+  /**
+   * Whether the user is participating as a player in the current role context.
+   * - Always true for 'player' and 'captain' roles (captain is always a player)
+   * - For 'host' and 'governor', true if they also have 'player' role
+   */
+  isAlsoPlayer: boolean;
+
+  /**
+   * Get the highest permission role for the user in the active league
+   */
+  highestRole: LeagueRole | null;
 }
 
 // ============================================================================
@@ -42,6 +60,33 @@ interface LeagueContextType {
 // ============================================================================
 
 const LeagueContext = createContext<LeagueContextType | undefined>(undefined);
+
+// ============================================================================
+// Role Hierarchy
+// ============================================================================
+
+const ROLE_HIERARCHY: LeagueRole[] = ['host', 'governor', 'captain', 'player'];
+
+/**
+ * Get the highest permission role from a list of roles
+ */
+function getHighestRole(roles: LeagueRole[]): LeagueRole | null {
+  for (const role of ROLE_HIERARCHY) {
+    if (roles.includes(role)) {
+      return role;
+    }
+  }
+  return null;
+}
+
+/**
+ * Sort roles by hierarchy (highest first)
+ */
+function sortRolesByHierarchy(roles: LeagueRole[]): LeagueRole[] {
+  return [...roles].sort((a, b) => {
+    return ROLE_HIERARCHY.indexOf(a) - ROLE_HIERARCHY.indexOf(b);
+  });
+}
 
 // ============================================================================
 // Provider
@@ -52,12 +97,13 @@ interface LeagueProviderProps {
 }
 
 /**
- * LeagueProvider - Manages the user's leagues and active league context.
+ * LeagueProvider - Manages the user's leagues, active league, and role switching.
  *
  * Features:
  * - Fetches all leagues the user belongs to with their roles
  * - Persists active league selection in localStorage
- * - Provides league switching functionality
+ * - Supports role switching within a league
+ * - Tracks whether user is participating as a player
  */
 export function LeagueProvider({ children }: LeagueProviderProps) {
   const { data: session, status: sessionStatus } = useSession();
@@ -65,6 +111,7 @@ export function LeagueProvider({ children }: LeagueProviderProps) {
   const [userLeagues, setUserLeagues] = useState<LeagueWithRoles[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentRole, setCurrentRoleState] = useState<LeagueRole | null>(null);
 
   // Fetch user's leagues with roles
   const fetchUserLeagues = useCallback(async () => {
@@ -72,6 +119,7 @@ export function LeagueProvider({ children }: LeagueProviderProps) {
       setIsLoading(false);
       setUserLeagues([]);
       setActiveLeagueState(null);
+      setCurrentRoleState(null);
       return;
     }
 
@@ -86,6 +134,7 @@ export function LeagueProvider({ children }: LeagueProviderProps) {
         if (response.status === 401) {
           setUserLeagues([]);
           setActiveLeagueState(null);
+          setCurrentRoleState(null);
           return;
         }
         console.error('Failed to fetch leagues:', response.status);
@@ -99,19 +148,30 @@ export function LeagueProvider({ children }: LeagueProviderProps) {
 
       // Restore active league from localStorage or default to first
       const savedLeagueId = localStorage.getItem('activeLeagueId');
+      let selectedLeague: LeagueWithRoles | null = null;
+
       if (savedLeagueId) {
-        const savedLeague = leagues.find(l => l.league_id === savedLeagueId);
-        if (savedLeague) {
-          setActiveLeagueState(savedLeague);
-        } else if (leagues.length > 0) {
-          // Saved league no longer exists, use first available
-          setActiveLeagueState(leagues[0]);
-          localStorage.setItem('activeLeagueId', leagues[0].league_id);
+        selectedLeague = leagues.find(l => l.league_id === savedLeagueId) || null;
+      }
+
+      if (!selectedLeague && leagues.length > 0) {
+        selectedLeague = leagues[0];
+      }
+
+      if (selectedLeague) {
+        setActiveLeagueState(selectedLeague);
+        localStorage.setItem('activeLeagueId', selectedLeague.league_id);
+
+        // Restore or set default role
+        const savedRole = localStorage.getItem(`role_${selectedLeague.league_id}`);
+        const sortedRoles = sortRolesByHierarchy(selectedLeague.roles);
+
+        if (savedRole && selectedLeague.roles.includes(savedRole as LeagueRole)) {
+          setCurrentRoleState(savedRole as LeagueRole);
+        } else if (sortedRoles.length > 0) {
+          // Default to highest role
+          setCurrentRoleState(sortedRoles[0]);
         }
-      } else if (leagues.length > 0) {
-        // No saved preference, use first league
-        setActiveLeagueState(leagues[0]);
-        localStorage.setItem('activeLeagueId', leagues[0].league_id);
       }
     } catch (err) {
       console.error('Failed to fetch user leagues:', err);
@@ -130,12 +190,76 @@ export function LeagueProvider({ children }: LeagueProviderProps) {
   // Set active league with persistence
   const setActiveLeague = useCallback((league: LeagueWithRoles | null) => {
     setActiveLeagueState(league);
+
     if (league) {
       localStorage.setItem('activeLeagueId', league.league_id);
+
+      // Restore or set default role for the new league
+      const savedRole = localStorage.getItem(`role_${league.league_id}`);
+      const sortedRoles = sortRolesByHierarchy(league.roles);
+
+      if (savedRole && league.roles.includes(savedRole as LeagueRole)) {
+        setCurrentRoleState(savedRole as LeagueRole);
+      } else if (sortedRoles.length > 0) {
+        setCurrentRoleState(sortedRoles[0]);
+      } else {
+        setCurrentRoleState(null);
+      }
     } else {
       localStorage.removeItem('activeLeagueId');
+      setCurrentRoleState(null);
     }
   }, []);
+
+  // Set current role with persistence
+  const setCurrentRole = useCallback((role: LeagueRole) => {
+    if (!activeLeague) return;
+
+    // Validate role is available
+    if (!activeLeague.roles.includes(role)) {
+      console.warn(`Role ${role} is not available for user in league ${activeLeague.league_id}`);
+      return;
+    }
+
+    setCurrentRoleState(role);
+    localStorage.setItem(`role_${activeLeague.league_id}`, role);
+  }, [activeLeague]);
+
+  // Computed values
+  const availableRoles = useMemo(() => {
+    if (!activeLeague) return [];
+    return sortRolesByHierarchy(activeLeague.roles);
+  }, [activeLeague]);
+
+  const highestRole = useMemo(() => {
+    if (!activeLeague) return null;
+    return getHighestRole(activeLeague.roles);
+  }, [activeLeague]);
+
+  /**
+   * Determine if the user is participating as a player in the current context
+   *
+   * Rules per PRD:
+   * - Captain is ALWAYS a player (implicit)
+   * - Player role is always a player
+   * - Host/Governor are only players if they have the 'player' role explicitly
+   */
+  const isAlsoPlayer = useMemo(() => {
+    if (!activeLeague || !currentRole) return false;
+
+    // Player role - always true
+    if (currentRole === 'player') return true;
+
+    // Captain is always a player (per PRD: "All Captains are automatically Players")
+    if (currentRole === 'captain') return true;
+
+    // Host/Governor - check if they also have player role
+    if (currentRole === 'host' || currentRole === 'governor') {
+      return activeLeague.roles.includes('player');
+    }
+
+    return false;
+  }, [activeLeague, currentRole]);
 
   return (
     <LeagueContext.Provider
@@ -145,7 +269,12 @@ export function LeagueProvider({ children }: LeagueProviderProps) {
         setActiveLeague,
         isLoading,
         error,
-        refetch: fetchUserLeagues
+        refetch: fetchUserLeagues,
+        currentRole,
+        setCurrentRole,
+        availableRoles,
+        isAlsoPlayer,
+        highestRole,
       }}
     >
       {children}

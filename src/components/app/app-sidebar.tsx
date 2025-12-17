@@ -64,12 +64,13 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 export function AppSidebar({ user, ...props }: AppSidebarProps) {
   const pathname = usePathname();
   const { activeLeague } = useLeague();
-  const { activeRole } = useRole();
+  const { activeRole, isAlsoPlayer } = useRole();
 
   // Get navigation items based on current context
   const navSections = getSidebarNavItems(
     activeRole,
-    activeLeague?.league_id || null
+    activeLeague?.league_id || null,
+    { isAlsoPlayer }
   );
 
   return (

@@ -6,9 +6,10 @@ import { createServerClient } from '@/lib/supabase/server';
 // PATCH /api/admin/leagues/[leagueId]/memberships/[membershipId]
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { leagueId: string; membershipId: string } }
+  { params }: { params: Promise<{ leagueId: string; membershipId: string }> }
 ) {
   try {
+    const { leagueId, membershipId } = await params;
     const session = (await getServerSession(authOptions as any)) as { user: { id: string } } | null;
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -20,7 +21,7 @@ export async function PATCH(
     const { data: league } = await supabase
       .from('leagues')
       .select('created_by')
-      .eq('league_id', params.leagueId)
+      .eq('league_id', leagueId)
       .single();
 
     const { data: leagueRole } = await supabase
@@ -30,7 +31,7 @@ export async function PATCH(
           role_name
         )
       `)
-      .eq('league_id', params.leagueId)
+      .eq('league_id', leagueId)
       .eq('user_id', session.user.id)
       .single();
 
@@ -65,7 +66,7 @@ export async function PATCH(
       const { data: existing } = await supabase
         .from('assignedrolesforleague')
         .select('id')
-        .eq('league_id', params.leagueId)
+        .eq('league_id', leagueId)
         .eq('user_id', userId)
         .single();
 
@@ -88,7 +89,7 @@ export async function PATCH(
         const { error } = await supabase
           .from('assignedrolesforleague')
           .insert({
-            league_id: params.leagueId,
+            league_id: leagueId,
             user_id: userId,
             role_id: roleData.role_id,
             created_by: session.user.id,
@@ -115,9 +116,10 @@ export async function PATCH(
 // DELETE /api/admin/leagues/[leagueId]/memberships/[membershipId]
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { leagueId: string; membershipId: string } }
+  { params }: { params: Promise<{ leagueId: string; membershipId: string }> }
 ) {
   try {
+    const { leagueId, membershipId } = await params;
     const session = (await getServerSession(authOptions as any)) as { user: { id: string } } | null;
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -129,7 +131,7 @@ export async function DELETE(
     const { data: league } = await supabase
       .from('leagues')
       .select('created_by')
-      .eq('league_id', params.leagueId)
+      .eq('league_id', leagueId)
       .single();
 
     const { data: leagueRole } = await supabase
@@ -139,7 +141,7 @@ export async function DELETE(
           role_name
         )
       `)
-      .eq('league_id', params.leagueId)
+      .eq('league_id', leagueId)
       .eq('user_id', session.user.id)
       .single();
 
@@ -157,14 +159,14 @@ export async function DELETE(
     await supabase
       .from('assignedrolesforleague')
       .delete()
-      .eq('league_id', params.leagueId)
+      .eq('league_id', leagueId)
       .eq('user_id', userId);
 
     // 2. Remove from leaguemembers (this removes them from the league)
     const { error } = await supabase
       .from('leaguemembers')
       .delete()
-      .eq('league_id', params.leagueId)
+      .eq('league_id', leagueId)
       .eq('user_id', userId);
 
     if (error) {
