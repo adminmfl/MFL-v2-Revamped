@@ -1,0 +1,452 @@
+[
+  {
+    "id": 1,
+    "header": "Mumbai Fitness League 2025",
+    "type": "League",
+    "status": "Active",
+    "target": "500",
+    "limit": "423",
+    "reviewer": "Admin"
+  },
+  {
+    "id": 2,
+    "header": "Corporate Wellness Challenge",
+    "type": "League",
+    "status": "Active",
+    "target": "200",
+    "limit": "187",
+    "reviewer": "Admin"
+  },
+  {
+    "id": 3,
+    "header": "Team Alpha Warriors",
+    "type": "Team",
+    "status": "Active",
+    "target": "25",
+    "limit": "25",
+    "reviewer": "Rahul Sharma"
+  },
+  {
+    "id": 4,
+    "header": "Team Fitness Freaks",
+    "type": "Team",
+    "status": "Active",
+    "target": "25",
+    "limit": "24",
+    "reviewer": "Priya Patel"
+  },
+  {
+    "id": 5,
+    "header": "Running - 5K Morning Run",
+    "type": "Workout Submission",
+    "status": "Pending",
+    "target": "45",
+    "limit": "42",
+    "reviewer": "Captain Review"
+  },
+  {
+    "id": 6,
+    "header": "Gym Session - Strength Training",
+    "type": "Workout Submission",
+    "status": "Approved",
+    "target": "60",
+    "limit": "65",
+    "reviewer": "Vikram Singh"
+  },
+  {
+    "id": 7,
+    "header": "Yoga - Morning Flow",
+    "type": "Workout Submission",
+    "status": "Approved",
+    "target": "30",
+    "limit": "35",
+    "reviewer": "Anjali Desai"
+  },
+  {
+    "id": 8,
+    "header": "Swimming - Lap Training",
+    "type": "Workout Submission",
+    "status": "Pending",
+    "target": "40",
+    "limit": "38",
+    "reviewer": "Captain Review"
+  },
+  {
+    "id": 9,
+    "header": "Rest Day Exemption - Medical",
+    "type": "Exemption Request",
+    "status": "Pending",
+    "target": "1",
+    "limit": "3",
+    "reviewer": "Governor Review"
+  },
+  {
+    "id": 10,
+    "header": "Cycling - 20km Ride",
+    "type": "Workout Submission",
+    "status": "Approved",
+    "target": "50",
+    "limit": "55",
+    "reviewer": "Kiran Rao"
+  },
+  {
+    "id": 11,
+    "header": "HIIT Training Session",
+    "type": "Workout Submission",
+    "status": "Approved",
+    "target": "25",
+    "limit": "28",
+    "reviewer": "Neha Gupta"
+  },
+  {
+    "id": 12,
+    "header": "Walking - 10000 Steps",
+    "type": "Workout Submission",
+    "status": "Approved",
+    "target": "10000",
+    "limit": "12500",
+    "reviewer": "Auto Approved"
+  },
+  {
+    "id": 13,
+    "header": "Golf - 18 Holes",
+    "type": "Workout Submission",
+    "status": "Pending",
+    "target": "18",
+    "limit": "18",
+    "reviewer": "Captain Review"
+  },
+  {
+    "id": 14,
+    "header": "Team Iron Titans",
+    "type": "Team",
+    "status": "Active",
+    "target": "25",
+    "limit": "22",
+    "reviewer": "Amit Kumar"
+  },
+  {
+    "id": 15,
+    "header": "Team Cardio Kings",
+    "type": "Team",
+    "status": "Active",
+    "target": "25",
+    "limit": "25",
+    "reviewer": "Sanjay Mehta"
+  },
+  {
+    "id": 16,
+    "header": "Player Registration - Arjun Nair",
+    "type": "Registration",
+    "status": "Approved",
+    "target": "1",
+    "limit": "1",
+    "reviewer": "System"
+  },
+  {
+    "id": 17,
+    "header": "Player Registration - Meera Shah",
+    "type": "Registration",
+    "status": "Pending",
+    "target": "1",
+    "limit": "0",
+    "reviewer": "Host Review"
+  },
+  {
+    "id": 18,
+    "header": "Rest Day Exemption - Travel",
+    "type": "Exemption Request",
+    "status": "Approved",
+    "target": "1",
+    "limit": "2",
+    "reviewer": "Rajesh Khanna"
+  },
+  {
+    "id": 19,
+    "header": "Pilates - Core Workout",
+    "type": "Workout Submission",
+    "status": "Approved",
+    "target": "45",
+    "limit": "50",
+    "reviewer": "Divya Joshi"
+  },
+  {
+    "id": 20,
+    "header": "CrossFit - WOD",
+    "type": "Workout Submission",
+    "status": "Pending",
+    "target": "35",
+    "limit": "40",
+    "reviewer": "Captain Review"
+  },
+  {
+    "id": 21,
+    "header": "Delhi Fitness Championship",
+    "type": "League",
+    "status": "Draft",
+    "target": "300",
+    "limit": "0",
+    "reviewer": "Admin"
+  },
+  {
+    "id": 22,
+    "header": "Team Endurance Elite",
+    "type": "Team",
+    "status": "Active",
+    "target": "25",
+    "limit": "20",
+    "reviewer": "Suresh Iyer"
+  },
+  {
+    "id": 23,
+    "header": "Basketball - Full Court Game",
+    "type": "Workout Submission",
+    "status": "Approved",
+    "target": "60",
+    "limit": "75",
+    "reviewer": "Arun Verma"
+  },
+  {
+    "id": 24,
+    "header": "Tennis - Singles Match",
+    "type": "Workout Submission",
+    "status": "Approved",
+    "target": "90",
+    "limit": "85",
+    "reviewer": "Pooja Nair"
+  },
+  {
+    "id": 25,
+    "header": "Badminton - Doubles",
+    "type": "Workout Submission",
+    "status": "Pending",
+    "target": "45",
+    "limit": "50",
+    "reviewer": "Captain Review"
+  },
+  {
+    "id": 26,
+    "header": "Weight Training - Upper Body",
+    "type": "Workout Submission",
+    "status": "Approved",
+    "target": "50",
+    "limit": "55",
+    "reviewer": "Rohan Das"
+  },
+  {
+    "id": 27,
+    "header": "Zumba - Dance Fitness",
+    "type": "Workout Submission",
+    "status": "Approved",
+    "target": "40",
+    "limit": "45",
+    "reviewer": "Kavita Reddy"
+  },
+  {
+    "id": 28,
+    "header": "Rest Day - Weekly Limit",
+    "type": "Rest Day",
+    "status": "Approved",
+    "target": "1",
+    "limit": "1",
+    "reviewer": "Auto Approved"
+  },
+  {
+    "id": 29,
+    "header": "Proof Verification - Gym Photo",
+    "type": "Validation Task",
+    "status": "Pending",
+    "target": "1",
+    "limit": "0",
+    "reviewer": "Captain Review"
+  },
+  {
+    "id": 30,
+    "header": "Bangalore Health League",
+    "type": "League",
+    "status": "Completed",
+    "target": "400",
+    "limit": "387",
+    "reviewer": "Admin"
+  },
+  {
+    "id": 31,
+    "header": "Team Flex Force",
+    "type": "Team",
+    "status": "Active",
+    "target": "25",
+    "limit": "23",
+    "reviewer": "Deepak Pillai"
+  },
+  {
+    "id": 32,
+    "header": "Marathon Training - 10K",
+    "type": "Workout Submission",
+    "status": "Approved",
+    "target": "70",
+    "limit": "68",
+    "reviewer": "Sunita Sharma"
+  },
+  {
+    "id": 33,
+    "header": "Spinning Class",
+    "type": "Workout Submission",
+    "status": "Approved",
+    "target": "45",
+    "limit": "45",
+    "reviewer": "Manish Agarwal"
+  },
+  {
+    "id": 34,
+    "header": "Functional Training",
+    "type": "Workout Submission",
+    "status": "Pending",
+    "target": "40",
+    "limit": "42",
+    "reviewer": "Captain Review"
+  },
+  {
+    "id": 35,
+    "header": "Rest Day Exemption - Injury",
+    "type": "Exemption Request",
+    "status": "Pending",
+    "target": "1",
+    "limit": "4",
+    "reviewer": "Governor Review"
+  },
+  {
+    "id": 36,
+    "header": "Team Power Pulse",
+    "type": "Team",
+    "status": "Active",
+    "target": "25",
+    "limit": "21",
+    "reviewer": "Lakshmi Menon"
+  },
+  {
+    "id": 37,
+    "header": "Kickboxing Session",
+    "type": "Workout Submission",
+    "status": "Approved",
+    "target": "50",
+    "limit": "55",
+    "reviewer": "Ravi Kapoor"
+  },
+  {
+    "id": 38,
+    "header": "Aqua Aerobics",
+    "type": "Workout Submission",
+    "status": "Approved",
+    "target": "35",
+    "limit": "40",
+    "reviewer": "Sneha Gupta"
+  },
+  {
+    "id": 39,
+    "header": "Player Registration - Vijay Kumar",
+    "type": "Registration",
+    "status": "Rejected",
+    "target": "1",
+    "limit": "0",
+    "reviewer": "Duplicate Entry"
+  },
+  {
+    "id": 40,
+    "header": "Stretching - Recovery Session",
+    "type": "Workout Submission",
+    "status": "Approved",
+    "target": "20",
+    "limit": "25",
+    "reviewer": "Anita Deshmukh"
+  },
+  {
+    "id": 41,
+    "header": "Chennai Corporate Cup",
+    "type": "League",
+    "status": "Active",
+    "target": "250",
+    "limit": "198",
+    "reviewer": "Admin"
+  },
+  {
+    "id": 42,
+    "header": "Team Sprint Stars",
+    "type": "Team",
+    "status": "Active",
+    "target": "25",
+    "limit": "25",
+    "reviewer": "Ganesh Subramanian"
+  },
+  {
+    "id": 43,
+    "header": "Rock Climbing",
+    "type": "Workout Submission",
+    "status": "Pending",
+    "target": "60",
+    "limit": "65",
+    "reviewer": "Captain Review"
+  },
+  {
+    "id": 44,
+    "header": "Rowing Machine - Cardio",
+    "type": "Workout Submission",
+    "status": "Approved",
+    "target": "30",
+    "limit": "35",
+    "reviewer": "Preeti Choudhary"
+  },
+  {
+    "id": 45,
+    "header": "Team Workout Warriors",
+    "type": "Team",
+    "status": "Active",
+    "target": "25",
+    "limit": "19",
+    "reviewer": "Ashok Malhotra"
+  },
+  {
+    "id": 46,
+    "header": "TRX Suspension Training",
+    "type": "Workout Submission",
+    "status": "Approved",
+    "target": "40",
+    "limit": "45",
+    "reviewer": "Nandini Rao"
+  },
+  {
+    "id": 47,
+    "header": "Proof Override - Screenshot Issue",
+    "type": "Validation Task",
+    "status": "Approved",
+    "target": "1",
+    "limit": "1",
+    "reviewer": "Governor Override"
+  },
+  {
+    "id": 48,
+    "header": "Team Muscle Mavericks",
+    "type": "Team",
+    "status": "Active",
+    "target": "25",
+    "limit": "24",
+    "reviewer": "Vivek Saxena"
+  },
+  {
+    "id": 49,
+    "header": "Boxing - Training Session",
+    "type": "Workout Submission",
+    "status": "Approved",
+    "target": "45",
+    "limit": "50",
+    "reviewer": "Raj Malhotra"
+  },
+  {
+    "id": 50,
+    "header": "Pune Wellness League",
+    "type": "League",
+    "status": "Draft",
+    "target": "350",
+    "limit": "0",
+    "reviewer": "Admin"
+  }
+]
