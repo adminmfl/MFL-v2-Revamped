@@ -271,6 +271,16 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
     return success;
   };
 
+  const handleRemoveGovernor = async (userId: string): Promise<boolean> => {
+    const success = await removeGovernor(userId);
+    if (success) {
+      toast.success("Governor removed successfully");
+    } else {
+      toast.error("Failed to remove governor");
+    }
+    return success;
+  };
+
   // ============================================================================
   // Table Columns
   // ============================================================================
@@ -436,7 +446,7 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
             {isHost && (
               <Button variant="outline" onClick={() => setAssignGovernorDialogOpen(true)}>
                 <Shield className="mr-2 size-4" />
-                {data?.governor ? "Change Governor" : "Assign Governor"}
+                {data?.governors && data.governors.length > 0 ? "Manage Governors" : "Assign Governor"}
               </Button>
             )}
             <Button
@@ -450,16 +460,18 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
         )}
       </div>
 
-      {/* Governor Info */}
-      {data?.governor && (
+      {/* Governors Info */}
+      {data?.governors && data.governors.length > 0 && (
         <div className="flex items-center gap-3 p-3 rounded-lg border bg-blue-50/50 dark:bg-blue-950/20">
           <div className="flex size-10 items-center justify-center rounded-lg bg-blue-500/10">
             <Shield className="size-5 text-blue-500" />
           </div>
           <div className="flex-1">
-            <p className="font-medium text-sm">Governor: {data.governor.username}</p>
+            <p className="font-medium text-sm">
+              {data.governors.length === 1 ? 'Governor' : 'Governors'}: {data.governors.map(g => g.username).join(', ')}
+            </p>
             <p className="text-xs text-muted-foreground">
-              Has oversight of all teams and can validate any submission
+              {data.governors.length === 1 ? 'Has' : 'Have'} oversight of all teams and can validate any submission
             </p>
           </div>
         </div>
@@ -653,9 +665,10 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
         open={assignGovernorDialogOpen}
         onOpenChange={setAssignGovernorDialogOpen}
         members={[...(data?.members.allocated || []), ...(data?.members.unallocated || [])]}
-        currentGovernor={data?.governor || null}
+        currentGovernors={data?.governors || []}
         hostUserId={data?.league.host_user_id || ""}
         onAssignGovernor={handleAssignGovernor}
+        onRemoveGovernor={handleRemoveGovernor}
       />
 
       <ViewUnallocatedDialog

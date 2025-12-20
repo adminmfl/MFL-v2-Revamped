@@ -626,7 +626,7 @@ export async function removeCaptain(
 /**
  * Assign governor role to a user
  * Rules:
- * - Only one governor per league (besides host)
+ * - Multiple governors can be assigned per league
  * - Governor must be a league member
  * - Host cannot be assigned as governor (already has all permissions)
  */
@@ -672,20 +672,17 @@ export async function assignGovernor(
       return { success: false, error: 'Governor role not found' };
     }
 
-    // Check if there's already a governor
-    const { data: existingGovernor } = await supabase
+    // Check if user already has governor role
+    const { data: existingAssignment } = await supabase
       .from('assignedrolesforleague')
-      .select('id, user_id')
+      .select('id')
+      .eq('user_id', userId)
       .eq('league_id', leagueId)
       .eq('role_id', governorRole.role_id)
       .maybeSingle();
 
-    // Remove existing governor if any
-    if (existingGovernor) {
-      await supabase
-        .from('assignedrolesforleague')
-        .delete()
-        .eq('id', existingGovernor.id);
+    if (existingAssignment) {
+      return { success: false, error: 'User is already a governor' };
     }
 
     // Assign governor role
@@ -743,11 +740,11 @@ export async function removeGovernor(
 }
 
 /**
- * Get the current governor of a league
+ * Get all current governors of a league
  */
-export async function getLeagueGovernor(
+export async function getLeagueGovernors(
   leagueId: string
-): Promise<{ user_id: string; username: string } | null> {
+): Promise<{ user_id: string; username: string }[]> {
   try {
     const supabase = getSupabaseServiceRole();
 
@@ -757,30 +754,31 @@ export async function getLeagueGovernor(
       .eq('role_name', 'governor')
       .single();
 
-    if (!governorRole) return null;
+    if (!governorRole) return [];
 
-    const { data: governor } = await supabase
+    const { data: governors } = await supabase
       .from('assignedrolesforleague')
       .select('user_id')
       .eq('league_id', leagueId)
-      .eq('role_id', governorRole.role_id)
-      .maybeSingle();
+      .eq('role_id', governorRole.role_id);
 
-    if (!governor) return null;
+    if (!governors || governors.length === 0) return [];
 
-    const { data: user } = await supabase
+    const userIds = governors.map(g => g.user_id);
+    const { data: users } = await supabase
       .from('users')
-      .select('username')
-      .eq('user_id', governor.user_id)
-      .single();
+      .select('user_id, username')
+      .in('user_id', userIds);
 
-    return {
-      user_id: governor.user_id,
-      username: user?.username || 'Unknown',
-    };
+    if (!users) return [];
+
+    return users.map(user => ({
+      user_id: user.user_id,
+      username: user.username || 'Unknown',
+    }));
   } catch (err) {
-    console.error('Error getting governor:', err);
-    return null;
+    console.error('Error getting governors:', err);
+    return [];
   }
 }
 
