@@ -69,7 +69,7 @@ async function ensureChallengeInLeague(leagueId: string, challengeId: string) {
 
 // GET - Fetch submissions (host/governor get all, others get own) ----------
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string; challengeId: string }> }
 ) {
   try {
@@ -91,7 +91,12 @@ export async function GET(
       return buildError('Challenge not found in this league', 404);
     }
 
-    const baseQuery = supabase
+    // Get filter params from query string
+    const { searchParams } = new URL(req.url);
+    const teamId = searchParams.get('teamId');
+    const subTeamId = searchParams.get('subTeamId');
+
+    let baseQuery = supabase
       .from('challenge_submissions')
       .select(
         `
@@ -103,13 +108,29 @@ export async function GET(
         )
       `
       )
-      .eq('league_challenge_id', challengeId)
-      .order('created_at', { ascending: false });
+      .eq('league_challenge_id', challengeId);
 
     // Host/Governor see all; others only their own
-    const query = isHostOrGovernor(membership.role)
-      ? baseQuery
-      : baseQuery.eq('league_member_id', membership.leagueMemberId);
+    if (!isHostOrGovernor(membership.role)) {
+      baseQuery = baseQuery.eq('league_member_id', membership.leagueMemberId);
+    }
+
+    // Apply team filter if provided
+    if (teamId) {
+      baseQuery = baseQuery.eq('team_id', teamId);
+    }
+
+    // Apply sub-team filter if provided
+    if (subTeamId) {
+      baseQuery = baseQuery.eq('sub_team_id', subTeamId);
+    }
+
+    // For team challenges, surface submissions grouped by team first
+    if (challenge.challenge_type === 'team') {
+      baseQuery = baseQuery.order('team_id', { ascending: true, nullsLast: true });
+    }
+
+    const query = baseQuery.order('created_at', { ascending: false });
 
     const { data, error } = await query;
     if (error) {
@@ -197,6 +218,10 @@ export async function POST(
       }
     }
 
+    if (challengeData.challenge_type === 'team' && !validTeamId) {
+      return buildError('You must belong to a team in this league to submit for this challenge', 400);
+    }
+
     // Build submission payload with team/subteam based on challenge type
     const submissionPayload: Record<string, any> = {
       league_challenge_id: challengeId,
@@ -212,9 +237,24 @@ export async function POST(
     if (challengeData.challenge_type === 'team' && validTeamId) {
       submissionPayload.team_id = validTeamId;
     }
-    // For sub_team challenges, we'd need additional logic to find the user's subteam
-    // This would be set by the client or determined by captain assignment
-    // For now, leave as null and handle in review process
+
+    // For sub_team challenges, find which sub-team the user belongs to
+    if (challengeData.challenge_type === 'sub_team' && memberData?.team_id) {
+      // First, set the team_id
+      submissionPayload.team_id = memberData.team_id;
+
+      // Then find the sub-team this member belongs to for this challenge
+      const { data: memberSubteam } = await supabase
+        .from('challenge_subteam_members')
+        .select('subteam_id, challenge_subteams!inner(league_challenge_id)')
+        .eq('league_member_id', membership.leagueMemberId)
+        .eq('challenge_subteams.league_challenge_id', challengeId)
+        .single();
+
+      if (memberSubteam) {
+        submissionPayload.sub_team_id = memberSubteam.subteam_id;
+      }
+    }
 
     const { data, error } = await supabase
       .from('challenge_submissions')

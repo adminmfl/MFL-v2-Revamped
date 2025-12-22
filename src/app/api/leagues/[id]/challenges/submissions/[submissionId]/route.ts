@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 import { getSupabaseServiceRole } from '@/lib/supabase/client';
+import { syncSpecialChallengeScores } from '@/lib/services/challenges/special-challenge-score';
 
 type LeagueRole = 'host' | 'governor' | 'captain' | 'player' | null;
 
@@ -84,6 +85,7 @@ export async function PATCH(
           league_id,
           challenge_type,
           total_points
+          challenge_id
         )
       `)
       .eq('id', submissionId)
@@ -109,11 +111,14 @@ export async function PATCH(
     // When approving, set awarded_points (use provided value or challenge's total_points)
     if (status === 'approved') {
       const challenge = (submission.leagueschallenges as any);
-      if (awardedPoints !== undefined) {
-        updatePayload.awarded_points = awardedPoints;
-      } else if (challenge?.total_points) {
-        updatePayload.awarded_points = challenge.total_points;
+      const pointsFromRequest = awardedPoints !== undefined ? Number(awardedPoints) : null;
+      if (pointsFromRequest !== null && Number.isFinite(pointsFromRequest)) {
+        updatePayload.awarded_points = pointsFromRequest;
+      } else if (challenge?.total_points && Number.isFinite(Number(challenge.total_points))) {
+        updatePayload.awarded_points = Number(challenge.total_points);
       }
+    } else {
+      updatePayload.awarded_points = null;
     }
 
     // For team challenges, ensure team_id is set based on member's team
@@ -137,6 +142,14 @@ export async function PATCH(
       console.error('Error updating challenge submission:', error);
       return buildError('Failed to update submission', 500);
     }
+
+    const challenge = (submission.leagueschallenges as any);
+    await syncSpecialChallengeScores({
+      leagueChallengeId: submission.league_challenge_id,
+      challengeId: challenge?.challenge_id,
+      leagueId: challenge?.league_id,
+      challengeType: challenge?.challenge_type,
+    });
 
     return NextResponse.json({ success: true, data });
   } catch (err) {

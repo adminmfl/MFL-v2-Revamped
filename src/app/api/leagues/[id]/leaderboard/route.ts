@@ -222,11 +222,13 @@ export async function GET(
       }
 
       // Use awarded_points if available, otherwise total_points
-      const points = sub.awarded_points || challenge.total_points || 0;
+      const points = Number(sub.awarded_points) || Number(challenge.total_points) || 0;
       if (points <= 0) {
-        console.debug(`Skipping challenge submission ${sub.id} - no points (awarded: ${sub.awarded_points}, total: ${challenge.total_points})`);
+        console.debug(`[Leaderboard] Skipping challenge submission ${sub.id} - no points (awarded: ${sub.awarded_points}, total: ${challenge.total_points})`);
         return;
       }
+      console.debug(`[Leaderboard] Including challenge submission ${sub.id} with ${points} points for member ${sub.league_member_id}`);
+      
 
       // Add to individual's challenge points (all submissions contribute)
       const memberKey = sub.league_member_id as string;
@@ -234,6 +236,7 @@ export async function GET(
       memberChallengePoints.set(memberKey, current + points);
 
       // Handle team aggregation based on challenge type
+      // All challenges (individual, team, sub_team) contribute to team scores
       if (challenge.challenge_type === 'team' && sub.team_id) {
         // Team challenge: use team_id from submission if it belongs to this league
         const teamKey = sub.team_id as string;
@@ -252,9 +255,16 @@ export async function GET(
           const teamCurrent = teamChallengePoints.get(teamKey) || 0;
           teamChallengePoints.set(teamKey, teamCurrent + points);
         }
+      } else if (challenge.challenge_type === 'individual') {
+        // Individual challenges: Points count for the individual AND their team
+        // Aggregate individual challenge points to team through member's team membership
+        const memberInfo = memberToUser.get(sub.league_member_id as string);
+        if (memberInfo?.team_id && validTeamIds.has(memberInfo.team_id)) {
+          const teamKey = memberInfo.team_id;
+          const teamCurrent = teamChallengePoints.get(teamKey) || 0;
+          teamChallengePoints.set(teamKey, teamCurrent + points);
+        }
       }
-      // Individual challenges: Points count only for the individual, NOT for their team
-      // Do not aggregate individual challenge points to teams
     });
 
     // =========================================================================

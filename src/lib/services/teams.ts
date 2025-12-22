@@ -347,9 +347,16 @@ export async function getTeamMembers(
       .eq('team_id', teamId)
       .eq('league_id', leagueId);
 
+    console.log('[getTeamMembers] Query params - teamId:', teamId, 'leagueId:', leagueId);
+    console.log('[getTeamMembers] Query error:', error);
+    console.log('[getTeamMembers] Raw members response:', members);
+
     if (error || !members) {
+      console.log('[getTeamMembers] Returning empty array - error:', error);
       return [];
     }
+
+    console.log('[getTeamMembers] Found', members.length, 'members');
 
     // Get roles for each member
     const membersWithRoles = await Promise.all(
@@ -376,9 +383,10 @@ export async function getTeamMembers(
       })
     );
 
+    console.log('[getTeamMembers] Returning members with roles:', membersWithRoles);
     return membersWithRoles;
   } catch (err) {
-    console.error('Error fetching team members:', err);
+    console.error('[getTeamMembers] Error:', err);
     return [];
   }
 }

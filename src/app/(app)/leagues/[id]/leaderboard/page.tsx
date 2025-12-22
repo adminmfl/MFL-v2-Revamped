@@ -45,6 +45,7 @@ import {
   LeaderboardStats,
   LeagueTeamsTable,
   LeagueIndividualsTable,
+  ChallengeSpecificLeaderboard,
 } from '@/components/leaderboard';
 
 // ============================================================================
@@ -169,7 +170,6 @@ function TopPodium({ teams }: PodiumProps) {
 export default function LeaderboardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: leagueId } = use(params);
   const [view, setView] = useState<'teams' | 'individuals'>('teams');
-  const [leaderboardType, setLeaderboardType] = useState<'overall' | 'challenges'>('overall');
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
 
@@ -218,8 +218,8 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  const teams = leaderboardType === 'overall' ? (data?.teams || []) : (data?.challengeTeams || []);
-  const individuals = leaderboardType === 'overall' ? (data?.individuals || []) : (data?.challengeIndividuals || []);
+  const teams = data?.teams || [];
+  const individuals = data?.individuals || [];
   const stats = data?.stats || { total_submissions: 0, approved: 0, pending: 0, rejected: 0, total_rr: 0 };
   const dateRange = data?.dateRange;
   const league = data?.league;
@@ -319,43 +319,35 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
         <TopPodium teams={teams.slice(0, 3)} />
       </div>
 
-      {/* Data Tables */}
+      {/* Overall Leaderboard Tables */}
       <div className="px-4 lg:px-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
-          <div className="flex gap-4 items-center flex-wrap">
-            <Select value={leaderboardType} onValueChange={(v) => setLeaderboardType(v as 'overall' | 'challenges')}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="overall">Overall Leaderboard</SelectItem>
-                <SelectItem value="challenges">Challenge Points Only</SelectItem>
-              </SelectContent>
-            </Select>
-            <Tabs value={view} onValueChange={(v) => setView(v as 'teams' | 'individuals')}>
-              <TabsList>
-                <TabsTrigger value="teams" className="gap-2">
-                  <Users className="size-4" />
-                  Teams ({teams.length})
-                </TabsTrigger>
-                <TabsTrigger value="individuals" className="gap-2">
-                  <Medal className="size-4" />
-                  Individuals ({individuals.length})
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold">Overall Leaderboard</h2>
+          <p className="text-sm text-muted-foreground">Combined scores from workouts and challenges</p>
         </div>
-
         <Tabs value={view} onValueChange={(v) => setView(v as 'teams' | 'individuals')}>
-          <TabsContent value="teams" className="mt-0">
-            <LeagueTeamsTable teams={teams} showAvgRR={leaderboardType === 'overall'} />
+          <TabsList>
+            <TabsTrigger value="teams" className="gap-2">
+              <Users className="size-4" />
+              Teams ({teams.length})
+            </TabsTrigger>
+            <TabsTrigger value="individuals" className="gap-2">
+              <Medal className="size-4" />
+              Individuals ({individuals.length})
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="teams" className="mt-4">
+            <LeagueTeamsTable teams={teams} showAvgRR={true} />
           </TabsContent>
-
-          <TabsContent value="individuals" className="mt-0">
-            <LeagueIndividualsTable individuals={individuals} showAvgRR={leaderboardType === 'overall'} />
+          <TabsContent value="individuals" className="mt-4">
+            <LeagueIndividualsTable individuals={individuals} showAvgRR={true} />
           </TabsContent>
         </Tabs>
+      </div>
+
+      {/* Challenge-Specific Leaderboard */}
+      <div className="px-4 lg:px-6">
+        <ChallengeSpecificLeaderboard leagueId={leagueId} />
       </div>
     </div>
   );

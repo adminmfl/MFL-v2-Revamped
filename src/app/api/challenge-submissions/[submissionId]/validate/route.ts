@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 import { getSupabaseServiceRole } from '@/lib/supabase/client';
+import { syncSpecialChallengeScores } from '@/lib/services/challenges/special-challenge-score';
 
 type LeagueRole = 'host' | 'governor' | 'captain' | 'player' | null;
 
@@ -57,15 +58,19 @@ export async function POST(
     const { submissionId } = await params;
     const supabase = getSupabaseServiceRole();
 
-    // Fetch submission with league context
+    // Fetch submission with league + challenge context
     const { data: submission, error: fetchError } = await supabase
       .from('challenge_submissions')
       .select(
         `
         id,
+        league_member_id,
+        team_id,
         league_challenge_id,
         status,
-        leagueschallenges(league_id)
+        awarded_points,
+        leagueschallenges(league_id, challenge_id, challenge_type, total_points),
+        leaguemembers(team_id)
       `
       )
       .eq('id', submissionId)
@@ -75,10 +80,18 @@ export async function POST(
       return buildError('Submission not found', 404);
     }
 
-    const leagueId = (submission as any).leagueschallenges?.league_id;
+    const leagueChallenge = (submission as any).leagueschallenges;
+    const leagueId = leagueChallenge?.league_id;
     if (!leagueId) {
       return buildError('Submission missing league context', 400);
     }
+
+    console.log(`[Challenge Validation] Processing submission ${submissionId}:`, {
+      leagueId,
+      challengeType: leagueChallenge?.challenge_type,
+      totalPoints: leagueChallenge?.total_points,
+      currentAwardedPoints: (submission as any).awarded_points
+    });
 
     const role = await getMembership(session.user.id, String(leagueId));
     if (!role || !isHostOrGovernor(role)) {
@@ -92,14 +105,52 @@ export async function POST(
       return buildError('status must be approved or rejected', 400);
     }
 
+    const challenge = leagueChallenge as any;
+
+    const updatePayload: Record<string, any> = {
+      status,
+      reviewed_by: session.user.id,
+      reviewed_at: new Date().toISOString(),
+    };
+
+    if (status === 'approved') {
+      // Priority: explicit awardedPoints > challenge.total_points
+      let resolvedPoints: number | null = null;
+      
+      if (awardedPoints !== undefined && awardedPoints !== null) {
+        resolvedPoints = Number(awardedPoints);
+      } else if (challenge?.total_points !== undefined && challenge.total_points !== null) {
+        resolvedPoints = Number(challenge.total_points);
+      }
+
+      // Validate the resolved points is a finite number
+      const finalPoints = Number.isFinite(resolvedPoints) && resolvedPoints! > 0
+        ? resolvedPoints
+        : null;
+
+      if (!finalPoints) {
+        console.warn(`[Challenge Validation] No valid points assigned for submission ${submissionId}. awardedPoints: ${awardedPoints}, challenge.total_points: ${challenge?.total_points}, resolved: ${resolvedPoints}`);
+      } else {
+        console.log(`[Challenge Validation] Assigning ${finalPoints} points to submission ${submissionId}`);
+      }
+
+      updatePayload.awarded_points = finalPoints;
+
+      // Ensure team_id is recorded for team challenges
+      if (challenge?.challenge_type === 'team') {
+        const memberTeam = (submission as any).leaguemembers?.team_id;
+        if (memberTeam && !(submission as any).team_id) {
+          updatePayload.team_id = memberTeam;
+        }
+      }
+    } else {
+      // Clear points when rejecting
+      updatePayload.awarded_points = null;
+    }
+
     const { data, error: updateError } = await supabase
       .from('challenge_submissions')
-      .update({
-        status,
-        awarded_points: awardedPoints ?? null,
-        reviewed_by: session.user.id,
-        reviewed_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq('id', submissionId)
       .select()
       .single();
@@ -108,6 +159,15 @@ export async function POST(
       console.error('Error updating challenge submission', updateError);
       return buildError('Failed to update submission', 500);
     }
+
+    // Sync legacy special challenge score tables for downstream consumers
+    console.log(`[Challenge Validation] Syncing scores for submission ${submissionId}, status: ${status}, points: ${updatePayload.awarded_points}`);
+    await syncSpecialChallengeScores({
+      leagueChallengeId: (submission as any).league_challenge_id,
+      challengeId: challenge?.challenge_id,
+      leagueId: leagueId as string,
+      challengeType: challenge?.challenge_type,
+    });
 
     return NextResponse.json({ success: true, data });
   } catch (err) {

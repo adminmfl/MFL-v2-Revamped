@@ -96,7 +96,7 @@ function RankBadge({ rank }: { rank: number }) {
 // Main Component
 // ============================================================================
 
-export function LeagueIndividualsTable({ individuals }: LeagueIndividualsTableProps) {
+export function LeagueIndividualsTable({ individuals, showAvgRR = false }: LeagueIndividualsTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState('');
   const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 });
@@ -105,7 +105,7 @@ export function LeagueIndividualsTable({ individuals }: LeagueIndividualsTablePr
   // Table Columns
   // ============================================================================
 
-  const columns: ColumnDef<IndividualRanking>[] = [
+  const columns: ColumnDef<IndividualRanking>[] = React.useMemo(() => [
     {
       accessorKey: 'rank',
       header: 'Rank',
@@ -140,16 +140,18 @@ export function LeagueIndividualsTable({ individuals }: LeagueIndividualsTablePr
         </p>
       ),
     },
-    ...(showAvgRR ? [{
-      accessorKey: 'avg_rr' as const,
-      header: 'Avg RR',
-      cell: ({ row }: { row: any }) => (
-        <div className="flex items-center gap-1.5">
-          <Star className="size-4 text-yellow-500" />
-          <span className="font-medium">{row.original.avg_rr.toFixed(2)}</span>
-        </div>
-      ),
-    }] : []),
+    ...(showAvgRR
+      ? [{
+          accessorKey: 'avg_rr' as const,
+          header: 'Avg RR',
+          cell: ({ row }: { row: any }) => (
+            <div className="flex items-center gap-1.5">
+              <Star className="size-4 text-yellow-500" />
+              <span className="font-medium">{row.original.avg_rr.toFixed(2)}</span>
+            </div>
+          ),
+        }]
+      : []),
     {
       accessorKey: 'submission_count',
       header: 'Submissions',
@@ -159,7 +161,7 @@ export function LeagueIndividualsTable({ individuals }: LeagueIndividualsTablePr
         </Badge>
       ),
     },
-  ];
+  ], [showAvgRR]);
 
   // ============================================================================
   // Table Instance
