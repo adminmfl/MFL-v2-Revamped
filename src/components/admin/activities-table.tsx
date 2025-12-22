@@ -13,6 +13,7 @@ import {
   Trash2,
   Zap,
   Loader2,
+  Filter,
 } from "lucide-react";
 import {
   flexRender,
@@ -28,6 +29,7 @@ import {
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -106,6 +108,7 @@ export function ActivitiesTable() {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 });
+  const [categoryFilter, setCategoryFilter] = React.useState<string>("all");
 
   const [formDialogOpen, setFormDialogOpen] = React.useState(false);
   const [editingActivity, setEditingActivity] = React.useState<AdminActivity | null>(null);
@@ -115,7 +118,29 @@ export function ActivitiesTable() {
 
   // Fetch activities with hook
   const { activities, isLoading, error, createActivity, updateActivity, deleteActivity, refetch } =
-    useAdminActivities();
+    useAdminActivities({ category_id: categoryFilter === "all" ? undefined : categoryFilter });
+
+  const categoryOptions = React.useMemo(() => {
+    const unique = new Map<string, { id: string; name: string }>();
+    activities.forEach((a) => {
+      if (a.category && a.category.category_id) {
+        unique.set(a.category.category_id, {
+          id: a.category.category_id,
+          name: a.category.display_name || a.category.category_name,
+        });
+      }
+    });
+    return Array.from(unique.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [activities]);
+
+  const handleCategoryFilterChange = (value: string) => {
+    setCategoryFilter(value);
+    setColumnFilters((prev) => {
+      const withoutCategory = prev.filter((f) => f.id !== "category_id");
+      if (value === "all") return withoutCategory;
+      return [...withoutCategory, { id: "category_id", value }];
+    });
+  };
 
   const handleAddActivity = () => {
     setEditingActivity(null);
@@ -206,6 +231,21 @@ export function ActivitiesTable() {
       ),
     },
     {
+      accessorKey: "category_id",
+      header: "Category",
+      filterFn: (row, columnId, filterValue) => {
+        if (!filterValue) return true;
+        return row.getValue<string | null>(columnId) === filterValue;
+      },
+      cell: ({ row }) => {
+        const category = row.original.category;
+        if (!category) {
+          return <span className="text-muted-foreground">Uncategorized</span>;
+        }
+        return <Badge variant="outline">{category.display_name || category.category_name}</Badge>;
+      },
+    },
+    {
       accessorKey: "created_date",
       header: "Created",
       cell: ({ row }) => (
@@ -285,6 +325,27 @@ export function ActivitiesTable() {
             onChange={(e) => setGlobalFilter(e.target.value)}
             className="pl-9"
           />
+        </div>
+        <div className="flex items-center gap-2">
+          <Label className="text-sm text-muted-foreground">Category</Label>
+          <Select value={categoryFilter} onValueChange={handleCategoryFilterChange}>
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="All categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">
+                <div className="flex items-center gap-2">
+                  <Filter className="size-4" />
+                  <span>All categories</span>
+                </div>
+              </SelectItem>
+              {categoryOptions.map((cat) => (
+                <SelectItem key={cat.id} value={cat.id}>
+                  {cat.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

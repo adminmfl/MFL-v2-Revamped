@@ -139,6 +139,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
   const [reviewChallenge, setReviewChallenge] = React.useState<Challenge | null>(null);
   const [submissions, setSubmissions] = React.useState<SubmissionRow[]>([]);
   const [validatingId, setValidatingId] = React.useState<string | null>(null);
+  const [reviewAwardedPoints, setReviewAwardedPoints] = React.useState<Record<string, number | ''>>({});
   const [reviewFilterTeamId, setReviewFilterTeamId] = React.useState<string>('');
   const [reviewFilterSubTeamId, setReviewFilterSubTeamId] = React.useState<string>('');
   const [teams, setTeams] = React.useState<Array<{ team_id: string; team_name: string }>>([]);
@@ -442,13 +443,15 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
     }
   }, [teams, reviewOpen]);
 
-  const handleValidate = async (submissionId: string, status: 'approved' | 'rejected') => {
+  const handleValidate = async (submissionId: string, status: 'approved' | 'rejected', awardedPoints?: number | null) => {
     setValidatingId(submissionId);
     try {
+      const body: any = { status };
+      if (awardedPoints !== undefined) body.awardedPoints = awardedPoints;
       const res = await fetch(`/api/challenge-submissions/${submissionId}/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(body),
       });
       const json = await res.json();
       if (!res.ok || !json.success) {
@@ -944,19 +947,29 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                           View Proof
                         </a>
                         {isAdmin && s.status === 'pending' && (
-                          <div className="flex gap-2 ml-auto">
+                          <div className="flex gap-2 ml-auto items-center">
+                            <Input
+                              type="number"
+                              min={0}
+                              placeholder="Points"
+                              value={reviewAwardedPoints[s.id] ?? ''}
+                              onChange={(e) =>
+                                setReviewAwardedPoints((p) => ({ ...p, [s.id]: e.target.value === '' ? '' : Number(e.target.value) }))
+                              }
+                              className="w-28"
+                            />
                             <Button
                               size="sm"
                               variant="outline"
                               disabled={validatingId === s.id}
-                              onClick={() => handleValidate(s.id, 'rejected')}
+                              onClick={() => handleValidate(s.id, 'rejected', null)}
                             >
                               Reject
                             </Button>
                             <Button
                               size="sm"
                               disabled={validatingId === s.id}
-                              onClick={() => handleValidate(s.id, 'approved')}
+                              onClick={() => handleValidate(s.id, 'approved', reviewAwardedPoints[s.id] === '' ? undefined : (reviewAwardedPoints[s.id] as number))}
                             >
                               Approve
                             </Button>

@@ -109,13 +109,28 @@ export async function PATCH(
       reviewed_by: session.user.id,
     };
 
-    // When approving, set awarded_points (use provided value or challenge's total_points)
+    // When approving, set awarded_points (allow custom awardedPoints with validation)
     if (status === 'approved') {
-      const pointsFromRequest = awardedPoints !== undefined ? Number(awardedPoints) : null;
-      if (pointsFromRequest !== null && Number.isFinite(pointsFromRequest)) {
-        updatePayload.awarded_points = pointsFromRequest;
+      if (awardedPoints !== undefined) {
+        const pts = Number(awardedPoints);
+        if (!Number.isFinite(pts)) {
+          return buildError('Invalid awardedPoints value', 400);
+        }
+        if (pts < 0) {
+          return buildError('awardedPoints must be >= 0', 400);
+        }
+        if (
+          submissionChallenge?.total_points &&
+          Number.isFinite(Number(submissionChallenge.total_points)) &&
+          pts > Number(submissionChallenge.total_points)
+        ) {
+          return buildError('awardedPoints cannot exceed challenge total points', 400);
+        }
+        updatePayload.awarded_points = pts;
       } else if (submissionChallenge?.total_points && Number.isFinite(Number(submissionChallenge.total_points))) {
         updatePayload.awarded_points = Number(submissionChallenge.total_points);
+      } else {
+        updatePayload.awarded_points = null;
       }
     } else {
       updatePayload.awarded_points = null;
