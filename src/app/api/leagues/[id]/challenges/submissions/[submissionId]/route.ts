@@ -97,6 +97,7 @@ export async function PATCH(
 
     // Verify submission belongs to this league
     const challengeLeague = (submission.leagueschallenges as any)?.league_id;
+    const submissionChallenge = (submission.leagueschallenges as any);
     if (String(challengeLeague) !== String(leagueId)) {
       return buildError('Submission not in this league', 403);
     }
@@ -110,20 +111,18 @@ export async function PATCH(
 
     // When approving, set awarded_points (use provided value or challenge's total_points)
     if (status === 'approved') {
-      const challenge = (submission.leagueschallenges as any);
       const pointsFromRequest = awardedPoints !== undefined ? Number(awardedPoints) : null;
       if (pointsFromRequest !== null && Number.isFinite(pointsFromRequest)) {
         updatePayload.awarded_points = pointsFromRequest;
-      } else if (challenge?.total_points && Number.isFinite(Number(challenge.total_points))) {
-        updatePayload.awarded_points = Number(challenge.total_points);
+      } else if (submissionChallenge?.total_points && Number.isFinite(Number(submissionChallenge.total_points))) {
+        updatePayload.awarded_points = Number(submissionChallenge.total_points);
       }
     } else {
       updatePayload.awarded_points = null;
     }
 
     // For team challenges, ensure team_id is set based on member's team
-    const challenge = (submission.leagueschallenges as any);
-    if (challenge?.challenge_type === 'team') {
+    if (submissionChallenge?.challenge_type === 'team') {
       const memberInfo = (submission.leaguemembers as any);
       if (memberInfo?.team_id && !submission.team_id) {
         updatePayload.team_id = memberInfo.team_id;
@@ -143,12 +142,11 @@ export async function PATCH(
       return buildError('Failed to update submission', 500);
     }
 
-    const challenge = (submission.leagueschallenges as any);
-    await syncSpecialChallengeScores({
-      leagueChallengeId: submission.league_challenge_id,
-      challengeId: challenge?.challenge_id,
-      leagueId: challenge?.league_id,
-      challengeType: challenge?.challenge_type,
+      await syncSpecialChallengeScores({
+        leagueChallengeId: submission.league_challenge_id,
+        challengeId: submissionChallenge?.challenge_id,
+        leagueId: submissionChallenge?.league_id,
+        challengeType: submissionChallenge?.challenge_type,
     });
 
     return NextResponse.json({ success: true, data });
