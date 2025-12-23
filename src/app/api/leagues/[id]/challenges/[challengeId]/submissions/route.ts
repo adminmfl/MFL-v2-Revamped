@@ -58,7 +58,7 @@ async function ensureChallengeInLeague(leagueId: string, challengeId: string) {
   const supabase = getSupabaseServiceRole();
   const { data, error } = await supabase
     .from('leagueschallenges')
-    .select('id, league_id, status')
+    .select('id, league_id, status, challenge_type')
     .eq('id', challengeId)
     .maybeSingle();
 
@@ -69,7 +69,7 @@ async function ensureChallengeInLeague(leagueId: string, challengeId: string) {
 
 // GET - Fetch submissions (host/governor get all, others get own) ----------
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string; challengeId: string }> }
 ) {
   try {
@@ -91,25 +91,47 @@ export async function GET(
       return buildError('Challenge not found in this league', 404);
     }
 
-    const baseQuery = supabase
+    // Get filter params from query string
+    const { searchParams } = new URL(req.url);
+    const teamId = searchParams.get('teamId');
+    const subTeamId = searchParams.get('subTeamId');
+
+    let baseQuery = supabase
       .from('challenge_submissions')
       .select(
         `
         *,
-        leaguemembers!inner(
+        leaguemembers(
           user_id,
+          team_id,
           teams(team_name),
           users!leaguemembers_user_id_fkey(username)
         )
       `
       )
-      .eq('league_challenge_id', challengeId)
-      .order('created_at', { ascending: false });
+      .eq('league_challenge_id', challengeId);
 
     // Host/Governor see all; others only their own
-    const query = isHostOrGovernor(membership.role)
-      ? baseQuery
-      : baseQuery.eq('league_member_id', membership.leagueMemberId);
+    if (!isHostOrGovernor(membership.role)) {
+      baseQuery = baseQuery.eq('league_member_id', membership.leagueMemberId);
+    }
+
+    // Apply team filter if provided
+    if (teamId) {
+      baseQuery = baseQuery.eq('team_id', teamId);
+    }
+
+    // Apply sub-team filter if provided
+    if (subTeamId) {
+      baseQuery = baseQuery.eq('sub_team_id', subTeamId);
+    }
+
+    // For team challenges, surface submissions grouped by team first
+    if (challenge.challenge_type === 'team') {
+      baseQuery = baseQuery.order('team_id', { ascending: true });
+    }
+
+    const query = baseQuery.order('created_at', { ascending: false });
 
     const { data, error } = await query;
     if (error) {
@@ -153,21 +175,101 @@ export async function POST(
     }
 
     const body = await req.json();
-    const { proofUrl, awardedPoints } = body;
+    const { proofUrl } = body;
 
     if (!proofUrl) {
       return buildError('proofUrl is required', 400);
     }
 
+    // Fetch challenge details to know challenge type and get member's team/subteam
+    const { data: challengeData, error: challengeError } = await supabase
+      .from('leagueschallenges')
+      .select('id, challenge_type, league_id, end_date')
+      .eq('id', challengeId)
+      .single();
+
+    if (challengeError || !challengeData) {
+      return buildError('Failed to fetch challenge details', 500);
+    }
+
+    // Strict cutoff: cannot submit after end_date
+    if (challengeData.end_date) {
+      const todayUtc = new Date().toISOString().slice(0, 10);
+      const endDate = String(challengeData.end_date);
+      if (todayUtc > endDate) {
+        return buildError('Challenge has ended. Submissions are closed.', 400);
+      }
+    }
+
+    // Fetch member's team info
+    const { data: memberData, error: memberError } = await supabase
+      .from('leaguemembers')
+      .select('team_id')
+      .eq('league_member_id', membership.leagueMemberId)
+      .single();
+
+    if (memberError) {
+      console.error('Error fetching member team:', memberError);
+      return buildError('Failed to fetch member team info', 500);
+    }
+
+    // For team challenges, verify the member's team belongs to this league
+    let validTeamId: string | null = null;
+    if (challengeData.challenge_type === 'team' && memberData?.team_id) {
+      const { data: teamLeague } = await supabase
+        .from('teamleagues')
+        .select('team_id')
+        .eq('team_id', memberData.team_id)
+        .eq('league_id', challengeData.league_id)
+        .maybeSingle();
+
+      if (teamLeague) {
+        validTeamId = memberData.team_id;
+      }
+    }
+
+    if (challengeData.challenge_type === 'team' && !validTeamId) {
+      return buildError('You must belong to a team in this league to submit for this challenge', 400);
+    }
+
+    // Build submission payload with team/subteam based on challenge type
+    const submissionPayload: Record<string, any> = {
+      league_challenge_id: challengeId,
+      league_member_id: membership.leagueMemberId,
+      proof_url: proofUrl,
+      status: 'pending',
+      // Points are awarded by host/governor during review
+      awarded_points: null,
+      team_id: null,
+      sub_team_id: null,
+    };
+
+    // Set team_id for team challenges (only if verified via teamleagues)
+    if (challengeData.challenge_type === 'team' && validTeamId) {
+      submissionPayload.team_id = validTeamId;
+    }
+
+    // For sub_team challenges, find which sub-team the user belongs to
+    if (challengeData.challenge_type === 'sub_team' && memberData?.team_id) {
+      // First, set the team_id
+      submissionPayload.team_id = memberData.team_id;
+
+      // Then find the sub-team this member belongs to for this challenge
+      const { data: memberSubteam } = await supabase
+        .from('challenge_subteam_members')
+        .select('subteam_id, challenge_subteams!inner(league_challenge_id)')
+        .eq('league_member_id', membership.leagueMemberId)
+        .eq('challenge_subteams.league_challenge_id', challengeId)
+        .single();
+
+      if (memberSubteam) {
+        submissionPayload.sub_team_id = memberSubteam.subteam_id;
+      }
+    }
+
     const { data, error } = await supabase
       .from('challenge_submissions')
-      .insert({
-        league_challenge_id: challengeId,
-        league_member_id: membership.leagueMemberId,
-        proof_url: proofUrl,
-        status: 'pending',
-        awarded_points: awardedPoints ?? null,
-      })
+      .insert(submissionPayload)
       .select()
       .single();
 
