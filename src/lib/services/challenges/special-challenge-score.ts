@@ -17,7 +17,9 @@ interface SubmissionRow {
 }
 
 function buildInList(ids: string[]) {
-  return ids.map((id) => `'${id}'`).join(',');
+  // PostgREST `in` filters for uuid columns expect unquoted uuid literals.
+  // Quoting them produces values like "'uuid'" which fails uuid parsing.
+  return ids.join(',');
 }
 
 async function upsertTeamScores(challengeId: string, leagueId: string, submissions: SubmissionRow[]) {
@@ -141,11 +143,14 @@ export async function syncSpecialChallengeScores({
     }
 
     const rows = (submissions || []) as SubmissionRow[];
-    
-    // Always sync individual scores (for individual challenges or tracking)
-    await upsertIndividualScores(challengeId, leagueId, rows);
-    
-    // Also sync team scores for all challenge types (individual challenges now contribute to team scores)
+
+    // Only individual challenges should contribute to individual score tables.
+    // Team and sub_team challenges should not show up on the individual leaderboard.
+    if (challengeType === 'individual') {
+      await upsertIndividualScores(challengeId, leagueId, rows);
+    }
+
+    // Team scores are used for the Teams leaderboard; all challenge types roll up to teams.
     await upsertTeamScores(challengeId, leagueId, rows);
   } catch (err) {
     console.error('Unexpected error syncing special challenge scores', err);

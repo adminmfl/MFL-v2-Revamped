@@ -107,6 +107,12 @@ export async function POST(
 
     const challenge = leagueChallenge as any;
 
+    const maxPointsRaw = challenge?.total_points;
+    const maxPoints =
+      maxPointsRaw !== undefined && maxPointsRaw !== null && Number.isFinite(Number(maxPointsRaw))
+        ? Number(maxPointsRaw)
+        : null;
+
     const updatePayload: Record<string, any> = {
       status,
       reviewed_by: session.user.id,
@@ -118,7 +124,17 @@ export async function POST(
       let resolvedPoints: number | null = null;
       
       if (awardedPoints !== undefined && awardedPoints !== null) {
-        resolvedPoints = Number(awardedPoints);
+        const pts = Number(awardedPoints);
+        if (!Number.isFinite(pts)) {
+          return buildError('Invalid awardedPoints value', 400);
+        }
+        if (pts < 0) {
+          return buildError('awardedPoints must be >= 0', 400);
+        }
+        if (maxPoints !== null && pts > maxPoints) {
+          return buildError('awardedPoints cannot exceed challenge total points', 400);
+        }
+        resolvedPoints = pts;
       } else if (challenge?.total_points !== undefined && challenge.total_points !== null) {
         resolvedPoints = Number(challenge.total_points);
       }

@@ -37,6 +37,16 @@ export interface IndividualRanking {
   submission_count: number;
 }
 
+export interface SubTeamRanking {
+  rank: number;
+  subteam_id: string;
+  subteam_name: string;
+  team_id: string | null;
+  team_name: string | null;
+  points: number;
+  submission_count: number;
+}
+
 export interface LeaderboardStats {
   total_submissions: number;
   approved: number;
@@ -204,9 +214,11 @@ export async function GET(
       // Continue without challenge points
     }
 
-    // Calculate challenge points by team and individual within date range
+    // Calculate challenge points by team, sub-team, and individual within date range
     const teamChallengePoints = new Map<string, number>();
     const memberChallengePoints = new Map<string, number>();
+    const subTeamChallengePoints = new Map<string, number>();
+    const subTeamSubmissionCounts = new Map<string, number>();
 
     (leagueSubmissions || []).forEach((sub) => {
       const challenge = (sub.leagueschallenges as any);
@@ -221,8 +233,13 @@ export async function GET(
         }
       }
 
-      // Use awarded_points if available, otherwise total_points
-      const points = Number(sub.awarded_points) || Number(challenge.total_points) || 0;
+      // Use awarded_points when present; otherwise fall back to the challenge's total_points.
+      // Avoid `||` here because it can treat legitimate 0 values as falsy and incorrectly
+      // fall back to the max points.
+      const points =
+        sub.awarded_points !== null && sub.awarded_points !== undefined
+          ? Number(sub.awarded_points)
+          : Number(challenge.total_points) || 0;
       if (points <= 0) {
         console.debug(`[Leaderboard] Skipping challenge submission ${sub.id} - no points (awarded: ${sub.awarded_points}, total: ${challenge.total_points})`);
         return;
@@ -230,10 +247,13 @@ export async function GET(
       console.debug(`[Leaderboard] Including challenge submission ${sub.id} with ${points} points for member ${sub.league_member_id}`);
       
 
-      // Add to individual's challenge points (all submissions contribute)
-      const memberKey = sub.league_member_id as string;
-      const current = memberChallengePoints.get(memberKey) || 0;
-      memberChallengePoints.set(memberKey, current + points);
+      // Only individual challenges contribute to the individual leaderboard.
+      // Team/sub_team challenges contribute to team totals, not to the submitting member.
+      if (challenge.challenge_type === 'individual') {
+        const memberKey = sub.league_member_id as string;
+        const current = memberChallengePoints.get(memberKey) || 0;
+        memberChallengePoints.set(memberKey, current + points);
+      }
 
       // Handle team aggregation based on challenge type
       // All challenges (individual, team, sub_team) contribute to team scores
@@ -245,6 +265,13 @@ export async function GET(
           teamChallengePoints.set(teamKey, teamCurrent + points);
         }
       } else if (challenge.challenge_type === 'sub_team' && sub.sub_team_id) {
+        // Sub-team challenges: points show on sub-team leaderboard AND roll up to team leaderboard.
+        const subTeamKey = sub.sub_team_id as string;
+        const subTeamCurrent = subTeamChallengePoints.get(subTeamKey) || 0;
+        subTeamChallengePoints.set(subTeamKey, subTeamCurrent + points);
+        const subTeamCount = subTeamSubmissionCounts.get(subTeamKey) || 0;
+        subTeamSubmissionCounts.set(subTeamKey, subTeamCount + 1);
+
         // Sub-team challenge: sub_team_id submissions should be aggregated to their parent team
         // We need to lookup which team this sub_team belongs to
         // Since sub_team members are league members, and league members have team_id, 
@@ -275,7 +302,7 @@ export async function GET(
       .select(`
         team_id,
         score,
-        specialchallenges(challenge_id, name, end_date)
+        specialchallenges(challenge_id, name)
       `)
       .eq('league_id', leagueId);
 
@@ -286,17 +313,13 @@ export async function GET(
       // Continue without challenge bonuses
     }
 
-    // Filter challenges by end_date within range and aggregate
+    // Aggregate bonus scores (date filtering removed: specialchallenges no longer has end_date)
     const specialChallengeBonus = new Map<string, number>();
     (challengeScores || []).forEach((cs) => {
       const challenge = cs.specialchallenges as any;
-      if (challenge?.end_date) {
-        const challengeEndDate = challenge.end_date;
-        if (challengeEndDate >= filterStartDate && challengeEndDate <= filterEndDate) {
-          const existing = specialChallengeBonus.get(cs.team_id) || 0;
-          specialChallengeBonus.set(cs.team_id, existing + (cs.score || 0));
-        }
-      }
+      if (!challenge) return;
+      const existing = specialChallengeBonus.get(cs.team_id) || 0;
+      specialChallengeBonus.set(cs.team_id, existing + (cs.score || 0));
     });
 
     // =========================================================================
@@ -468,6 +491,51 @@ export async function GET(
       .slice(0, 50); // Limit to top 50
 
     // =========================================================================
+    // Calculate sub-team rankings (challenge points only)
+    // =========================================================================
+    let subTeamRankings: SubTeamRanking[] = [];
+    const subTeamIds = Array.from(subTeamChallengePoints.keys());
+
+    if (subTeamIds.length > 0) {
+      const { data: subTeams, error: subTeamsError } = await supabase
+        .from('challenge_subteams')
+        .select('subteam_id, name, team_id, teams(team_name)')
+        .in('subteam_id', subTeamIds);
+
+      if (subTeamsError) {
+        console.error('Error fetching sub-teams:', subTeamsError);
+      }
+
+      const subTeamInfoMap = new Map(
+        (subTeams || []).map((st: any) => [
+          String(st.subteam_id),
+          {
+            subteam_name: st.name as string,
+            team_id: (st.team_id as string | null) ?? null,
+            team_name: (st.teams?.team_name as string | null) ?? null,
+          },
+        ])
+      );
+
+      subTeamRankings = subTeamIds
+        .map((subteam_id) => {
+          const info = subTeamInfoMap.get(String(subteam_id));
+          return {
+            rank: 0,
+            subteam_id: String(subteam_id),
+            subteam_name: info?.subteam_name || 'Unknown Sub-team',
+            team_id: info?.team_id ?? null,
+            team_name: info?.team_name ?? null,
+            points: subTeamChallengePoints.get(subteam_id) || 0,
+            submission_count: subTeamSubmissionCounts.get(subteam_id) || 0,
+          };
+        })
+        .filter((st) => st.points > 0)
+        .sort((a, b) => b.points - a.points)
+        .map((st, index) => ({ ...st, rank: index + 1 }));
+    }
+
+    // =========================================================================
     // Calculate challenge-only leaderboards
     // =========================================================================
     const challengeTeamRankings: TeamRanking[] = Array.from(teamStats.values())
@@ -515,6 +583,7 @@ export async function GET(
       success: true,
       data: {
         teams: teamRankings,
+        subTeams: subTeamRankings,
         individuals: individualRankings,
         challengeTeams: challengeTeamRankings,
         challengeIndividuals: challengeIndividualRankings,

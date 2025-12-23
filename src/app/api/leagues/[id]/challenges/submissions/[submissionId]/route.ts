@@ -84,7 +84,7 @@ export async function PATCH(
         leagueschallenges(
           league_id,
           challenge_type,
-          total_points
+          total_points,
           challenge_id
         )
       `)
@@ -120,14 +120,19 @@ export async function PATCH(
           return buildError('awardedPoints must be >= 0', 400);
         }
         if (
-          submissionChallenge?.total_points &&
+          submissionChallenge?.total_points !== undefined &&
+          submissionChallenge?.total_points !== null &&
           Number.isFinite(Number(submissionChallenge.total_points)) &&
           pts > Number(submissionChallenge.total_points)
         ) {
           return buildError('awardedPoints cannot exceed challenge total points', 400);
         }
         updatePayload.awarded_points = pts;
-      } else if (submissionChallenge?.total_points && Number.isFinite(Number(submissionChallenge.total_points))) {
+      } else if (
+        submissionChallenge?.total_points !== undefined &&
+        submissionChallenge?.total_points !== null &&
+        Number.isFinite(Number(submissionChallenge.total_points))
+      ) {
         updatePayload.awarded_points = Number(submissionChallenge.total_points);
       } else {
         updatePayload.awarded_points = null;

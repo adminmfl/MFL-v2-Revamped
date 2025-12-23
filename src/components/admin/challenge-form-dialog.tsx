@@ -51,6 +51,20 @@ interface ChallengeFormDialogProps {
   onSubmit: (data: Partial<Challenge>) => void;
 }
 
+type ChallengeFormData = {
+  name: string;
+  description: string;
+  type: Challenge["type"];
+  challengeType: Challenge["challengeType"];
+  category: string;
+  difficulty: Challenge["difficulty"];
+  status: Challenge["status"];
+  points: number;
+  duration: number;
+  startDate: string;
+  endDate: string;
+};
+
 // ============================================================================
 // ChallengeFormDialog Component
 // ============================================================================
@@ -63,14 +77,14 @@ export function ChallengeFormDialog({
 }: ChallengeFormDialogProps) {
   const isEditing = !!challenge;
 
-  const [formData, setFormData] = React.useState({
+  const [formData, setFormData] = React.useState<ChallengeFormData>({
     name: "",
     description: "",
-    type: "streak" as const,
-    challengeType: "individual" as const,
+    type: "streak",
+    challengeType: "individual",
     category: "cardio",
-    difficulty: "medium" as const,
-    status: "draft" as const,
+    difficulty: "medium",
+    status: "draft",
     points: 100,
     duration: 7,
     startDate: "",
@@ -82,7 +96,8 @@ export function ChallengeFormDialog({
       setFormData({
         name: challenge.name,
         description: challenge.description,
-        thallengeType: challenge.challengeType,
+        type: challenge.type,
+        challengeType: challenge.challengeType,
         category: challenge.category,
         difficulty: challenge.difficulty,
         status: challenge.status,
@@ -96,8 +111,7 @@ export function ChallengeFormDialog({
         name: "",
         description: "",
         type: "streak",
-        challengeType: "individual"",
-        type: "streak",
+        challengeType: "individual",
         category: "cardio",
         difficulty: "medium",
         status: "draft",
@@ -160,7 +174,9 @@ export function ChallengeFormDialog({
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Complete a cardio workout every day for 7 consecutive days"
                 rows={3}
-              />4 gap-4">
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="type">Type</Label>
                 <Select
@@ -200,9 +216,6 @@ export function ChallengeFormDialog({
               <div className="space-y-2">
                 <Label htmlFor="category">Category</Label>
                 <Select
-                  value={formData.category}
-                  onValueChange={(value) => setFormData({ ...formData, category: value })
-                  
                   value={formData.category}
                   onValueChange={(value) => setFormData({ ...formData, category: value })}
                 >

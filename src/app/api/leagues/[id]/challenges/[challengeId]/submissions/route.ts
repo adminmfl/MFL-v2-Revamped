@@ -58,7 +58,7 @@ async function ensureChallengeInLeague(leagueId: string, challengeId: string) {
   const supabase = getSupabaseServiceRole();
   const { data, error } = await supabase
     .from('leagueschallenges')
-    .select('id, league_id, status')
+    .select('id, league_id, status, challenge_type')
     .eq('id', challengeId)
     .maybeSingle();
 
@@ -101,8 +101,9 @@ export async function GET(
       .select(
         `
         *,
-        leaguemembers!inner(
+        leaguemembers(
           user_id,
+          team_id,
           teams(team_name),
           users!leaguemembers_user_id_fkey(username)
         )
@@ -127,7 +128,7 @@ export async function GET(
 
     // For team challenges, surface submissions grouped by team first
     if (challenge.challenge_type === 'team') {
-      baseQuery = baseQuery.order('team_id', { ascending: true, nullsLast: true });
+      baseQuery = baseQuery.order('team_id', { ascending: true });
     }
 
     const query = baseQuery.order('created_at', { ascending: false });
@@ -174,7 +175,7 @@ export async function POST(
     }
 
     const body = await req.json();
-    const { proofUrl, awardedPoints } = body;
+    const { proofUrl } = body;
 
     if (!proofUrl) {
       return buildError('proofUrl is required', 400);
@@ -183,12 +184,21 @@ export async function POST(
     // Fetch challenge details to know challenge type and get member's team/subteam
     const { data: challengeData, error: challengeError } = await supabase
       .from('leagueschallenges')
-      .select('id, challenge_type, league_id')
+      .select('id, challenge_type, league_id, end_date')
       .eq('id', challengeId)
       .single();
 
     if (challengeError || !challengeData) {
       return buildError('Failed to fetch challenge details', 500);
+    }
+
+    // Strict cutoff: cannot submit after end_date
+    if (challengeData.end_date) {
+      const todayUtc = new Date().toISOString().slice(0, 10);
+      const endDate = String(challengeData.end_date);
+      if (todayUtc > endDate) {
+        return buildError('Challenge has ended. Submissions are closed.', 400);
+      }
     }
 
     // Fetch member's team info
@@ -228,7 +238,8 @@ export async function POST(
       league_member_id: membership.leagueMemberId,
       proof_url: proofUrl,
       status: 'pending',
-      awarded_points: awardedPoints ?? null,
+      // Points are awarded by host/governor during review
+      awarded_points: null,
       team_id: null,
       sub_team_id: null,
     };

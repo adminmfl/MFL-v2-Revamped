@@ -44,6 +44,7 @@ import { useLeagueLeaderboard } from '@/hooks/use-league-leaderboard';
 import {
   LeaderboardStats,
   LeagueTeamsTable,
+  LeagueSubTeamsTable,
   LeagueIndividualsTable,
   ChallengeSpecificLeaderboard,
 } from '@/components/leaderboard';
@@ -169,7 +170,7 @@ function TopPodium({ teams }: PodiumProps) {
 
 export default function LeaderboardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: leagueId } = use(params);
-  const [view, setView] = useState<'teams' | 'individuals'>('teams');
+  const [view, setView] = useState<'teams' | 'subTeams' | 'individuals'>('teams');
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
 
@@ -219,6 +220,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
   }
 
   const teams = data?.teams || [];
+  const subTeams = data?.subTeams || [];
   const individuals = data?.individuals || [];
   const stats = data?.stats || { total_submissions: 0, approved: 0, pending: 0, rejected: 0, total_rr: 0 };
   const dateRange = data?.dateRange;
@@ -325,11 +327,15 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
           <h2 className="text-lg font-semibold">Overall Leaderboard</h2>
           <p className="text-sm text-muted-foreground">Combined scores from workouts and challenges</p>
         </div>
-        <Tabs value={view} onValueChange={(v) => setView(v as 'teams' | 'individuals')}>
+        <Tabs value={view} onValueChange={(v) => setView(v as 'teams' | 'subTeams' | 'individuals')}>
           <TabsList>
             <TabsTrigger value="teams" className="gap-2">
               <Users className="size-4" />
               Teams ({teams.length})
+            </TabsTrigger>
+            <TabsTrigger value="subTeams" className="gap-2">
+              <Users className="size-4" />
+              Sub-Teams ({subTeams.length})
             </TabsTrigger>
             <TabsTrigger value="individuals" className="gap-2">
               <Medal className="size-4" />
@@ -338,6 +344,9 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
           </TabsList>
           <TabsContent value="teams" className="mt-4">
             <LeagueTeamsTable teams={teams} showAvgRR={true} />
+          </TabsContent>
+          <TabsContent value="subTeams" className="mt-4">
+            <LeagueSubTeamsTable subTeams={subTeams} />
           </TabsContent>
           <TabsContent value="individuals" className="mt-4">
             <LeagueIndividualsTable individuals={individuals} showAvgRR={true} />
