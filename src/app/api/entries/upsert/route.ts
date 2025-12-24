@@ -118,10 +118,43 @@ export async function POST(req: NextRequest) {
     // Check for existing entry on same date
     const { data: existing } = await supabase
       .from("effortentry")
-      .select("id")
+      .select("id, type, status, proof_url")
       .eq("league_member_id", membership.league_member_id)
       .eq("date", date)
       .maybeSingle();
+
+    // Enforce: only one entry per day per league member.
+    // - Disallow switching between rest/workout once an entry exists for that date.
+    // - Disallow multiple workout submissions for the same date; allow resubmission only if rejected.
+    if (existing) {
+      const existingType = (existing as any).type as 'workout' | 'rest' | undefined;
+      const existingStatus = (existing as any).status as 'pending' | 'approved' | 'rejected' | undefined;
+
+      // Prevent changing the entry type for the same date
+      if (existingType && existingType !== type) {
+        return NextResponse.json(
+          { error: `You already submitted a ${existingType} entry for this date` },
+          { status: 409 }
+        );
+      }
+
+      // Prevent multiple workout submissions for the same date unless rejected
+      if (type === 'workout' && existingType === 'workout' && existingStatus && existingStatus !== 'rejected') {
+        return NextResponse.json(
+          { error: 'You can only submit one workout per day for this league' },
+          { status: 409 }
+        );
+      }
+    }
+
+    // Proof screenshot is mandatory for workout entries.
+    // Allow updates without a new proof_url only if an existing proof_url is already present.
+    if (type === 'workout' && !proof_url && !(existing && existing.proof_url)) {
+      return NextResponse.json(
+        { error: 'proof_url is required for workout entries' },
+        { status: 400 }
+      );
+    }
 
     // Build entry payload
     const payload: EntryPayload = {

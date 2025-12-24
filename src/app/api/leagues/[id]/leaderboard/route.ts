@@ -10,6 +10,17 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/config';
 import { getSupabaseServiceRole } from '@/lib/supabase/client';
 
+function formatDateYYYYMMDD(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function minDateString(a: string, b: string): string {
+  return a <= b ? a : b;
+}
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -95,6 +106,16 @@ export async function GET(
     const filterStartDate = startDate || league.start_date;
     const filterEndDate = endDate || league.end_date;
 
+    // Apply a 2-day delay before scores appear on the leaderboard.
+    // Example: a submission dated today will not count today or tomorrow,
+    // and will start counting on the 3rd day.
+    const cutoff = (() => {
+      const d = new Date();
+      d.setDate(d.getDate() - 2);
+      return formatDateYYYYMMDD(d);
+    })();
+    const effectiveEndDate = minDateString(String(filterEndDate), cutoff);
+
     // =========================================================================
     // Get all teams in the league via teamleagues
     // =========================================================================
@@ -160,15 +181,13 @@ export async function GET(
       .select('id, league_member_id, date, type, rr_value, status')
       .in('league_member_id', memberIds);
 
-    // Only apply date filtering if the user explicitly provided dates
-    if (hasDateFilter) {
-      if (startDate) {
-        entriesQuery = entriesQuery.gte('date', startDate);
-      }
-      if (endDate) {
-        entriesQuery = entriesQuery.lte('date', endDate);
-      }
+    // Apply start bound only when explicitly provided.
+    if (hasDateFilter && startDate) {
+      entriesQuery = entriesQuery.gte('date', startDate);
     }
+
+    // Always apply the delayed end bound.
+    entriesQuery = entriesQuery.lte('date', effectiveEndDate);
 
     const { data: entries, error: entriesError } = await entriesQuery;
 
@@ -224,13 +243,15 @@ export async function GET(
       const challenge = (sub.leagueschallenges as any);
       if (!challenge) return;
 
-      // Check if challenge is within date range (only if user provided dates)
-      if (hasDateFilter) {
-        const challengeDate = challenge.end_date || challenge.start_date || new Date().toISOString().split('T')[0];
-        if (challengeDate < filterStartDate || challengeDate > filterEndDate) {
-          console.debug(`Skipping challenge ${challenge.id} - date ${challengeDate} outside range ${filterStartDate} to ${filterEndDate}`);
-          return;
-        }
+      // Use submission date for filtering, then apply the same delayed end bound.
+      const submissionDate =
+        typeof sub.created_at === 'string' && sub.created_at.includes('T')
+          ? sub.created_at.split('T')[0]
+          : (challenge.end_date || challenge.start_date || new Date().toISOString().split('T')[0]);
+
+      // Always filter by league/range start (overall or custom) and delayed end.
+      if (submissionDate < filterStartDate || submissionDate > effectiveEndDate) {
+        return;
       }
 
       // Use awarded_points when present; otherwise fall back to the challenge's total_points.
@@ -596,7 +617,7 @@ export async function GET(
         stats,
         dateRange: {
           startDate: filterStartDate,
-          endDate: filterEndDate,
+          endDate: effectiveEndDate,
         },
         league: {
           league_id: league.league_id,

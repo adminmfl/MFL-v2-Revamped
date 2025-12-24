@@ -332,6 +332,11 @@ export default function SubmitActivityPage({
       return;
     }
 
+    if (!selectedFile) {
+      toast.error('Proof screenshot is required');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -736,7 +741,7 @@ export default function SubmitActivityPage({
             {/* Photo Upload */}
             <div className="rounded-lg border">
               <div className="border-b bg-muted/50 px-4 py-3">
-                <h2 className="font-semibold">Upload Proof Screenshot</h2>
+                <h2 className="font-semibold">Upload Proof Screenshot *</h2>
                 <p className="text-xs text-muted-foreground mt-1">
                   Upload a screenshot from your fitness app. We'll try to auto-extract duration.
                 </p>
@@ -820,12 +825,12 @@ export default function SubmitActivityPage({
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">
                       {formData.activity_type === 'steps' ? 'Steps' :
-                       formData.activity_type === 'golf' ? 'Holes' : 'Duration'}
+                      formData.activity_type === 'golf' ? 'Holes' : 'Duration'}
                     </span>
                     <span className="font-medium">
                       {formData.activity_type === 'steps' && formData.steps ? `${formData.steps} steps` :
-                       formData.activity_type === 'golf' && formData.holes ? `${formData.holes} holes` :
-                       formData.duration ? `${formData.duration} min` : '—'}
+                      formData.activity_type === 'golf' && formData.holes ? `${formData.holes} holes` :
+                      formData.duration ? `${formData.duration} min` : '—'}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -866,7 +871,7 @@ export default function SubmitActivityPage({
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={loading || uploadingImage || !formData.activity_type}
+                  disabled={loading || uploadingImage || !formData.activity_type || !selectedFile}
                 >
                   {loading || uploadingImage ? (
                     <>
