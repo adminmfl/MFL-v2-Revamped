@@ -28,6 +28,7 @@ import { useLeague } from '@/contexts/league-context';
 import { useRole } from '@/contexts/role-context';
 import { Button } from '@/components/ui/button';
 import { InviteDialog } from '@/components/league/invite-dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Card,
   CardAction,
@@ -71,6 +72,13 @@ interface LeagueStats {
   maxCapacity: number;
 }
 
+type RecentDayRow = {
+  date: string; // YYYY-MM-DD (local)
+  label: string;
+  subtitle: string;
+  pointsLabel: string;
+};
+
 // ============================================================================
 // League Dashboard Page
 // ============================================================================
@@ -88,6 +96,8 @@ export default function LeagueDashboardPage({
   const [stats, setStats] = React.useState<LeagueStats | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [rejectedCount, setRejectedCount] = React.useState<number>(0);
+  const [recentDays, setRecentDays] = React.useState<RecentDayRow[] | null>(null);
 
   // Sync active league if navigated directly
   React.useEffect(() => {
@@ -106,9 +116,11 @@ export default function LeagueDashboardPage({
         setLoading(true);
 
         // Fetch league details and stats in parallel
-        const [leagueRes, statsRes] = await Promise.all([
+        const [leagueRes, statsRes, rejectedRes] = await Promise.all([
           fetch(`/api/leagues/${id}`),
           fetch(`/api/leagues/${id}/stats`),
+          // Only need a count; endpoint returns stats alongside the list.
+          fetch(`/api/leagues/${id}/my-submissions?status=rejected`),
         ]);
 
         if (!leagueRes.ok) throw new Error('Failed to fetch league');
@@ -126,6 +138,100 @@ export default function LeagueDashboardPage({
           if (statsData.success && statsData.stats) {
             setStats(statsData.stats);
           }
+
+          // Rejected reminder is best-effort: ignore auth/membership failures.
+          if (rejectedRes.ok) {
+            const rejectedData = await rejectedRes.json();
+            const count =
+              rejectedData?.success && rejectedData?.data
+                ? Number(rejectedData.data?.stats?.total ?? rejectedData.data?.submissions?.length ?? 0)
+                : 0;
+            setRejectedCount(Number.isFinite(count) ? count : 0);
+          } else {
+            setRejectedCount(0);
+          }
+        }
+
+        // Date-wise progress tracking (last 7 days)
+        try {
+          const localYmd = (d: Date) => {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+          };
+
+          const todayLocal = new Date();
+          const endDate = localYmd(todayLocal);
+          const startLocal = new Date(todayLocal);
+          startLocal.setDate(startLocal.getDate() - 6);
+          const startDate = localYmd(startLocal);
+
+          const recentRes = await fetch(
+            `/api/leagues/${id}/my-submissions?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`
+          );
+
+          if (recentRes.ok) {
+            const recentData = await recentRes.json();
+            const submissions: any[] =
+              recentData?.success && recentData?.data?.submissions
+                ? (recentData.data.submissions as any[])
+                : [];
+
+            const byDate = new Map<string, any>();
+            for (const s of submissions) {
+              if (!s?.date) continue;
+              const existing = byDate.get(s.date);
+              if (!existing) {
+                byDate.set(s.date, s);
+                continue;
+              }
+              const a = String(existing.created_date || existing.modified_date || '');
+              const b = String(s.created_date || s.modified_date || '');
+              if (b > a) byDate.set(s.date, s);
+            }
+
+            const rows: RecentDayRow[] = [];
+            for (let offset = 6; offset >= 0; offset -= 1) {
+              const d = new Date(todayLocal);
+              d.setDate(todayLocal.getDate() - offset);
+              const ymd = localYmd(d);
+              const label = d.toLocaleDateString(undefined, {
+                weekday: 'short',
+                month: 'short',
+                day: '2-digit',
+                year: 'numeric',
+              });
+
+              const entry = byDate.get(ymd);
+              if (!entry) {
+                rows.push({
+                  date: ymd,
+                  label,
+                  subtitle: 'Missed day',
+                  pointsLabel: '0 pt',
+                });
+                continue;
+              }
+
+              const isWorkout = entry.type === 'workout';
+              const workoutType = isWorkout && entry.workout_type ? String(entry.workout_type).replace(/_/g, ' ') : '';
+              const typeLabel = isWorkout ? (workoutType ? workoutType : 'Workout') : 'Rest Day';
+              const statusLabel = entry.status ? String(entry.status) : '';
+              const subtitle = statusLabel ? `${typeLabel} • ${statusLabel}` : typeLabel;
+
+              const rr = typeof entry.rr_value === 'number' ? entry.rr_value : null;
+              const pointsLabel = rr === null ? '0 pt' : `${rr.toFixed(1)} RR`;
+
+              rows.push({ date: ymd, label, subtitle, pointsLabel });
+            }
+
+            setRecentDays(rows);
+          } else {
+            setRecentDays([]);
+          }
+        } catch {
+          setRecentDays([]);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load league');
@@ -225,6 +331,22 @@ export default function LeagueDashboardPage({
 
   return (
     <div className="@container/main flex flex-1 flex-col gap-4 lg:gap-6">
+      {rejectedCount > 0 && (
+        <div className="px-4 lg:px-6">
+          <Alert>
+            <AlertTitle>Rejected workouts need attention</AlertTitle>
+            <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <span>
+                You have {rejectedCount} rejected submission{rejectedCount === 1 ? '' : 's'} in this league.
+                Please review and resubmit.
+              </span>
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/leagues/${id}/my-submissions`}>View my submissions</Link>
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col gap-4 px-4 lg:px-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
@@ -366,7 +488,7 @@ export default function LeagueDashboardPage({
               title="Validate Submissions"
               description="Review and approve activities"
               icon={Shield}
-              href={`/leagues/${id}/validate`}
+              href={`/leagues/${id}/my-team/submissions`}
               color="bg-gradient-to-br from-amber-500 to-orange-600"
             />
           )}
@@ -411,6 +533,36 @@ export default function LeagueDashboardPage({
             </>
           )}
         </div>
+      </div>
+
+      {/* Date-wise Progress (Last 7 Days) */}
+      <div className="px-4 lg:px-6">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold">Last 7 Days</h2>
+          <p className="text-sm text-muted-foreground">Date-wise progress tracking</p>
+        </div>
+
+        <Card>
+          <CardContent className="p-0">
+            <div className="divide-y">
+              {recentDays === null ? (
+                <div className="px-4 py-6 text-sm text-muted-foreground">Loading…</div>
+              ) : recentDays.length === 0 ? (
+                <div className="px-4 py-6 text-sm text-muted-foreground">No recent activity.</div>
+              ) : (
+                recentDays.map((row) => (
+                  <div key={row.date} className="flex items-center justify-between px-4 py-3">
+                    <div className="flex flex-col">
+                      <span className="font-medium">{row.label}</span>
+                      <span className="text-sm text-muted-foreground">{row.subtitle}</span>
+                    </div>
+                    <div className="font-medium tabular-nums">{row.pointsLabel}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* League Information - Table Style */}

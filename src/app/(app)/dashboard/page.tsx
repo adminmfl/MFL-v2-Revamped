@@ -22,6 +22,7 @@ import {
 import { useLeague, LeagueWithRoles } from '@/contexts/league-context';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Card,
   CardAction,
@@ -67,6 +68,25 @@ interface StatCard {
   description: string;
 }
 
+type RejectedLeagueSummary = {
+  league_id: string;
+  league_name: string;
+  rejectedCount: number;
+  latestDate: string | null;
+};
+
+type RejectedSummaryResponse =
+  | {
+      success: true;
+      data: {
+        totalRejected: number;
+        leagues: RejectedLeagueSummary[];
+        cached: boolean;
+        cacheTtlMs: number;
+      };
+    }
+  | { success: false; error: string };
+
 // ============================================================================
 // Main Dashboard Page
 // ============================================================================
@@ -77,40 +97,120 @@ export default function DashboardPage() {
 
   const userName = session?.user?.name?.split(' ')[0] || 'User';
 
+  const [rejectedSummary, setRejectedSummary] = React.useState<{
+    totalRejected: number;
+    leagues: RejectedLeagueSummary[];
+  } | null>(null);
+
   // Calculate stats
   const stats: StatCard[] = React.useMemo(() => {
-    const activeLeagues = userLeagues.filter((l) => l.status === 'active').length;
     const hostingCount = userLeagues.filter((l) => l.is_host).length;
     const governorCount = userLeagues.filter((l) => l.roles.includes('governor')).length;
     const captainCount = userLeagues.filter((l) => l.roles.includes('captain')).length;
+    const needsAttentionCount = rejectedSummary?.totalRejected ?? 0;
 
     return [
       {
         title: 'Total Leagues',
         value: userLeagues.length,
+        change: 0,
         changeLabel: 'Growing strong',
         description: 'Leagues you are a member of',
       },
       {
-        title: 'Active Leagues',
-        value: activeLeagues,
-        changeLabel: activeLeagues > 0 ? 'In progress' : 'No active leagues',
-        description: 'Currently running leagues',
-      },
-      {
         title: 'Hosting',
         value: hostingCount,
+        change: 0,
         changeLabel: hostingCount > 0 ? 'League creator' : 'Create your first',
         description: 'Leagues you created',
       },
       {
         title: 'Leadership Roles',
         value: governorCount + captainCount,
+        change: 0,
         changeLabel: 'Governor & Captain',
         description: 'Management positions held',
       },
+      {
+        title: 'Submissions Needing Attention',
+        value: needsAttentionCount,
+        change: 0,
+        changeLabel: needsAttentionCount > 0 ? 'Action required' : 'All clear',
+        description: 'Rejected submissions across leagues',
+      },
     ];
-  }, [userLeagues]);
+  }, [userLeagues, rejectedSummary?.totalRejected]);
+
+  // Fetch rejected submissions summary (cached client-side to avoid unnecessary load)
+  React.useEffect(() => {
+    const userId = (session?.user as any)?.id as string | undefined;
+    if (!userId) {
+      setRejectedSummary(null);
+      return;
+    }
+
+    const CACHE_TTL_MS = 5 * 60 * 1000;
+    const cacheKey = `mfl:rejected-submissions:${userId}`;
+
+    const readCache = ():
+      | { ts: number; value: { totalRejected: number; leagues: RejectedLeagueSummary[] } }
+      | null => {
+      try {
+        const raw = window.localStorage.getItem(cacheKey);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as any;
+        if (!parsed || typeof parsed.ts !== 'number' || !parsed.value) return null;
+        return parsed;
+      } catch {
+        return null;
+      }
+    };
+
+    const cached = readCache();
+    const cacheIsFresh = !!(cached && Date.now() - cached.ts < CACHE_TTL_MS);
+    if (cacheIsFresh) {
+      setRejectedSummary(cached!.value);
+      // If the cached value says "0 rejected", still revalidate once so newly
+      // rejected submissions (triggered by someone else) show up promptly.
+      if ((cached!.value?.totalRejected ?? 0) > 0) {
+        return;
+      }
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const url = cacheIsFresh
+          ? '/api/user/rejected-submissions?force=1'
+          : '/api/user/rejected-submissions';
+        const res = await fetch(url, { cache: 'no-store' });
+        const json = (await res.json()) as RejectedSummaryResponse;
+        if (cancelled) return;
+
+        if (!res.ok || !json.success) {
+          setRejectedSummary(null);
+          return;
+        }
+
+        const value = {
+          totalRejected: Number(json.data.totalRejected || 0),
+          leagues: Array.isArray(json.data.leagues) ? json.data.leagues : [],
+        };
+        setRejectedSummary(value);
+        try {
+          window.localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), value }));
+        } catch {
+          // ignore storage quota / access errors
+        }
+      } catch {
+        if (!cancelled) setRejectedSummary(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user]);
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -141,6 +241,38 @@ export default function DashboardPage() {
           </Button>
         </div>
       </div>
+
+      {rejectedSummary?.totalRejected ? (
+        <div className="px-4 lg:px-6">
+          <Alert
+            variant="destructive"
+            className="border-destructive/40 bg-destructive/10"
+          >
+            <AlertTitle>Rejected submission(s) need attention</AlertTitle>
+            <AlertDescription className="w-full">
+              <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <span>
+                  You have {rejectedSummary.totalRejected} rejected submission{rejectedSummary.totalRejected === 1 ? '' : 's'} across {rejectedSummary.leagues.length} league{rejectedSummary.leagues.length === 1 ? '' : 's'}.
+                </span>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/submissions">Review now</Link>
+                </Button>
+              </div>
+              {rejectedSummary.leagues.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {rejectedSummary.leagues.map((l) => (
+                    <Button key={l.league_id} variant="outline" size="sm" asChild>
+                      <Link href={`/leagues/${l.league_id}/my-submissions`}>
+                        {l.league_name} ({l.rejectedCount})
+                      </Link>
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </AlertDescription>
+          </Alert>
+        </div>
+      ) : null}
 
       {/* Stats Section Cards */}
       {isLoading ? (

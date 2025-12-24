@@ -5,7 +5,7 @@
 'use client';
 
 import React, { use, useState } from 'react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import {
   Trophy,
   Users,
@@ -13,6 +13,7 @@ import {
   RefreshCw,
   AlertCircle,
   Calendar,
+  Info,
 } from 'lucide-react';
 
 import {
@@ -324,12 +325,40 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
       <div className="px-4 lg:px-6">
         <div className="mb-4">
           <h2 className="text-lg font-semibold">Overall Leaderboard</h2>
-          <p className="text-sm text-muted-foreground">
-            Combined scores from workouts and challenges
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>
+              Combined scores from workouts and challenges
+              {dateRange?.endDate ? (
+                <> • As of {format(parseISO(dateRange.endDate), 'MMM d')}</>
+              ) : null}
+            </span>
             {dateRange?.endDate ? (
-              <> • As of {format(new Date(`${dateRange.endDate}T00:00:00`), 'MMM d')}</>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground"
+                    aria-label="About the delayed leaderboard"
+                  >
+                    <Info className="size-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="max-w-sm" align="start">
+                  <div className="space-y-3">
+                    <p>
+                      This table shows the official standings as of{' '}
+                      {format(parseISO(dateRange.endDate), 'MMM d')}. Final points are submitted and cannot be changed.
+                    </p>
+                    <p className="text-muted-foreground">
+                      For real-time scores from today and yesterday, check the table below.
+                    </p>
+                  </div>
+                </PopoverContent>
+              </Popover>
             ) : null}
-          </p>
+          </div>
         </div>
         <Tabs value={view} onValueChange={(v) => setView(v as 'teams' | 'individuals')}>
           <TabsList>
@@ -356,7 +385,33 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
         <div className="px-4 lg:px-6">
           <div className="mb-4">
             <h2 className="text-lg font-semibold">Real-time Scoreboard</h2>
-            <p className="text-sm text-muted-foreground">Today’s and yesterday’s scores (roll into the main leaderboard after the 2-day delay)</p>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>Today’s and yesterday’s scores</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground"
+                    aria-label="About the real-time scoreboard"
+                  >
+                    <Info className="size-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="max-w-sm" align="start">
+                  <div className="space-y-3">
+                    <p>
+                      This table shows real-time scores ranked by today’s points. Avg RR is calculated from both today’s and yesterday’s entries.
+                      These standings are subject to change as more entries come in.
+                    </p>
+                    <p className="text-muted-foreground">
+                      For official finalized standings, please refer to the Leaderboard table above.
+                    </p>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
           <RealTimeScoreboardTable dates={pendingWindow.dates} teams={pendingWindow.teams || []} />
         </div>

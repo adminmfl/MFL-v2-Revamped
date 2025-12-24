@@ -223,12 +223,12 @@ export default function SubmitActivityPage({
 
     if (activityValue === 'golf' && formData.holes) {
       const holes = parseInt(formData.holes);
-      return Math.min(holes / 9, 2.5);
+      return Math.min(holes / 9, 2.0);
     }
 
     if (formData.duration) {
       const duration = parseInt(formData.duration);
-      return Math.min(duration / 45, 2.5);
+      return Math.min(duration / 45, 2.0);
     }
 
     return 1.0;
@@ -329,6 +329,38 @@ export default function SubmitActivityPage({
 
     if (!formData.duration && formData.activity_type !== 'steps' && formData.activity_type !== 'golf') {
       toast.error('Please enter duration');
+      return;
+    }
+
+    // Enforce RR eligibility: RR must be between 1 and 2.
+    // We use a backend preview so age-based thresholds match server logic.
+    try {
+      const previewPayload: Record<string, any> = {
+        league_id: leagueId,
+        type: 'workout',
+        workout_type: formData.activity_type,
+      };
+      if (formData.duration) previewPayload.duration = parseInt(formData.duration);
+      if (formData.distance) previewPayload.distance = parseFloat(formData.distance);
+      if (formData.steps) previewPayload.steps = parseInt(formData.steps);
+      if (formData.holes) previewPayload.holes = parseInt(formData.holes);
+
+      const previewRes = await fetch('/api/entries/preview-rr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(previewPayload),
+      });
+      const previewJson = await previewRes.json();
+      if (!previewRes.ok) {
+        throw new Error(previewJson.error || 'Failed to validate RR');
+      }
+      const canSubmit = Boolean(previewJson?.data?.canSubmit);
+      if (!canSubmit) {
+        toast.error('Workout RR must be at least 1.0 to submit. Please increase duration/distance/steps.');
+        return;
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to validate RR');
       return;
     }
 

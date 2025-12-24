@@ -134,6 +134,7 @@ export function useLeagueLeaderboard(
 
       // Build URL with query params
       const params = new URLSearchParams();
+      params.set('tzOffsetMinutes', String(new Date().getTimezoneOffset()));
       if (dateRange.startDate) {
         params.set('startDate', dateRange.startDate);
       }

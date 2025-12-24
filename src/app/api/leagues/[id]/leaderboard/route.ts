@@ -135,6 +135,16 @@ export async function GET(
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
+    // Client timezone offset in minutes (same value as `new Date().getTimezoneOffset()`).
+    // This allows the "2-day delay" to roll over at the user's local midnight instead of
+    // the server's timezone (often UTC in production).
+    const tzOffsetMinutesParam = searchParams.get('tzOffsetMinutes');
+    const tzOffsetMinutes = tzOffsetMinutesParam !== null ? Number(tzOffsetMinutesParam) : null;
+    const nowLocal =
+      typeof tzOffsetMinutes === 'number' && Number.isFinite(tzOffsetMinutes)
+        ? new Date(Date.now() - tzOffsetMinutes * 60_000)
+        : new Date();
+
     // Verify league exists and get its date range
     const { data: league, error: leagueError } = await supabase
       .from('leagues')
@@ -156,7 +166,7 @@ export async function GET(
     // Example: a submission dated today will not count today or tomorrow,
     // and will start counting on the 3rd day.
     const cutoff = (() => {
-      const d = new Date();
+      const d = new Date(nowLocal);
       d.setDate(d.getDate() - 2);
       return formatDateYYYYMMDD(d);
     })();
@@ -166,7 +176,7 @@ export async function GET(
     // These dates are NOT included in the main leaderboard due to the 2-day delay.
     // When a new day begins, the older pending day automatically becomes <= cutoff
     // and rolls into the main leaderboard via `effectiveEndDate`.
-    const todayYYYYMMDD = formatDateYYYYMMDD(new Date());
+    const todayYYYYMMDD = formatDateYYYYMMDD(nowLocal);
     const pendingWindowEnd = minDateString(String(filterEndDate), todayYYYYMMDD);
     const pendingWindowStart = addDaysYYYYMMDD(pendingWindowEnd, -1);
     const pendingWindowDates = uniqueStringsPreserveOrder([
