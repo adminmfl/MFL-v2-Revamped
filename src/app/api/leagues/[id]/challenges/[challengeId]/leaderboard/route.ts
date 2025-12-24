@@ -7,6 +7,13 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 import { getSupabaseServiceRole } from '@/lib/supabase/client';
 
+function formatDateYYYYMMDD(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 function buildError(message: string, status = 400) {
   return NextResponse.json({ success: false, error: message }, { status });
 }
@@ -51,11 +58,20 @@ export async function GET(
       return buildError('Challenge does not belong to this league', 400);
     }
 
+    // Apply a 2-day delay before scores appear on leaderboards.
+    const cutoffDate = (() => {
+      const d = new Date();
+      d.setDate(d.getDate() - 2);
+      return formatDateYYYYMMDD(d);
+    })();
+    const cutoffTimestamp = new Date(`${cutoffDate}T23:59:59.999Z`).toISOString();
+
     // Fetch submissions for this challenge
     const { data: submissions, error: submissionsError } = await supabase
       .from('challenge_submissions')
       .select(`
         id,
+        created_at,
         league_member_id,
         team_id,
         sub_team_id,
@@ -67,7 +83,8 @@ export async function GET(
         )
       `)
       .eq('league_challenge_id', challengeId)
-      .eq('status', 'approved');
+      .eq('status', 'approved')
+      .lte('created_at', cutoffTimestamp);
 
     if (submissionsError) {
       console.error('Error fetching submissions:', submissionsError);
