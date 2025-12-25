@@ -64,7 +64,7 @@ export async function GET(
       .select('league_member_id')
       .in('league_member_id', memberIds)
       .eq('status', 'approved')
-      .gte('entry_date', sevenDaysAgo.toISOString().split('T')[0]);
+      .gte('date', sevenDaysAgo.toISOString().split('T')[0]);
 
     const activeMembers = new Set(activeSubmissions?.map((s) => s.league_member_id) || []).size;
 
@@ -76,17 +76,17 @@ export async function GET(
     // 2. PARTICIPATION ANALYTICS
     const { data: allSubmissions } = await supabase
       .from('effortentry')
-      .select('league_member_id, entry_date, status')
+      .select('league_member_id, date, status')
       .in('league_member_id', memberIds)
       .eq('status', 'approved')
-      .gte('entry_date', league.start_date)
-      .lte('entry_date', league.end_date)
+      .gte('date', league.start_date)
+      .lte('date', league.end_date)
       .order('entry_date', { ascending: true });
 
     // Calculate daily participation rate
     const submissionsByDate = new Map<string, number>();
     (allSubmissions || []).forEach((s) => {
-      const date = s.entry_date;
+      const date = s.date;
       submissionsByDate.set(date, (submissionsByDate.get(date) || 0) + 1);
     });
 
@@ -199,7 +199,7 @@ export async function GET(
       .select('league_member_id')
       .in('league_member_id', memberIds)
       .eq('status', 'approved')
-      .gte('entry_date', fourDaysAgo.toISOString().split('T')[0]);
+      .gte('date', fourDaysAgo.toISOString().split('T')[0]);
 
     const recentActiveMemberIds = new Set(recentActive?.map((s) => s.league_member_id) || []);
     const inactiveUsers = performersList.filter((p) => !recentActiveMemberIds.has(p.memberId));
