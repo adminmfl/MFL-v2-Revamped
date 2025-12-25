@@ -61,6 +61,7 @@ export interface AdminLeague {
   team_size: number;
   rest_days: number;
   auto_rest_day_enabled: boolean;
+  normalize_points_by_team_size: boolean;
   is_public: boolean;
   is_exclusive: boolean;
   invite_code?: string | null;
@@ -81,6 +82,7 @@ export interface AdminLeagueCreateInput {
   team_size?: number;
   rest_days?: number;
   auto_rest_day_enabled?: boolean;
+  normalize_points_by_team_size?: boolean;
   is_public?: boolean;
   is_exclusive?: boolean;
 }
@@ -96,6 +98,7 @@ export interface AdminLeagueUpdateInput {
   team_size?: number;
   rest_days?: number;
   auto_rest_day_enabled?: boolean;
+  normalize_points_by_team_size?: boolean;
   is_public?: boolean;
   is_exclusive?: boolean;
 }

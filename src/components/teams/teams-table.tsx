@@ -752,8 +752,15 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
           open={viewTeamMembersDialogOpen}
           onOpenChange={setViewTeamMembersDialogOpen}
           teamName={selectedTeam.team_name}
+          teamId={selectedTeam.team_id}
+          leagueId={leagueId}
           members={teamMembers}
           isLoading={loadingTeamMembers}
+          isHost={isHost}
+          teams={data?.teams}
+          onMemberChanged={() => {
+            refetch();
+          }}
         />
       )}
 

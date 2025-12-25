@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Users, Crown, Search } from "lucide-react";
+import { Users, Crown, Search, Trash2, ArrowRight, Loader2, AlertCircle } from "lucide-react";
 
 import {
   Dialog,
@@ -14,31 +14,76 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toast } from "sonner";
 import type { TeamMember } from "@/hooks/use-league-teams";
 
 interface ViewTeamMembersDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   teamName: string;
+  teamId: string;
+  leagueId: string;
   members: (TeamMember & { points?: number })[];
   isLoading?: boolean;
+  isHost?: boolean;
+  teams?: any[];
+  onMemberChanged?: () => void;
 }
 
 export function ViewTeamMembersDialog({
   open,
   onOpenChange,
   teamName,
+  teamId,
+  leagueId,
   members,
   isLoading,
+  isHost = false,
+  teams = [],
+  onMemberChanged,
 }: ViewTeamMembersDialogProps) {
   const [searchQuery, setSearchQuery] = React.useState("");
+  const [allTeams, setAllTeams] = React.useState<any[]>([]);
+  const [memberToMove, setMemberToMove] = React.useState<(TeamMember & { points?: number }) | null>(null);
+  const [selectedTeamId, setSelectedTeamId] = React.useState<string>("");
+  const [memberToRemove, setMemberToRemove] = React.useState<(TeamMember & { points?: number }) | null>(null);
+  const [isProcessing, setIsProcessing] = React.useState(false);
 
   // Reset when dialog opens
   React.useEffect(() => {
     if (open) {
       setSearchQuery("");
+      setMemberToMove(null);
+      setSelectedTeamId("");
+      setMemberToRemove(null);
+      
+      // Set teams from prop if available, otherwise fetch
+      if (teams && teams.length > 0) {
+        setAllTeams(teams);
+      } else if (isHost && leagueId) {
+        fetchTeams();
+      }
     }
-  }, [open]);
+  }, [open, teams, isHost, leagueId]);
 
   const filteredMembers = React.useMemo(() => {
     if (!searchQuery.trim()) return members;
@@ -51,6 +96,100 @@ export function ViewTeamMembersDialog({
   }, [members, searchQuery]);
 
   const captain = members.find((m) => m.is_captain);
+
+  const fetchTeams = async () => {
+    if (!leagueId) return;
+    try {
+      const response = await fetch(`/api/leagues/${leagueId}/teams`);
+      if (response.ok) {
+        const data = await response.json();
+        setAllTeams(data.teams || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch teams:", error);
+    }
+  };
+
+  const handleMoveMember = (member: TeamMember & { points?: number }) => {
+    setMemberToMove(member);
+    setSelectedTeamId("");
+  };
+
+  const handleConfirmMove = async () => {
+    if (!memberToMove || !selectedTeamId || selectedTeamId === teamId) return;
+
+    setIsProcessing(true);
+    try {
+      const response = await fetch(`/api/leagues/${leagueId}/members`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          memberId: memberToMove.league_member_id,
+          teamId: selectedTeamId,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        toast.error(error.message || "Failed to move member");
+        return;
+      }
+
+      toast.success(`${memberToMove.username} moved to new team`);
+      // Small delay to show success feedback, then close and refresh
+      setTimeout(() => {
+        setMemberToMove(null);
+        setSelectedTeamId("");
+        onMemberChanged?.();
+        // Close the main dialog to force a fresh reload when reopened
+        onOpenChange(false);
+      }, 500);
+    } catch (error) {
+      console.error("Failed to move member:", error);
+      toast.error("An error occurred while moving the member");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRemoveMember = (member: TeamMember & { points?: number }) => {
+    setMemberToRemove(member);
+  };
+
+  const handleConfirmRemove = async () => {
+    if (!memberToRemove) return;
+
+    setIsProcessing(true);
+    try {
+      const response = await fetch(
+        `/api/leagues/${leagueId}/members?memberId=${memberToRemove.league_member_id}`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        toast.error(error.message || "Failed to remove member");
+        return;
+      }
+
+      toast.success(`${memberToRemove.username} removed from league`);
+      // Small delay to show success feedback, then close and refresh
+      setTimeout(() => {
+        setMemberToRemove(null);
+        onMemberChanged?.();
+        // Close the main dialog to force a fresh reload when reopened
+        onOpenChange(false);
+      }, 500);
+    } catch (error) {
+      console.error("Failed to remove member:", error);
+      toast.error("An error occurred while removing the member");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -159,12 +298,133 @@ export function ViewTeamMembersDialog({
                           </Badge>
                         ))}
                     </div>
+                    {isHost && (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleMoveMember(member)}
+                          disabled={isProcessing}
+                          className="h-8 w-8 p-0"
+                          title="Move to another team"
+                        >
+                          <ArrowRight className="size-4 text-blue-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveMember(member)}
+                          disabled={isProcessing}
+                          className="h-8 w-8 p-0"
+                          title="Remove from league"
+                        >
+                          <Trash2 className="size-4 text-red-600" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             )}
           </ScrollArea>
         </div>
+
+        {/* Move Member Dialog */}
+        <AlertDialog open={!!memberToMove} onOpenChange={(open) => !open && setMemberToMove(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Move Member to Another Team</AlertDialogTitle>
+              <AlertDialogDescription>
+                Select the team where you want to move {memberToMove?.username}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="space-y-3">
+              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex gap-2">
+                <AlertCircle className="size-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  Member will be removed from their current team and added to the selected team.
+                </p>
+              </div>
+
+              <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose destination team..." />
+                </SelectTrigger>
+                <SelectContent side="top" sideOffset={8} className="z-50">
+                  {allTeams.length > 0 ? (
+                    allTeams
+                      .filter((t) => t.team_id !== teamId)
+                      .map((team) => (
+                        <SelectItem key={team.team_id} value={team.team_id}>
+                          {team.team_name}
+                        </SelectItem>
+                      ))
+                  ) : (
+                    <div className="p-2 text-sm text-muted-foreground">
+                      No other teams available
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmMove}
+                disabled={!selectedTeamId || isProcessing}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="size-4 mr-2 animate-spin" />
+                    Moving...
+                  </>
+                ) : (
+                  "Move Member"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Remove Member Dialog */}
+        <AlertDialog open={!!memberToRemove} onOpenChange={(open) => !open && setMemberToRemove(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove Member from League</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to remove <span className="font-semibold">{memberToRemove?.username}</span> from this league? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <Alert variant="destructive">
+              <AlertCircle className="size-4" />
+              <AlertDescription>
+                The member will lose access to the league and all their data will be preserved in history.
+              </AlertDescription>
+            </Alert>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmRemove}
+                disabled={isProcessing}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="size-4 mr-2 animate-spin" />
+                    Removing...
+                  </>
+                ) : (
+                  "Remove Member"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );

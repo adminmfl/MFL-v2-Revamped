@@ -24,6 +24,7 @@ const updateLeagueSchema = z.object({
   team_size: z.number().int().positive().optional(),
   rest_days: z.number().int().min(0).optional(),
   auto_rest_day_enabled: z.boolean().optional(),
+  normalize_points_by_team_size: z.boolean().optional(),
 });
 
 export async function GET(

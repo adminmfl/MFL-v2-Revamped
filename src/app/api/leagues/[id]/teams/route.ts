@@ -16,6 +16,7 @@ import {
 import { getLeagueById } from '@/lib/services/leagues';
 import { userHasAnyRole } from '@/lib/services/roles';
 import { getSupabaseServiceRole } from '@/lib/supabase/client';
+import { getTeamSizeStats, hasTeamSizeVariance } from '@/lib/utils/normalization';
 
 const createTeamSchema = z.object({
   team_name: z.string().min(1, 'Team name is required').max(100, 'Team name too long'),
@@ -77,6 +78,15 @@ export async function GET(
     // Get governors info
     const governors = await getLeagueGovernors(leagueId);
 
+    // Calculate team size variance stats
+    const teamSizeStats = getTeamSizeStats(
+      teams.map(t => ({
+        teamId: t.team_id,
+        teamName: t.team_name,
+        memberCount: t.member_count || 0,
+      }))
+    );
+
     return NextResponse.json({
       success: true,
       data: {
@@ -93,6 +103,13 @@ export async function GET(
           team_size: league.team_size,
           status: league.status,
           host_user_id: league.created_by,
+          normalize_points_by_team_size: league.normalize_points_by_team_size,
+        },
+        teamSizeVariance: {
+          hasVariance: teamSizeStats.hasVariance,
+          minSize: teamSizeStats.minSize,
+          maxSize: teamSizeStats.maxSize,
+          avgSize: teamSizeStats.avgSize,
         },
         meta: {
           current_team_count: teams.length,

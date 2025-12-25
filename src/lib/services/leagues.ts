@@ -5,6 +5,7 @@
  */
 
 import { getSupabaseServiceRole } from '@/lib/supabase/client';
+import { getTeamsForLeague } from '@/lib/services/teams';
 
 export interface LeagueInput {
   league_name: string;
@@ -15,6 +16,7 @@ export interface LeagueInput {
   team_size?: number;
   rest_days?: number;
   auto_rest_day_enabled?: boolean;
+  normalize_points_by_team_size?: boolean; // Added to match usage and prevent TS errors
   is_public?: boolean;
   is_exclusive?: boolean;
 }
@@ -63,6 +65,7 @@ export async function createLeague(userId: string, data: LeagueInput): Promise<L
         team_size: data.team_size || 5,
         rest_days: data.rest_days || 1,
         auto_rest_day_enabled: data.auto_rest_day_enabled ?? false,
+        normalize_points_by_team_size: data.normalize_points_by_team_size ?? false,
         is_public: data.is_public || false,
         is_exclusive: data.is_exclusive ?? true,
         invite_code: generateInviteCode(),
@@ -214,6 +217,27 @@ export async function updateLeague(
         allowedUpdates.auto_rest_day_enabled = data.auto_rest_day_enabled;
       }
       if (data.description !== undefined) allowedUpdates.description = data.description;
+
+      // Allow toggling normalize_points_by_team_size with safeguards
+      if (data.normalize_points_by_team_size !== undefined) {
+        // Fetch teams and check for variance
+        const teams = await getTeamsForLeague(leagueId);
+        const memberCounts = teams.map(t => t.member_count || 0);
+        const hasTeams = teams.length > 0;
+        const hasVariance = hasTeams && memberCounts.some(c => c !== memberCounts[0]);
+
+        if (data.normalize_points_by_team_size === true) {
+          // Only allow enabling when variance exists
+          if (hasVariance) {
+            allowedUpdates.normalize_points_by_team_size = true;
+          } else {
+            console.warn('Normalization cannot be enabled: no team size variance or no teams');
+          }
+        } else {
+          // Always allow disabling
+          allowedUpdates.normalize_points_by_team_size = false;
+        }
+      }
     }
 
     if (Object.keys(allowedUpdates).length === 0) {

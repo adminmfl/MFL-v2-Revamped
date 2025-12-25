@@ -171,17 +171,38 @@ function TopPodium({ teams }: PodiumProps) {
 export default function LeaderboardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: leagueId } = use(params);
   const [view, setView] = useState<'teams' | 'individuals'>('teams');
+  const [viewRawTotals, setViewRawTotals] = useState(false);
+  const [roles, setRoles] = useState<string[]>([]);
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
 
   // Fetch leaderboard data
   const {
     data,
+    rawTeams,
+    rawPendingWindow,
     isLoading,
     error,
     refetch,
     setDateRange,
   } = useLeagueLeaderboard(leagueId);
+  // Fetch user roles to decide toggle permission
+  React.useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const res = await fetch(`/api/leagues/${leagueId}/roles`);
+        if (res.ok) {
+          const json = await res.json();
+          const r = json?.roles;
+          const arr = Array.isArray(r) ? r : [r];
+          const roleNames = arr.map((x: any) => typeof x === 'string' ? x : (x?.role_name || x));
+          setRoles(roleNames.filter(Boolean));
+        }
+      } catch {}
+    };
+    if (leagueId) fetchRoles();
+  }, [leagueId]);
+  const canToggleRaw = roles.includes('host') || roles.includes('governor');
 
   // Handle date range change
   const handleApplyDateRange = () => {
@@ -219,12 +240,14 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  const teams = data?.teams || [];
+  const normalizationActive = Boolean(data?.normalization?.active);
+  const normalizationInfo = data?.normalization;
+  const teams = (viewRawTotals && canToggleRaw && rawTeams) ? rawTeams : (data?.teams || []);
   const individuals = data?.individuals || [];
   const stats = data?.stats || { total_submissions: 0, approved: 0, pending: 0, rejected: 0, total_rr: 0 };
   const dateRange = data?.dateRange;
   const league = data?.league;
-  const pendingWindow = data?.pendingWindow;
+  const pendingWindow = (viewRawTotals && canToggleRaw && rawPendingWindow) ? rawPendingWindow : data?.pendingWindow;
 
   return (
     <div className="@container/main flex flex-1 flex-col gap-4 lg:gap-6">
@@ -235,12 +258,22 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
           <p className="text-muted-foreground">
             {league?.league_name ? `Rankings for ${league.league_name}` : 'See how teams and individuals are performing'}
           </p>
+          {normalizationActive && (
+            <div className="mt-1">
+              <Badge variant="secondary">Points Normalized</Badge>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={refetch}>
             <RefreshCw className="size-4 mr-2" />
             Refresh
           </Button>
+          {normalizationActive && canToggleRaw && (
+            <Button variant="ghost" size="sm" onClick={() => setViewRawTotals(v => !v)}>
+              {viewRawTotals ? 'View Normalized' : 'View Raw Totals'}
+            </Button>
+          )}
         </div>
       </div>
 

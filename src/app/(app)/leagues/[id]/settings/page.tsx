@@ -51,6 +51,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { useLeagueNormalization } from '@/hooks/use-league-normalization';
+import { toast } from 'sonner';
 
 // ============================================================================
 // League Settings Page (Host Only)
@@ -65,6 +67,9 @@ export default function LeagueSettingsPage({
   const router = useRouter();
   const { isHost } = useRole();
   const { activeLeague, refetch } = useLeague();
+
+  // Normalization hook must be called unconditionally before any early returns
+  const normalization = useLeagueNormalization(id);
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -85,6 +90,7 @@ export default function LeagueSettingsPage({
     start_date: '',
     end_date: '',
     status: 'draft' as 'draft' | 'launched' | 'active' | 'completed',
+    normalize_points_by_team_size: false,
   });
 
   const canEditStructure = formData.status === 'draft';
@@ -115,6 +121,7 @@ export default function LeagueSettingsPage({
           start_date: league.start_date,
           end_date: league.end_date,
           status: league.status,
+          normalize_points_by_team_size: !!league.normalize_points_by_team_size,
         });
       } catch (err) {
         setLoadError(err instanceof Error ? err.message : 'Failed to load league');
@@ -195,6 +202,7 @@ export default function LeagueSettingsPage({
         rest_days: Number(formData.rest_days),
         auto_rest_day_enabled: formData.auto_rest_day_enabled,
         description: formData.description,
+        normalize_points_by_team_size: formData.normalize_points_by_team_size,
       };
 
       if (canEditStructure) {
@@ -240,6 +248,14 @@ export default function LeagueSettingsPage({
       }
 
       await refetch();
+
+      // Show toast for normalization status
+      if (payload.normalize_points_by_team_size !== undefined) {
+        const status = payload.normalize_points_by_team_size ? 'enabled' : 'disabled';
+        toast.success(`Point normalization ${status}.`);
+      } else {
+        toast.success('League settings updated.');
+      }
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save changes');
     } finally {
@@ -267,6 +283,12 @@ export default function LeagueSettingsPage({
 
   const totalMembers =
     Number(formData.num_teams || 0) * Number(formData.team_size || 0);
+
+  // Derived values from normalization hook
+  const normalizationLoading = normalization.isLoading;
+  const normalizationActive = !!normalization.normalize_points_by_team_size;
+  const variance = normalization.teamSizeVariance;
+  const canEnableNormalization = !!variance?.hasVariance;
 
   return (
     <div className="flex flex-col gap-6 py-4 md:py-6">
@@ -484,6 +506,7 @@ export default function LeagueSettingsPage({
                     <p className="text-sm text-muted-foreground">
                       When enabled, the cron job assigns a rest day for members with remaining rest days and no submission for the previous day.
                     </p>
+                    <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">💾 Click "Save Changes" to apply</p>
                   </div>
                   <Switch
                     checked={formData.auto_rest_day_enabled}
@@ -492,6 +515,53 @@ export default function LeagueSettingsPage({
                     }
                   />
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Fairness & Normalization */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Trophy className="size-5 text-primary" />
+                  Fairness & Normalization
+                </CardTitle>
+                <CardDescription>
+                  Adjust points based on team size differences
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between p-4 rounded-lg border">
+                  <div className="space-y-1 flex-1">
+                    <Label className="flex items-center gap-2">Normalize Points by Team Size</Label>
+                    {normalizationLoading ? (
+                      <p className="text-sm text-muted-foreground">Loading team size data...</p>
+                    ) : canEnableNormalization ? (
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                          Teams vary from {Math.round(variance.minSize)} to {Math.round(variance.maxSize)} members. Enable to fairly compare across teams.
+                        </p>
+                        <p className="text-xs text-muted-foreground italic">
+                          Formula: <code className="bg-muted px-1 py-0.5 rounded font-mono text-[11px]">normalized_points = (raw_points / team_size) × {Math.round(variance.maxSize)}</code>
+                        </p>
+                        <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">💾 Click "Save Changes" to apply</p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Available only when teams have different member counts.
+                      </p>
+                    )}
+                  </div>
+                  <Switch
+                    checked={formData.normalize_points_by_team_size}
+                    onCheckedChange={(checked) =>
+                      setFormData((prev) => ({ ...prev, normalize_points_by_team_size: checked }))
+                    }
+                    disabled={normalizationLoading || !canEnableNormalization}
+                  />
+                </div>
+                {normalizationActive && canEnableNormalization && (
+                  <Badge variant="secondary" className="w-fit">Normalization Active</Badge>
+                )}
               </CardContent>
             </Card>
 
@@ -513,6 +583,7 @@ export default function LeagueSettingsPage({
                     <p className="text-sm text-muted-foreground">
                       Allow anyone to discover this league
                     </p>
+                    <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">💾 Click "Save Changes" to apply</p>
                   </div>
                   <Switch
                     checked={formData.is_public}
@@ -531,6 +602,7 @@ export default function LeagueSettingsPage({
                     <p className="text-sm text-muted-foreground">
                       Require invite code to join
                     </p>
+                    <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">💾 Click "Save Changes" to apply</p>
                   </div>
                   <Switch
                     checked={formData.is_exclusive}
@@ -633,6 +705,10 @@ export default function LeagueSettingsPage({
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Auto Rest Day</span>
                     <span className="font-medium">{formData.auto_rest_day_enabled ? 'On' : 'Off'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Points Normalized</span>
+                    <span className="font-medium">{formData.normalize_points_by_team_size ? 'On' : 'Off'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Total Capacity</span>

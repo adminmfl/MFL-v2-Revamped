@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +23,9 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { AdminLeague, LeagueStatus } from "@/types/admin";
+import { getTeamSizeStats, hasTeamSizeVariance, formatNormalizationMessage } from "@/lib/utils/normalization";
 
 // ============================================================================
 // Types
@@ -38,6 +40,7 @@ interface LeagueFormData {
   team_size: number;
   rest_days: number;
   auto_rest_day_enabled: boolean;
+  normalize_points_by_team_size: boolean;
   is_public: boolean;
   is_exclusive: boolean;
   status: LeagueStatus;
@@ -74,6 +77,8 @@ export function LeagueFormDialog({
 }: LeagueFormDialogProps) {
   const isEditing = !!league;
   const [isLoading, setIsLoading] = React.useState(false);
+  const [leagueTeams, setLeagueTeams] = React.useState<Array<{ team_id: string; team_name: string; member_count: number }>>([]);
+  const [isLoadingTeams, setIsLoadingTeams] = React.useState(false);
 
   // Form state
   const [formData, setFormData] = React.useState<LeagueFormData>({
@@ -85,6 +90,7 @@ export function LeagueFormDialog({
     team_size: 5,
     rest_days: 1,
     auto_rest_day_enabled: false,
+    normalize_points_by_team_size: false,
     is_public: false,
     is_exclusive: true,
     status: "draft",
@@ -103,11 +109,14 @@ export function LeagueFormDialog({
         team_size: league.team_size,
         rest_days: league.rest_days,
         auto_rest_day_enabled: league.auto_rest_day_enabled,
+        normalize_points_by_team_size: league.normalize_points_by_team_size,
         is_public: league.is_public,
         is_exclusive: league.is_exclusive,
         status: league.status,
         is_active: league.is_active,
       });
+      // Fetch teams for this league
+      fetchLeagueTeams(league.league_id);
     } else if (open && !league) {
       setFormData({
         league_name: "",
@@ -118,13 +127,46 @@ export function LeagueFormDialog({
         team_size: 5,
         rest_days: 1,
         auto_rest_day_enabled: false,
+        normalize_points_by_team_size: false,
         is_public: false,
         is_exclusive: true,
         status: "draft",
         is_active: true,
       });
+      setLeagueTeams([]);
     }
   }, [open, league]);
+
+  // Fetch teams for the league
+  const fetchLeagueTeams = async (leagueId: string) => {
+    setIsLoadingTeams(true);
+    try {
+      const response = await fetch(`/api/leagues/${leagueId}/teams`);
+      if (response.ok) {
+        const result = await response.json();
+        setLeagueTeams(result.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching league teams:', error);
+      setLeagueTeams([]);
+    } finally {
+      setIsLoadingTeams(false);
+    }
+  };
+
+  // Check if teams have different sizes
+  const teamSizeStats = React.useMemo(() => {
+    if (leagueTeams.length === 0) return null;
+    return getTeamSizeStats(
+      leagueTeams.map(t => ({
+        teamId: t.team_id,
+        teamName: t.team_name,
+        memberCount: t.member_count,
+      }))
+    );
+  }, [leagueTeams]);
+
+  const canEnableNormalization = teamSizeStats && teamSizeStats.hasVariance && leagueTeams.length > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -322,6 +364,74 @@ export function LeagueFormDialog({
                   checked={formData.is_active}
                   onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
                 />
+              </div>
+            )}
+
+            {isEditing && (
+              <div className="border-t pt-4">
+                {isLoadingTeams ? (
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Normalize Points by Team Size</Label>
+                      <p className="text-sm text-muted-foreground">Loading team data...</p>
+                    </div>
+                    <Switch disabled />
+                  </div>
+                ) : !canEnableNormalization ? (
+                  <>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="normalize_points">Normalize Points by Team Size</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Only available when teams have different member counts
+                        </p>
+                      </div>
+                      <Switch id="normalize_points" disabled checked={false} />
+                    </div>
+                    {leagueTeams.length > 0 && teamSizeStats && (
+                      <Alert className="mt-3">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          {formatNormalizationMessage(teamSizeStats)} - All teams are equal, normalization not needed.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    {leagueTeams.length === 0 && (
+                      <Alert className="mt-3">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          No teams in this league yet. Add teams first to enable point normalization.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="normalize_points">Normalize Points by Team Size</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Adjust points based on team member differences
+                        </p>
+                      </div>
+                      <Switch
+                        id="normalize_points"
+                        checked={formData.normalize_points_by_team_size}
+                        onCheckedChange={(checked) =>
+                          setFormData({ ...formData, normalize_points_by_team_size: checked })
+                        }
+                      />
+                    </div>
+                    {teamSizeStats && (
+                      <Alert className="mt-3">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          {formatNormalizationMessage(teamSizeStats)} - Normalization is available for fair scoring.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </div>
