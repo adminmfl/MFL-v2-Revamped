@@ -1,7 +1,7 @@
 /**
  * POST /api/cron/auto-rest-day - Auto-assign rest days for missing submissions
  * 
- * This cron job runs ONCE PER DAY at 23:59 UTC and processes leagues with auto_rest_day_enabled=true.
+ * This cron job runs ONCE PER DAY at 11:00 UTC and processes leagues with auto_rest_day_enabled=true.
  * For each league member with rest days remaining:
  * - Calculate their local "yesterday" based on league timezone (or UTC if not set)
  * - Check if they have submission for that day → skip if yes
