@@ -2,8 +2,8 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Calendar, ChevronLeft, ChevronRight, TrendingUp } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Plus, Calendar, ChevronLeft, ChevronRight, TrendingUp, Info } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getSupabase } from "@/lib/supabase/client";
@@ -110,6 +110,11 @@ type ActivityConfig = {
 };
 
 const ACTIVITY_CONFIGS: Record<string, ActivityConfig> = {
+  rest: {
+    name: "Rest Day",
+    fields: [],
+    rules: ["Rest day — no proof required. Awards 1 point with RR 1."],
+  },
   run: {
     name: "Brisk Walk/Jog/Run",
     fields: ['distance'],
@@ -186,6 +191,11 @@ export default function DashboardPage() {
   const role = (session?.user as any)?.role as 'player' | 'leader' | 'governor' | undefined;
   const [isSenior, setIsSenior] = useState<boolean>(false);
 
+  const [leagueId, setLeagueId] = useState<string | null>(null);
+  const [restDaysPerWeek, setRestDaysPerWeek] = useState<number | null>(null);
+  const [totalAllowedRestDays, setTotalAllowedRestDays] = useState<number | null>(null);
+  const [remainingRestDays, setRemainingRestDays] = useState<number | null>(null);
+
   const [openWorkout, setOpenWorkout] = useState(false);
   const [openRest, setOpenRest] = useState(false);
   const [date, setDate] = useState<string>(todayStr());
@@ -214,6 +224,11 @@ export default function DashboardPage() {
   const [myMissedDays, setMyMissedDays] = useState<number>(0);
   const [myRestUsed, setMyRestUsed] = useState<number>(0);
   const [viewWeekStart, setViewWeekStart] = useState<Date>(() => seasonFixedStart());
+
+  const autoRestAssignGuardRef = useRef<{ inFlight: Set<string>; lastRunAtMs: Map<string, number> }>({
+    inFlight: new Set<string>(),
+    lastRunAtMs: new Map<string, number>(),
+  });
 
   // On mount, default view to the current week (Sunday→Saturday) if today falls inside the season
   useEffect(() => {
@@ -251,6 +266,7 @@ export default function DashboardPage() {
 
   const validateWorkout = useMemo(() => {
     if (!userId) return { valid: false, error: "" };
+    if (activity === 'rest') return { valid: true, error: '' };
     const config = ACTIVITY_CONFIGS[activity];
 
     if (activity === "steps") {
@@ -321,15 +337,82 @@ export default function DashboardPage() {
     const ws = weekStart || viewWeekStart;
     const we = new Date(ws);
     we.setUTCDate(ws.getUTCDate() + 6);
-    const { data, error } = await getSupabase()
+    const autoAssignKey = `${leagueId ?? 'unknown-league'}:${userId}:${formatDateYYYYMMDD(ws)}`;
+    const baseQuery = () => getSupabase()
       .from('effortentry')
       .select('date,type,workout_type,duration,distance,steps,holes,status,rr_value')
       .eq('user_id', userId)
       .gte('date', formatDateYYYYMMDD(ws))
       .lte('date', formatDateYYYYMMDD(we))
       .order('date', { ascending: true });
+
+    const { data, error } = await baseQuery();
     if (error) return;
-    const entries = (data || []) as Array<Omit<ActivityRow,'points'>>;
+
+    let weekData = data;
+
+    // Auto-assign missed past days as rest days when weekly rest allowance remains.
+    // This only applies to dates before today (i.e., up to yesterday).
+    const entries0 = (weekData || []) as Array<Omit<ActivityRow, 'points'>>;
+    const weeklyAllowance = typeof restDaysPerWeek === 'number' && Number.isFinite(restDaysPerWeek) ? restDaysPerWeek : null;
+    const overallRemaining = typeof remainingRestDays === 'number' && Number.isFinite(remainingRestDays) ? remainingRestDays : null;
+    const localToday = todayStr();
+
+    if (weeklyAllowance !== null && weeklyAllowance > 0) {
+      const approvedRestInWeek = entries0.filter((e) => e.type === 'rest' && e.status === 'approved').length;
+      const remainingWeekly = Math.max(0, weeklyAllowance - approvedRestInWeek);
+      const remainingOverall = overallRemaining === null ? Number.POSITIVE_INFINITY : Math.max(0, overallRemaining);
+
+      if (remainingWeekly > 0 && remainingOverall > 0) {
+        const existingByDate = new Set(entries0.map((e) => String(e.date)));
+        const missingPastDates: string[] = [];
+
+        for (let i = 0; i < 7; i++) {
+          const day = new Date(ws);
+          day.setUTCDate(ws.getUTCDate() + i);
+          const ds = formatDateYYYYMMDD(day);
+          if (ds >= localToday) continue; // only past days
+          if (!existingByDate.has(ds)) missingPastDates.push(ds);
+        }
+
+        const toAssign = Math.min(remainingWeekly, remainingOverall, missingPastDates.length);
+        if (toAssign > 0) {
+          const guard = autoRestAssignGuardRef.current;
+          const now = Date.now();
+          const last = guard.lastRunAtMs.get(autoAssignKey) ?? 0;
+          const recentlyRan = now - last < 2000;
+          if (!guard.inFlight.has(autoAssignKey) && !recentlyRan) {
+            guard.inFlight.add(autoAssignKey);
+            guard.lastRunAtMs.set(autoAssignKey, now);
+            try {
+              for (const ds of missingPastDates.slice(0, toAssign)) {
+                await getSupabase().rpc('rfl_upsert_rest_day', {
+                  p_user_id: userId,
+                  p_date: ds,
+                  p_team_id: null,
+                  p_status: 'approved',
+                });
+              }
+
+              // Refresh remaining rest days (best-effort) and re-fetch week entries.
+              if (typeof remainingRestDays === 'number') {
+                setRemainingRestDays((prev) => (typeof prev === 'number' ? Math.max(0, prev - toAssign) : prev));
+              }
+
+              const refetch = await baseQuery();
+              if (!refetch.error) {
+                // Use the refreshed entries for rendering.
+                weekData = refetch.data;
+              }
+            } finally {
+              guard.inFlight.delete(autoAssignKey);
+            }
+          }
+        }
+      }
+    }
+
+    const entries = ((weekData as any) || []) as Array<Omit<ActivityRow, 'points'>>;
     const filled: ActivityRow[] = [];
     let restCount = 0;
     for (let i = 0; i < 7; i++) {
@@ -356,6 +439,183 @@ export default function DashboardPage() {
     setWeekRestDays(restCount);
   }
 
+  async function refreshMyOverallStats() {
+    if (!userId) return;
+    const seasonStart = seasonFixedStart();
+    const today = new Date();
+    const yesterdayCutoff = new Date(today.getTime() - 24 * 3600 * 1000);
+    const seasonStartStr = SEASON_START_LOCAL_STR;
+    const todayLocalStr = formatLocalYYYYMMDD(today);
+
+    // Fetch all my approved entries for the season using effortentry via league_member_id
+    const member = await fetchMemberProfile(userId);
+    const lmId = member?.leagueMemberId ?? null;
+    const { data: myEntries } = lmId
+      ? await getSupabase()
+          .from('effortentry')
+          .select('type, rr_value, date')
+          .eq('league_member_id', lmId)
+          .eq('status', 'approved')
+          .gte('date', seasonStartStr)
+          .lte('date', todayLocalStr)
+      : ({ data: [] } as { data: any[] });
+
+    const entries = (myEntries || []) as Array<{ type: string; rr_value: number | null; date: string }>;
+
+    const points = entries.length; // every approved entry counts 1
+    const rrVals = entries
+      .map((e) => (typeof e.rr_value === 'number' ? e.rr_value : Number(e.rr_value || 0)))
+      .filter((v) => v > 0);
+    const avgRR = rrVals.length
+      ? Math.round((rrVals.reduce((a, b) => a + b, 0) / rrVals.length) * 100) / 100
+      : null;
+    const restUsed = entries.filter((e) => String(e.type) === 'rest').length;
+
+    const byDate = new Set(entries.map((e) => String(e.date)));
+    let missed = 0;
+    let cur = new Date(seasonStart);
+    while (cur.getTime() <= yesterdayCutoff.getTime()) {
+      const ds = formatLocalYYYYMMDD(new Date(cur));
+      if (!byDate.has(ds)) missed += 1;
+      cur = new Date(cur.getTime() + 24 * 3600 * 1000);
+    }
+
+    setMyPoints(points);
+    setMyAvgRR(avgRR);
+    setMyMissedDays(missed);
+    setMyRestUsed(restUsed);
+  }
+
+  async function refreshTeamOverallStats() {
+    let effectiveTeamId = teamId;
+    if (!effectiveTeamId && userId) {
+      const membership = await fetchMemberProfile(userId);
+      effectiveTeamId = membership?.teamId ?? null;
+      if (effectiveTeamId) setTeamId(effectiveTeamId);
+    }
+    if (!effectiveTeamId) return;
+
+    const seasonStart = seasonFixedStart();
+    const today = new Date();
+    const yesterdayCutoff2 = new Date(today.getTime() - 24 * 3600 * 1000);
+    const seasonStartStr = SEASON_START_LOCAL_STR;
+    const todayLocalStr = formatLocalYYYYMMDD(today);
+
+    const { data: teamMembers } = await getSupabase()
+      .from('leaguemembers')
+      .select('user_id, league_member_id')
+      .eq('team_id', effectiveTeamId);
+    const memberIds = ((teamMembers || []) as Array<{ user_id: string; league_member_id: string }>).map((u) => String(u.user_id));
+    const leagueMemberIds = ((teamMembers || []) as Array<{ user_id: string; league_member_id: string }>)
+      .map((u) => String(u.league_member_id))
+      .filter(Boolean);
+
+    const { data } = leagueMemberIds.length
+      ? await getSupabase()
+          .from('effortentry')
+          .select('id,league_member_id,date,type,rr_value')
+          .in('league_member_id', leagueMemberIds)
+          .eq('status', 'approved')
+          .gte('date', seasonStartStr)
+          .lte('date', todayLocalStr)
+      : ({ data: [] } as { data: any[] });
+    const entries = (data || []) as Array<{ id: string; league_member_id: string; date: string; type: string | null; rr_value: number | null }>;
+
+    const lmToUser = new Map<string, string>();
+    (teamMembers || []).forEach((m: any) => lmToUser.set(String(m.league_member_id), String(m.user_id)));
+    const entriesWithUser = entries.map((e) => ({ ...e, user_id: lmToUser.get(e.league_member_id) || null }));
+    const teamPts = entries.length;
+    const rrVals = entries
+      .map((e) => (typeof e.rr_value === 'number' ? e.rr_value : Number(e.rr_value || 0)))
+      .filter((v) => v > 0);
+    const teamRR = rrVals.length
+      ? Math.round((rrVals.reduce((a, b) => a + b, 0) / rrVals.length) * 100) / 100
+      : null;
+    const restUsed = entries.filter((e) => String(e.type) === 'rest').length;
+
+    const memberSet = new Set(memberIds);
+    const byDateUser = new Set(entriesWithUser.map((e) => `${String(e.date)}|${String((e as any).user_id)}`));
+    let missed = 0;
+    {
+      let day = new Date(seasonStart);
+      while (day.getTime() <= yesterdayCutoff2.getTime()) {
+        const ds = formatLocalYYYYMMDD(new Date(day));
+        memberSet.forEach((uid) => {
+          if (!byDateUser.has(`${ds}|${uid}`)) missed += 1;
+        });
+        day = new Date(day.getTime() + 24 * 3600 * 1000);
+      }
+    }
+
+    setTeamPoints(teamPts);
+    setTeamAvgRR(teamRR);
+    setTeamRestWeek(restUsed);
+    setTeamMissedWeek(missed);
+  }
+
+  async function upsertRestDay(targetDate: string, closeModal: 'workout' | 'rest') {
+    if (!userId) return;
+    if (!canLogToday) {
+      alert(seasonGuardMsg);
+      return;
+    }
+    if (todayStr() < SEASON_START_LOCAL_STR || todayStr() > SEASON_END_LOCAL_STR) {
+      alert(seasonGuardMsg);
+      return;
+    }
+    const t = todayStr();
+    const y = yesterdayLocalStr();
+    if (targetDate !== t && targetDate !== y) {
+      alert('You can only log a rest day for today or yesterday.');
+      return;
+    }
+    if (targetDate === t) {
+      const { data: hasExisting } = await getSupabase().rpc('rfl_has_entry_on_date', {
+        p_user_id: userId,
+        p_date: targetDate,
+      });
+      if (hasExisting) {
+        const ok = window.confirm('You already have a log for this day. Overwrite it?');
+        if (!ok) return;
+      }
+    }
+    if (targetDate === y) {
+      const membership = await fetchMemberProfile(userId);
+      const lmId = membership?.leagueMemberId ?? null;
+      const { data: existingY } = lmId
+        ? await getSupabase().from('effortentry').select('id,status').eq('league_member_id', lmId).eq('date', y).maybeSingle()
+        : ({ data: null } as any);
+      if (!existingY || existingY.status !== 'rejected') {
+        alert('You cannot submit yesterday’s rest day unless your submission yesterday was rejected.');
+        return;
+      }
+      const ok = window.confirm("You're about to overwrite your rejected rest day entry from yesterday. Continue?");
+      if (!ok) return;
+    }
+
+    setLoading(true);
+    try {
+      await getSupabase().rpc('rfl_upsert_rest_day', {
+        p_user_id: userId,
+        p_date: targetDate,
+        p_team_id: null,
+        p_status: 'approved',
+      });
+
+      if (closeModal === 'workout') {
+        setOpenWorkout(false);
+      } else {
+        setOpenRest(false);
+      }
+
+      await fetchActivity(viewWeekStart);
+      await refreshMyOverallStats();
+      await refreshTeamOverallStats();
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
     fetchActivity(viewWeekStart);
     (async () => {
@@ -364,6 +624,7 @@ export default function DashboardPage() {
       const membership = await fetchMemberProfile(userId);
       const tId = membership?.teamId || null;
       const tName = membership?.teamName || "";
+      setLeagueId(membership?.leagueId ?? null);
       setTeamId(tId);
       setTeamName(tName || "");
       const ageVal = membership?.age ?? null;
@@ -432,110 +693,34 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, viewWeekStart]);
 
-  // Load individual overall stats (season-to-date)
+  // Fetch rest-day limits from the active league configuration (rest days per week and total allowed)
   useEffect(() => {
     (async () => {
-      if (!userId) return;
-      const seasonStart = seasonFixedStart();
-      const today = new Date();
-      const yesterdayCutoff = new Date(today.getTime() - 24 * 3600 * 1000);
-      const seasonStartStr = SEASON_START_LOCAL_STR;
-      const todayLocalStr = formatLocalYYYYMMDD(today);
-
-      // Fetch all my approved entries for the season using effortentry via league_member_id
-      const member = await fetchMemberProfile(userId);
-      const lmId = member?.leagueMemberId ?? null;
-      const { data: myEntries } = lmId ? await getSupabase()
-        .from('effortentry')
-        .select('type, rr_value, date')
-        .eq('league_member_id', lmId)
-        .eq('status', 'approved')
-        .gte('date', seasonStartStr)
-        .lte('date', todayLocalStr) : { data: [] } as { data: any[] };
-
-      const entries = (myEntries || []) as Array<{ type: string; rr_value: number | null; date: string }>;
-
-      // Calculate my stats
-      const points = entries.length; // every approved entry counts 1
-      const rrVals = entries.map(e => (typeof e.rr_value === 'number' ? e.rr_value : Number(e.rr_value || 0))).filter(v => v > 0);
-      const avgRR = rrVals.length ? Math.round((rrVals.reduce((a,b)=>a+b,0)/rrVals.length)*100)/100 : null;
-      const restUsed = entries.filter(e => String(e.type) === 'rest').length;
-
-      // Calculate missed days (days from season start through yesterday with no entry).
-      const byDate = new Set(entries.map(e => String(e.date)));
-      let missed = 0;
-      let cur = new Date(seasonStart);
-      while (cur.getTime() <= yesterdayCutoff.getTime()) {
-        const ds = formatLocalYYYYMMDD(new Date(cur));
-        if (!byDate.has(ds)) missed += 1;
-        cur = new Date(cur.getTime() + 24 * 3600 * 1000);
+      if (!leagueId) return;
+      try {
+        const res = await fetch(`/api/leagues/${leagueId}/rest-days`);
+        if (!res.ok) return;
+        const json = await res.json();
+        const data = json?.data;
+        if (!data) return;
+        setRestDaysPerWeek(typeof data.restDaysPerWeek === 'number' ? data.restDaysPerWeek : null);
+        setTotalAllowedRestDays(typeof data.totalAllowed === 'number' ? data.totalAllowed : null);
+        setRemainingRestDays(typeof data.remaining === 'number' ? data.remaining : null);
+      } catch {
+        // best-effort
       }
-
-      setMyPoints(points);
-      setMyAvgRR(avgRR);
-      setMyMissedDays(missed);
-      setMyRestUsed(restUsed);
     })();
+  }, [leagueId]);
+
+  // Load individual overall stats (season-to-date)
+  useEffect(() => {
+    refreshMyOverallStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   // Compute Team overall summary (approved entries only) for season-to-date
   useEffect(() => {
-    (async () => {
-      let effectiveTeamId = teamId;
-      if (!effectiveTeamId && userId) {
-        const membership = await fetchMemberProfile(userId);
-        effectiveTeamId = membership?.teamId ?? null;
-        if (effectiveTeamId) setTeamId(effectiveTeamId);
-      }
-      if (!effectiveTeamId) return;
-
-      const seasonStart = seasonFixedStart();
-      const today = new Date();
-      const yesterdayCutoff2 = new Date(today.getTime() - 24 * 3600 * 1000);
-      const seasonStartStr = SEASON_START_LOCAL_STR;
-      const todayLocalStr = formatLocalYYYYMMDD(today);
-      
-      // Fetch team members (user_id + league_member_id)
-      const { data: teamMembers } = await getSupabase().from('leaguemembers').select('user_id, league_member_id').eq('team_id', effectiveTeamId);
-      const memberIds = ((teamMembers || []) as Array<{ user_id: string; league_member_id: string }>).map((u)=> String(u.user_id));
-      const leagueMemberIds = ((teamMembers || []) as Array<{ user_id: string; league_member_id: string }>).map((u)=> String(u.league_member_id)).filter(Boolean);
-
-      // Fetch all approved effort entries for the team for the season by league_member_id
-      const { data } = leagueMemberIds.length ? await getSupabase()
-        .from('effortentry')
-        .select('id,league_member_id,date,type,rr_value')
-        .in('league_member_id', leagueMemberIds)
-        .eq('status', 'approved')
-        .gte('date', seasonStartStr)
-        .lte('date', todayLocalStr) : { data: [] } as { data: any[] };
-      const entries = (data || []) as Array<{ id: string; league_member_id: string; date: string; type: string | null; rr_value: number | null }>;
-      // Map back to user_id for downstream logic
-      const lmToUser = new Map<string, string>();
-      (teamMembers || []).forEach((m: any) => lmToUser.set(String(m.league_member_id), String(m.user_id)));
-      const entriesWithUser = entries.map(e => ({ ...e, user_id: lmToUser.get(e.league_member_id) || null }));
-      const teamPts = entries.length; // every approved entry counts 1
-      const rrVals = entries.map(e => (typeof e.rr_value === 'number' ? e.rr_value : Number(e.rr_value || 0))).filter(v => v > 0);
-      const teamRR = rrVals.length ? Math.round((rrVals.reduce((a,b)=>a+b,0)/rrVals.length)*100)/100 : null;
-      // Team rest days (approved)
-      const restUsed = entries.filter(e => String(e.type) === 'rest').length;
-      
-      // Team missed days: per member per day with no entry from season start through yesterday
-      const memberSet = new Set(memberIds);
-      const byDateUser = new Set(entriesWithUser.map(e => `${String(e.date)}|${String((e as any).user_id)}`));
-      let missed = 0;
-      {
-        let day = new Date(seasonStart);
-        while (day.getTime() <= yesterdayCutoff2.getTime()) {
-          const ds = formatLocalYYYYMMDD(new Date(day));
-          memberSet.forEach((uid)=>{ if (!byDateUser.has(`${ds}|${uid}`)) missed += 1; });
-          day = new Date(day.getTime() + 24 * 3600 * 1000);
-        }
-      }
-      setTeamPoints(teamPts);
-      setTeamAvgRR(teamRR);
-      setTeamRestWeek(restUsed);
-      setTeamMissedWeek(missed);
-    })();
+    refreshTeamOverallStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId, userId]);
 
@@ -553,6 +738,10 @@ export default function DashboardPage() {
 
   async function onSaveWorkout() {
     if (!userId) return;
+    if (activity === 'rest') {
+      await upsertRestDay(date, 'workout');
+      return;
+    }
     if (!canLogToday) { alert(seasonGuardMsg); return; }
     if (todayStr() < SEASON_START_LOCAL_STR || todayStr() > SEASON_END_LOCAL_STR) { alert(seasonGuardMsg); return; }
     // Allow only current date captured at modal open time (or yesterday if implemented)
@@ -641,8 +830,8 @@ export default function DashboardPage() {
       setProofError("");
       setProofFile(null);
       await fetchActivity(viewWeekStart);
-      // Refresh individual stats after saving
-      window.location.reload();
+      await refreshMyOverallStats();
+      await refreshTeamOverallStats();
     } finally {
       setLoading(false);
     }
@@ -650,38 +839,7 @@ export default function DashboardPage() {
 
   async function onSaveRest() {
     if (!userId) return;
-    if (!canLogToday) { alert(seasonGuardMsg); return; }
-    if (todayStr() < SEASON_START_LOCAL_STR || todayStr() > SEASON_END_LOCAL_STR) { alert(seasonGuardMsg); return; }
-    // Allow rest day log for today or yesterday if yesterday's entry was rejected
-    const t = todayStr();
-    const y = yesterdayLocalStr();
-    if (date !== t && date !== y) { alert('You can only log a rest day for today or yesterday.'); return; }
-    if (date === t) {
-      const { data: hasExisting } = await getSupabase().rpc("rfl_has_entry_on_date", {
-        p_user_id: userId,
-        p_date: date,
-      });
-      if (hasExisting) {
-        const ok = window.confirm("You already have a log for this day. Overwrite it?");
-        if (!ok) return;
-      }
-    }
-    if (date === y) {
-      const membership = await fetchMemberProfile(userId);
-      const lmId = membership?.leagueMemberId ?? null;
-      const { data: existingY } = lmId ? await getSupabase().from('effortentry').select('id,status').eq('league_member_id', lmId).eq('date', y).maybeSingle() : { data: null } as any;
-      if (!existingY || existingY.status !== 'rejected') { alert('You cannot submit yesterday’s rest day unless your submission yesterday was rejected.'); return; }
-      const ok = window.confirm("You're about to overwrite your rejected rest day entry from yesterday. Continue?");
-      if (!ok) return;
-    }
-    setLoading(true);
-    try {
-      await getSupabase().rpc('rfl_upsert_rest_day', { p_user_id: userId, p_date: date, p_team_id: null, p_status: 'approved' });
-      setOpenRest(false);
-      await fetchActivity(viewWeekStart);
-      // Refresh individual stats after saving
-      window.location.reload();
-    } finally { setLoading(false); }
+    await upsertRestDay(date, 'rest');
   }
 
   // League bounds (Sept 1 to Dec 1 of current year) for navigation
@@ -721,11 +879,11 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 gap-3 text-center mb-4">
               <div className="p-3 rounded gradient-box text-foreground">
                   <div className="text-xs text-gray-600">Points</div>
-                  <div className="text-lg font-bold text-rfl-coral">{myPoints}</div>
+                  <div className="text-2xl sm:text-3xl font-bold tabular-nums text-rfl-coral leading-none mt-1">{myPoints}</div>
                 </div>
                 <div className="p-3 rounded gradient-box text-foreground">
                   <div className="text-xs text-gray-600">Avg RR</div>
-                  <div className="text-lg font-bold text-rfl-navy">{myAvgRR !== null ? Number(myAvgRR).toFixed(2) : '—'}</div>
+                  <div className="text-2xl sm:text-3xl font-bold tabular-nums text-rfl-navy leading-none mt-1">{myAvgRR !== null ? Number(myAvgRR).toFixed(2) : '—'}</div>
               </div>
                   </div>
 
@@ -734,15 +892,15 @@ export default function DashboardPage() {
                 {/* <div className="p-3 bg-[#abbaab] rounded"> */}
                 <div className="p-3 rounded gradient-box text-foreground">
                   <div className="text-xs text-gray-600">Rest Days Used</div>
-                  <div className="text-lg font-bold text-rfl-coral">{myRestUsed}</div>
+                  <div className="text-2xl sm:text-3xl font-bold tabular-nums text-rfl-coral leading-none mt-1">{myRestUsed}</div>
                   </div>
                   <div className="p-3 rounded gradient-box text-foreground">
                   <div className="text-xs text-gray-600">Rest Days Unused</div>
-                  <div className="text-lg font-bold text-rfl-navy">{Math.max(0, 18 - myRestUsed)}</div>
+                  <div className="text-2xl sm:text-3xl font-bold tabular-nums text-rfl-navy leading-none mt-1">{Math.max(0, (totalAllowedRestDays ?? 18) - myRestUsed)}</div>
                 </div>
                 <div className="p-3 rounded gradient-box text-foreground">
                   <div className="text-xs text-gray-600">Days Missed</div>
-                  <div className="text-lg font-bold text-rfl-navy">{myMissedDays}</div>
+                  <div className="text-2xl sm:text-3xl font-bold tabular-nums text-rfl-navy leading-none mt-1">{myMissedDays}</div>
               </div>
             </div>
 
@@ -790,19 +948,19 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center ">
               <div className="p-3 rounded gradient-box text-foreground">
                   <div className="text-xs text-gray-600">Points</div>
-                    <div className="text-lg font-bold text-rfl-coral">{teamPoints ?? '—'}</div>
+                    <div className="text-2xl sm:text-3xl font-bold tabular-nums text-rfl-coral leading-none mt-1">{teamPoints ?? '—'}</div>
                   </div>
                   <div className="p-3 rounded gradient-box text-foreground">
                     <div className="text-xs text-gray-600">Avg RR</div>
-                    <div className="text-lg font-bold text-rfl-navy">{teamAvgRR !== null ? Number(teamAvgRR).toFixed(2) : '—'}</div>
+                    <div className="text-2xl sm:text-3xl font-bold tabular-nums text-rfl-navy leading-none mt-1">{teamAvgRR !== null ? Number(teamAvgRR).toFixed(2) : '—'}</div>
                   </div>
                   <div className="p-3 rounded gradient-box text-foreground">
                   <div className="text-xs text-gray-600">Days Missed</div>
-                  <div className="text-lg font-bold text-rfl-navy">{teamMissedWeek}</div>
+                  <div className="text-2xl sm:text-3xl font-bold tabular-nums text-rfl-navy leading-none mt-1">{teamMissedWeek}</div>
                   </div>
                   <div className="p-3 rounded gradient-box text-foreground">
                   <div className="text-xs text-gray-600">Rest Days Used</div>
-                  <div className="text-lg font-bold text-rfl-navy">{teamRestWeek}</div>
+                  <div className="text-2xl sm:text-3xl font-bold tabular-nums text-rfl-navy leading-none mt-1">{teamRestWeek}</div>
                 </div>
               </div>
             </div>
@@ -890,6 +1048,21 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
+
+            <div className="mt-4 space-y-2">
+              <div className="flex items-start gap-2 text-sm text-gray-600 bg-gray-50 border rounded-lg p-3">
+                <Info className="w-4 h-4 mt-0.5 shrink-0 text-gray-500" />
+                <div>
+                  Status: "submitted" means approved (1 point). "pending" / "rejected" entries won’t count for points until approved.
+                </div>
+              </div>
+              <div className="flex items-start gap-2 text-sm text-gray-600 bg-gray-50 border rounded-lg p-3">
+                <Info className="w-4 h-4 mt-0.5 shrink-0 text-gray-500" />
+                <div>
+                  If you miss a past day and still have weekly rest days available, the dashboard may auto-mark it as a Rest Day (RR 1, 1 point).
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -921,6 +1094,7 @@ export default function DashboardPage() {
               </select>
               <label className="block text-sm font-medium text-gray-700">Workout Type</label>
               <select value={activity} onChange={(e)=>setActivity(e.target.value)} className="w-full border rounded-md px-3 py-2">
+                <option value="rest">Rest Day</option>
                 <option value="run">Brisk Walk/Jog/Run</option>
                 <option value="gym">Weightlifting / Gym Workout</option>
                 <option value="yoga">Yoga/Pilates/Zumba</option>
@@ -951,6 +1125,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
+              {activity !== 'rest' && (
               <div className="grid grid-cols-2 gap-3">
                 {currentConfig.fields.includes('duration') && (
                   <div className={currentConfig.fields.length === 1 ? 'col-span-2' : 'flex items-end gap-2'}>
@@ -1031,18 +1206,21 @@ export default function DashboardPage() {
                   </>
                 )}
               </div>
+              )}
 
               {/* Proof upload */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{activity === 'steps' ? 'Upload Proof - Pic or Screenshot showing 1) Date 2) Steps' : (activity === 'run' ? 'Upload Proof - Pic or Screenshot showing 1) Date 2) Activity 3) Distance' : 'Upload Proof - Pic or Screenshot showing 1) Date 2) Activity 3) Duration')}</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e)=>{ setProofFile(e.target.files && e.target.files[0] ? e.target.files[0] : null); setProofError(""); }}
-                  className="w-full border rounded-md px-3 py-2"
-                />
-                <div className="text-xs text-gray-500 mt-1">Required. Screenshots/photos only.</div>
-              </div>
+              {activity !== 'rest' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{activity === 'steps' ? 'Upload Proof - Pic or Screenshot showing 1) Date 2) Steps' : (activity === 'run' ? 'Upload Proof - Pic or Screenshot showing 1) Date 2) Activity 3) Distance' : 'Upload Proof - Pic or Screenshot showing 1) Date 2) Activity 3) Duration')}</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e)=>{ setProofFile(e.target.files && e.target.files[0] ? e.target.files[0] : null); setProofError(""); }}
+                    className="w-full border rounded-md px-3 py-2"
+                  />
+                  <div className="text-xs text-gray-500 mt-1">Required. Screenshots/photos only.</div>
+                </div>
+              )}
             </div>
             <div className="mt-6 flex justify-end gap-3">
               <Button variant="outline" onClick={() => { setOpenWorkout(false); setValidationError(""); }}>Back</Button>
@@ -1060,8 +1238,8 @@ export default function DashboardPage() {
               <button onClick={() => setOpenRest(false)} className="text-gray-500">✕</button>
             </div>
             <div className="space-y-3">
-              <div className="text-sm text-rfl-navy font-semibold">You are taking a rest day. You have {Math.max(0, 18 - myRestUsed)} / 18 rest days left.</div>
-              <div className="text-sm text-gray-700">Rest days remaining: <span className="font-semibold">{Math.max(0, 18 - myRestUsed)}</span> / 18</div>
+              <div className="text-sm text-rfl-navy font-semibold">You are taking a rest day. You have {Math.max(0, (totalAllowedRestDays ?? 18) - myRestUsed)} / {totalAllowedRestDays ?? 18} rest days left.</div>
+              <div className="text-sm text-gray-700">Rest days remaining: <span className="font-semibold">{Math.max(0, (totalAllowedRestDays ?? 18) - myRestUsed)}</span> / {totalAllowedRestDays ?? 18}</div>
               <label className="block text-sm font-medium text-gray-700">Workout Date</label>
               <select value={date} onChange={(e)=> setDate(e.target.value)} className="w-full border rounded-md px-3 py-2 bg-white">
                 {(() => {
