@@ -81,7 +81,7 @@ export default function CreateLeaguePage() {
   const [step, setStep] = React.useState<'form' | 'payment' | 'success'>('form');
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [pricing, setPricing] = React.useState<PricingData | null>(null);
+  const [pricing, setPricing] = React.useState<PriceBreakdown | null>(null);
   const [pricingLoading, setPricingLoading] = React.useState(true);
   const [createdLeagueId, setCreatedLeagueId] = React.useState<string | null>(null);
   const [showConfetti, setShowConfetti] = React.useState(false);
@@ -1017,7 +1017,7 @@ export default function CreateLeaguePage() {
                 <div className="pt-4 space-y-3">
                   <Button
                     onClick={handleCreateLeague}
-                    disabled={loading || !pricePreview || (validation && !validation.valid)}
+                    disabled={loading || !pricePreview || !validation?.valid}
                     className="w-full"
                   >
                     {loading ? (
