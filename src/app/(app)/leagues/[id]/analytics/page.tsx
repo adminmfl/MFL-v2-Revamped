@@ -1,14 +1,12 @@
 'use client';
 
-import React, { use, useEffect, useState } from 'react';
-import { ChevronLeft, Download, TrendingUp, Users, Target, AlertTriangle, Activity, Zap } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
+import { ChevronLeft, Download, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
-
-import { useRole } from '@/contexts/role-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
@@ -47,9 +45,12 @@ interface AnalyticsData {
   alerts: Array<{ type: string; message: string; teams?: string[]; users?: string[] }>;
 }
 
-interface PageSkeleton {
-  [key: string]: any;
-}
+type AnalyticsApiResponse =
+  | { success: true; data: AnalyticsData; generatedAt?: string }
+  | { success?: false; error?: string };
+
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const analyticsCache = new Map<string, { data: AnalyticsData; fetchedAt: number; generatedAt?: string }>();
 
 function AnalyticsSkeleton() {
   return (
@@ -66,30 +67,59 @@ function AnalyticsSkeleton() {
 }
 
 export default function LeagueAnalyticsPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const router = useRouter();
-  const { isHost } = useRole();
+  const { id } = React.use(params);
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
+    if (!id) return;
+
+    const cached = analyticsCache.get(id);
+    if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+      setData(cached.data);
+      setLastUpdated(cached.generatedAt ? new Date(cached.generatedAt) : new Date(cached.fetchedAt));
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+
     const fetchAnalytics = async () => {
       try {
         setLoading(true);
+        setError(null);
         const response = await fetch(`/api/leagues/${id}/analytics`, {
-          next: { revalidate: 600 }, // Revalidate every 10 minutes
+          signal: controller.signal,
+          credentials: 'include',
         });
+
+        const parsed: AnalyticsApiResponse | { error?: string } | null = await response
+          .json()
+          .catch(() => null);
+
         if (!response.ok) {
-          throw new Error('Failed to fetch analytics');
+          const message =
+            (parsed && 'error' in parsed && typeof parsed.error === 'string' && parsed.error) ||
+            `Failed to fetch analytics (${response.status})`;
+          throw new Error(message);
         }
-        const result = await response.json();
-        if (result.success) {
-          setData(result.data);
-          setLastUpdated(new Date());
+
+        const result = parsed as AnalyticsApiResponse | null;
+        if (!result || !('success' in result) || !result.success) {
+          const message =
+            (result && 'error' in result && typeof result.error === 'string' && result.error) ||
+            'Failed to fetch analytics';
+          throw new Error(message);
         }
+
+        analyticsCache.set(id, { data: result.data, fetchedAt: Date.now(), generatedAt: result.generatedAt });
+        setData(result.data);
+        setLastUpdated(result.generatedAt ? new Date(result.generatedAt) : new Date());
       } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
         console.error('Error fetching analytics:', err);
         setError(err instanceof Error ? err.message : 'Failed to load analytics');
       } finally {
@@ -97,7 +127,8 @@ export default function LeagueAnalyticsPage({ params }: { params: Promise<{ id: 
       }
     };
 
-    if (id) fetchAnalytics();
+    void fetchAnalytics();
+    return () => controller.abort();
   }, [id]);
 
   if (loading) return <AnalyticsSkeleton />;
@@ -134,28 +165,45 @@ export default function LeagueAnalyticsPage({ params }: { params: Promise<{ id: 
   return (
     <div className="flex flex-col gap-6 px-4 lg:px-6 py-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href={`/leagues/${id}`}>
-            <Button variant="ghost" size="sm">
-              <ChevronLeft className="size-4" />
+      <Card className="bg-muted/30">
+        <CardContent className="py-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="flex items-start gap-3">
+              <Link href={`/leagues/${id}`}>
+                <Button variant="ghost" size="icon" aria-label="Back to League">
+                  <ChevronLeft className="size-4" />
+                </Button>
+              </Link>
+
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-3xl font-bold tracking-tight">League Analytics</h1>
+                  <Badge variant="secondary" className="text-xs">
+                    Cached 10 min
+                  </Badge>
+                  {lastUpdated && (
+                    <Badge variant="outline" className="text-xs">
+                      Updated{' '}
+                      {lastUpdated.toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Comprehensive performance & engagement insights
+                </p>
+              </div>
+            </div>
+
+            <Button onClick={handleExport} variant="outline" size="sm" className="w-fit">
+              <Download className="size-4 mr-2" />
+              Export CSV
             </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold">League Analytics</h1>
-            <p className="text-sm text-muted-foreground">Comprehensive performance & engagement insights</p>
-            {lastUpdated && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Last updated: {lastUpdated.toLocaleTimeString()} • Cached for 10 minutes
-              </p>
-            )}
           </div>
-        </div>
-        <Button onClick={handleExport} variant="outline" size="sm">
-          <Download className="size-4 mr-2" />
-          Export CSV
-        </Button>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Alerts Section */}
       {data.alerts.length > 0 && (
@@ -224,19 +272,14 @@ export default function LeagueAnalyticsPage({ params }: { params: Promise<{ id: 
             </CardContent>
           </Card>
 
-          <Card className="md:col-span-2">
+          <Card className="md:col-span-2 lg:col-span-4">
             <CardContent className="pt-6">
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm font-medium">League Progress</p>
                   <span className="text-2xl font-bold">{data.leagueHealth.leagueProgress}%</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-blue-600 h-2 rounded-full transition-all"
-                    style={{ width: `${data.leagueHealth.leagueProgress}%` }}
-                  ></div>
-                </div>
+                <Progress value={data.leagueHealth.leagueProgress} className="h-3" />
                 <p className="text-xs text-muted-foreground mt-2">
                   {data.leagueHealth.daysCompleted} of {data.leagueHealth.totalDays} days
                 </p>

@@ -8,8 +8,6 @@ import React, { use, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import {
   Trophy,
-  Users,
-  Medal,
   RefreshCw,
   AlertCircle,
   Calendar,
@@ -20,7 +18,6 @@ import {
   Card,
   CardContent,
 } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
@@ -170,7 +167,6 @@ function TopPodium({ teams }: PodiumProps) {
 
 export default function LeaderboardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: leagueId } = use(params);
-  const [view, setView] = useState<'teams' | 'individuals'>('teams');
   const [viewRawTotals, setViewRawTotals] = useState(false);
   const [roles, setRoles] = useState<string[]>([]);
   const [startDate, setStartDate] = useState<Date | undefined>();
@@ -393,24 +389,9 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
             ) : null}
           </div>
         </div>
-        <Tabs value={view} onValueChange={(v) => setView(v as 'teams' | 'individuals')}>
-          <TabsList>
-            <TabsTrigger value="teams" className="gap-2">
-              <Users className="size-4" />
-              Teams ({teams.length})
-            </TabsTrigger>
-            <TabsTrigger value="individuals" className="gap-2">
-              <Medal className="size-4" />
-              Individuals ({individuals.length})
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="teams" className="mt-4">
-            <LeagueTeamsTable teams={teams} showAvgRR={true} />
-          </TabsContent>
-          <TabsContent value="individuals" className="mt-4">
-            <LeagueIndividualsTable individuals={individuals} showAvgRR={true} />
-          </TabsContent>
-        </Tabs>
+        <div className="mt-4">
+          <LeagueTeamsTable teams={teams} showAvgRR={true} />
+        </div>
       </div>
 
       {/* Real-time (2-day delay window) */}
@@ -449,6 +430,15 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
           <RealTimeScoreboardTable dates={pendingWindow.dates} teams={pendingWindow.teams || []} />
         </div>
       ) : null}
+
+      {/* Individual Leaderboard */}
+      <div className="px-4 lg:px-6">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold">Individual Leaderboard</h2>
+          <p className="text-sm text-muted-foreground">Individual standings for the selected date range</p>
+        </div>
+        <LeagueIndividualsTable individuals={individuals} showAvgRR={true} />
+      </div>
 
       {/* Challenge-Specific Leaderboard */}
       <div className="px-4 lg:px-6">

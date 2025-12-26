@@ -8,6 +8,9 @@ import {
   Calendar,
   Settings,
   BarChart3,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardCheck,
   Dumbbell,
   Crown,
   Shield,
@@ -39,6 +42,45 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function localYmd(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function parseLocalYmd(ymd: string): Date | null {
+  const match = /^\d{4}-\d{2}-\d{2}$/.exec(String(ymd));
+  if (!match) return null;
+  const [y, m, d] = ymd.split('-').map((p) => Number(p));
+  if (!y || !m || !d) return null;
+  const dt = new Date(y, m - 1, d);
+  if (Number.isNaN(dt.getTime())) return null;
+  return dt;
+}
+
+function startOfWeekSunday(d: Date) {
+  const out = new Date(d);
+  out.setHours(0, 0, 0, 0);
+  out.setDate(out.getDate() - out.getDay());
+  return out;
+}
+
+function addDays(d: Date, days: number) {
+  const out = new Date(d);
+  out.setDate(out.getDate() + days);
+  return out;
+}
+
+function formatWeekRange(startLocal: Date) {
+  const endLocal = addDays(startLocal, 6);
+  const startText = startLocal.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const endText = endLocal.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return `${startText} – ${endText}`;
+}
 
 // ============================================================================
 // Types
@@ -97,6 +139,7 @@ export default function LeagueDashboardPage({
   const [error, setError] = React.useState<string | null>(null);
   const [rejectedCount, setRejectedCount] = React.useState<number>(0);
   const [recentDays, setRecentDays] = React.useState<RecentDayRow[] | null>(null);
+  const [weekOffset, setWeekOffset] = React.useState(0);
 
   const [mySummary, setMySummary] = React.useState<{
     points: number;
@@ -105,6 +148,7 @@ export default function LeagueDashboardPage({
     restUnused: number | null;
     missedDays: number;
     teamAvgRR: number | null;
+    teamPoints: number | null;
   } | null>(null);
 
   // Sync active league if navigated directly
@@ -161,128 +205,6 @@ export default function LeagueDashboardPage({
             setRejectedCount(0);
           }
         }
-
-        // Date-wise progress tracking (this week: Sunday → Saturday)
-        try {
-          const localYmd = (d: Date) => {
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${y}-${m}-${day}`;
-          };
-
-          const todayLocal = new Date();
-          const todayStr = localYmd(todayLocal);
-
-          // Show the current week (Sunday → Saturday) instead of a rolling 7-day window.
-          const startLocal = new Date(todayLocal);
-          startLocal.setDate(startLocal.getDate() - startLocal.getDay());
-          const startDate = localYmd(startLocal);
-          const endLocal = new Date(startLocal);
-          endLocal.setDate(endLocal.getDate() + 6);
-          const endDate = localYmd(endLocal);
-
-          const tzOffsetMinutes = new Date().getTimezoneOffset();
-
-          const recentUrl = `/api/leagues/${id}/my-submissions?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
-          const recentRes = await fetch(recentUrl);
-
-          if (recentRes.ok) {
-            const recentData = await recentRes.json();
-            let submissions: any[] =
-              recentData?.success && recentData?.data?.submissions ? (recentData.data.submissions as any[]) : [];
-
-            const byDate = new Map<string, any>();
-            for (const s of submissions) {
-              if (!s?.date) continue;
-              const existing = byDate.get(s.date);
-              if (!existing) {
-                byDate.set(s.date, s);
-                continue;
-              }
-              const a = String(existing.created_date || existing.modified_date || '');
-              const b = String(s.created_date || s.modified_date || '');
-              if (b > a) byDate.set(s.date, s);
-            }
-
-            const rows: RecentDayRow[] = [];
-            const leagueStart = typeof leagueForTracking?.start_date === 'string' ? leagueForTracking.start_date : null;
-            const leagueEnd = typeof leagueForTracking?.end_date === 'string' ? leagueForTracking.end_date : null;
-
-            for (let offset = 0; offset <= 6; offset += 1) {
-              const d = new Date(startLocal);
-              d.setDate(startLocal.getDate() + offset);
-              const ymd = localYmd(d);
-              const label = d.toLocaleDateString(undefined, {
-                weekday: 'short',
-                month: 'short',
-                day: '2-digit',
-                year: 'numeric',
-              });
-
-              const outOfRange =
-                (leagueStart && ymd < leagueStart) ||
-                (leagueEnd && ymd > leagueEnd);
-              if (outOfRange) {
-                rows.push({
-                  date: ymd,
-                  label,
-                  subtitle: '—',
-                  pointsLabel: '—',
-                });
-                continue;
-              }
-
-              const entry = byDate.get(ymd);
-              if (!entry) {
-                if (ymd > todayStr) {
-                  rows.push({
-                    date: ymd,
-                    label,
-                    subtitle: 'Upcoming',
-                    pointsLabel: '—',
-                  });
-                  continue;
-                }
-
-                if (ymd === todayStr) {
-                  rows.push({
-                    date: ymd,
-                    label,
-                    subtitle: 'No submission yet',
-                    pointsLabel: '—',
-                  });
-                  continue;
-                }
-
-                rows.push({
-                  date: ymd,
-                  label,
-                  subtitle: 'Missed day',
-                  pointsLabel: '0 pt',
-                });
-                continue;
-              }
-
-              const isWorkout = entry.type === 'workout';
-              const workoutType = isWorkout && entry.workout_type ? String(entry.workout_type).replace(/_/g, ' ') : '';
-              const typeLabel = isWorkout ? (workoutType ? workoutType : 'Workout') : 'Rest Day';
-              const statusLabel = entry.status ? String(entry.status) : '';
-              const subtitle = statusLabel ? `${typeLabel} • ${statusLabel}` : typeLabel;
-
-              const rr = typeof entry.rr_value === 'number' ? entry.rr_value : null;
-              const pointsLabel = rr === null ? '0 pt' : `${rr.toFixed(1)} RR`;
-
-              rows.push({ date: ymd, label, subtitle, status: statusLabel, pointsLabel });
-            }
-
-            setRecentDays(rows);
-          } else {
-            setRecentDays([]);
-          }
-        } catch {
-          setRecentDays([]);
-        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load league');
       } finally {
@@ -292,6 +214,107 @@ export default function LeagueDashboardPage({
 
     fetchLeagueData();
   }, [id]);
+
+  // Week view (Sunday → Saturday) with navigation
+  React.useEffect(() => {
+    if (!league) return;
+
+    let cancelled = false;
+    setRecentDays(null);
+
+    const run = async () => {
+      try {
+        const todayLocal = new Date();
+        const todayStr = localYmd(todayLocal);
+
+        const currentWeekStart = startOfWeekSunday(todayLocal);
+        const weekStartLocal = addDays(currentWeekStart, -weekOffset * 7);
+        const startDate = localYmd(weekStartLocal);
+        const endDate = localYmd(addDays(weekStartLocal, 6));
+
+        const recentUrl = `/api/leagues/${id}/my-submissions?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+        const recentRes = await fetch(recentUrl);
+        if (!recentRes.ok) {
+          if (!cancelled) setRecentDays([]);
+          return;
+        }
+
+        const recentData = await recentRes.json();
+        const submissions: any[] =
+          recentData?.success && recentData?.data?.submissions ? (recentData.data.submissions as any[]) : [];
+
+        const byDate = new Map<string, any>();
+        for (const s of submissions) {
+          if (!s?.date) continue;
+          const existing = byDate.get(s.date);
+          if (!existing) {
+            byDate.set(s.date, s);
+            continue;
+          }
+          const a = String(existing.created_date || existing.modified_date || '');
+          const b = String(s.created_date || s.modified_date || '');
+          if (b > a) byDate.set(s.date, s);
+        }
+
+        const rows: RecentDayRow[] = [];
+        const leagueStart = typeof league.start_date === 'string' ? league.start_date : null;
+        const leagueEnd = typeof league.end_date === 'string' ? league.end_date : null;
+
+        for (let offset = 0; offset <= 6; offset += 1) {
+          const d = addDays(weekStartLocal, offset);
+          const ymd = localYmd(d);
+          const label = d.toLocaleDateString(undefined, {
+            weekday: 'short',
+            month: 'short',
+            day: '2-digit',
+            year: 'numeric',
+          });
+
+          const outOfRange = (leagueStart && ymd < leagueStart) || (leagueEnd && ymd > leagueEnd);
+          if (outOfRange) {
+            rows.push({ date: ymd, label, subtitle: '—', pointsLabel: '—' });
+            continue;
+          }
+
+          const entry = byDate.get(ymd);
+          if (!entry) {
+            if (ymd > todayStr) {
+              rows.push({ date: ymd, label, subtitle: 'Upcoming', pointsLabel: '—' });
+              continue;
+            }
+
+            if (ymd === todayStr) {
+              rows.push({ date: ymd, label, subtitle: 'No submission yet', pointsLabel: '—' });
+              continue;
+            }
+
+            rows.push({ date: ymd, label, subtitle: 'Missed day', pointsLabel: '0 pt' });
+            continue;
+          }
+
+          const isWorkout = entry.type === 'workout';
+          const workoutType = isWorkout && entry.workout_type ? String(entry.workout_type).replace(/_/g, ' ') : '';
+          const typeLabel = isWorkout ? (workoutType ? workoutType : 'Workout') : 'Rest Day';
+          const statusLabel = entry.status ? String(entry.status) : '';
+          const subtitle = statusLabel ? `${typeLabel} • ${statusLabel}` : typeLabel;
+
+          const rr = typeof entry.rr_value === 'number' ? entry.rr_value : null;
+          const pointsLabel = rr === null ? '0 pt' : `${rr.toFixed(1)} RR`;
+
+          rows.push({ date: ymd, label, subtitle, status: statusLabel, pointsLabel });
+        }
+
+        if (!cancelled) setRecentDays(rows);
+      } catch {
+        if (!cancelled) setRecentDays([]);
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, league, weekOffset]);
 
   // Player summary (mirrors the metrics shown on /league-dashboard)
   React.useEffect(() => {
@@ -327,8 +350,8 @@ export default function LeagueDashboardPage({
         qs.set('endDate', effectiveEndStr);
 
         const [myRes, restRes] = await Promise.all([
-          fetch(`/api/leagues/${id}/my-submissions?${qs.toString()}`),
-          fetch(`/api/leagues/${id}/rest-days`),
+          fetch(`/api/leagues/${id}/my-submissions?${qs.toString()}`, { credentials: 'include' }),
+          fetch(`/api/leagues/${id}/rest-days`, { credentials: 'include' }),
         ]);
 
         let points = 0;
@@ -337,6 +360,7 @@ export default function LeagueDashboardPage({
         let missedDays = 0;
         let restUnused: number | null = null;
         let teamAvgRR: number | null = null;
+        let teamPoints: number | null = null;
 
         let teamId: string | null = null;
 
@@ -354,14 +378,19 @@ export default function LeagueDashboardPage({
 
           const approvedSubs = subs.filter((s) => isApproved(s));
 
-          // Keep points/avgRR/restUsed aligned with "approved performance".
-          points = approvedSubs.length;
+          // User-facing definitions for the dashboard:
+          // - Points: approved workouts count (1 point per approved workout)
+          // - Avg RR: total approved RR divided by the number of approved workout-days (points)
+          const approvedWorkouts = approvedSubs.filter((s) => s.type === 'workout');
+          points = approvedWorkouts.length;
           restUsed = approvedSubs.filter((s) => s.type === 'rest').length;
 
-          const rrVals = approvedSubs
-            .map((s) => (typeof s.rr_value === 'number' ? s.rr_value : null))
-            .filter((v): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0);
-          avgRR = rrVals.length ? Math.round((rrVals.reduce((a, b) => a + b, 0) / rrVals.length) * 100) / 100 : null;
+          const totalRR = approvedWorkouts
+            .map((s) => (typeof s.rr_value === 'number' ? s.rr_value : 0))
+            .filter((v) => Number.isFinite(v) && v > 0)
+            .reduce((a, b) => a + b, 0);
+
+          avgRR = points > 0 ? Math.round((totalRR / points) * 100) / 100 : null;
 
           // Missed days: from league start through yesterday (local), or league end if earlier.
           const startDt = parseLocalYYYYMMDD(league.start_date);
@@ -390,8 +419,17 @@ export default function LeagueDashboardPage({
         if (restRes.ok) {
           const json = await restRes.json();
           const data = json?.data;
+          const used = typeof data?.used === 'number' ? data.used : null;
+          const remaining = typeof data?.remaining === 'number' ? data.remaining : null;
           const totalAllowed = typeof data?.totalAllowed === 'number' ? data.totalAllowed : null;
-          if (typeof totalAllowed === 'number') {
+
+          // Prefer the dedicated rest-days endpoint for consistency.
+          if (typeof used === 'number' && Number.isFinite(used)) {
+            restUsed = Math.max(0, used);
+          }
+          if (typeof remaining === 'number' && Number.isFinite(remaining)) {
+            restUnused = Math.max(0, remaining);
+          } else if (typeof totalAllowed === 'number' && Number.isFinite(totalAllowed)) {
             restUnused = Math.max(0, totalAllowed - restUsed);
           }
         }
@@ -400,20 +438,32 @@ export default function LeagueDashboardPage({
         if (teamId) {
           try {
             const tzOffsetMinutes = new Date().getTimezoneOffset();
-            const lbRes = await fetch(`/api/leagues/${id}/leaderboard?tzOffsetMinutes=${encodeURIComponent(String(tzOffsetMinutes))}`);
+            const lbRes = await fetch(
+              `/api/leagues/${id}/leaderboard?tzOffsetMinutes=${encodeURIComponent(String(tzOffsetMinutes))}`,
+              { credentials: 'include' }
+            );
             if (lbRes.ok) {
               const lb = await lbRes.json();
-              const teams: Array<{ team_id: string; avg_rr: number }> = lb?.data?.teams || lb?.data?.teamRankings || [];
+              const teams: Array<{ team_id: string; avg_rr: number; points?: number; total_points?: number }> =
+                lb?.data?.teams || lb?.data?.teamRankings || [];
               const mine = teams.find((t) => String(t.team_id) === String(teamId));
               const v = mine && typeof mine.avg_rr === 'number' ? mine.avg_rr : null;
               teamAvgRR = typeof v === 'number' && Number.isFinite(v) ? Math.round(v * 100) / 100 : null;
+
+              const p =
+                mine && typeof mine.points === 'number'
+                  ? mine.points
+                  : mine && typeof mine.total_points === 'number'
+                    ? mine.total_points
+                    : null;
+              teamPoints = typeof p === 'number' && Number.isFinite(p) ? Math.max(0, p) : null;
             }
           } catch {
             // ignore
           }
         }
 
-        setMySummary({ points, avgRR, restUsed, restUnused, missedDays, teamAvgRR });
+        setMySummary({ points, avgRR, restUsed, restUnused, missedDays, teamAvgRR, teamPoints });
       } catch {
         setMySummary(null);
       }
@@ -478,7 +528,7 @@ export default function LeagueDashboardPage({
           title: 'Points',
           value: mySummary.points.toLocaleString(),
           changeLabel: 'Your score',
-          description: 'Approved submissions',
+          description: 'Approved workouts',
           icon: Zap,
         },
         {
@@ -606,14 +656,16 @@ export default function LeagueDashboardPage({
 
           <div className="px-4 lg:px-6">
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-start justify-between gap-4">
                 <CardTitle className="text-base">Avg RR — You vs Team</CardTitle>
-                <CardDescription>Scale: 1.00 → 2.00</CardDescription>
+                <span className="text-sm text-muted-foreground">Scale: 1.00 → 2.00</span>
               </CardHeader>
               <CardContent>
                 {(() => {
+                  const youPoints = typeof mySummary.points === 'number' ? mySummary.points : null;
                   const you = typeof mySummary.avgRR === 'number' ? mySummary.avgRR : null;
                   const team = typeof mySummary.teamAvgRR === 'number' ? mySummary.teamAvgRR : null;
+                  const teamPoints = typeof mySummary.teamPoints === 'number' ? mySummary.teamPoints : null;
                   const min = 1.0;
                   const max = 2.0;
                   const span = max - min;
@@ -622,28 +674,73 @@ export default function LeagueDashboardPage({
                   const youPct = typeof you === 'number' ? pct(you) : null;
                   const teamPct = typeof team === 'number' ? pct(team) : null;
 
+                  const markerStyle = (p: number): React.CSSProperties => {
+                    // Keep the dot fully inside the bar at 0%/100%.
+                    const clamped = Math.max(0, Math.min(100, p));
+                    const transform =
+                      clamped <= 0
+                        ? 'translate(0, -50%)'
+                        : clamped >= 100
+                          ? 'translate(-100%, -50%)'
+                          : 'translate(-50%, -50%)';
+                    return { left: `${clamped}%`, transform };
+                  };
+
+                  const youMarkerPct = typeof youPct === 'number' ? youPct : 0;
+                  const teamMarkerPct = typeof teamPct === 'number' ? teamPct : 0;
+
                   return (
                     <div>
-                      <div className="relative h-2 rounded-full bg-muted">
-                        {typeof youPct === 'number' ? (
-                          <span className="absolute top-1/2 -translate-y-1/2" style={{ left: `calc(${youPct}% - 4px)` }}>
-                            <span className="block w-2 h-2 rounded-full bg-primary border border-background" />
-                          </span>
-                        ) : null}
-                        {typeof teamPct === 'number' ? (
-                          <span className="absolute top-1/2 -translate-y-1/2" style={{ left: `calc(${teamPct}% - 4px)` }}>
-                            <span className="block w-2 h-2 rounded-full bg-foreground/70 border border-background" />
-                          </span>
-                        ) : null}
+                      <div className="relative h-3 rounded-full bg-muted">
+                        <span
+                          className="absolute top-1/2"
+                          style={markerStyle(youMarkerPct)}
+                          aria-label="Your Avg RR"
+                        >
+                          <span
+                            className={
+                              typeof you === 'number'
+                                ? 'block w-2.5 h-2.5 rounded-full bg-destructive border-2 border-background'
+                                : 'block w-2.5 h-2.5 rounded-full bg-muted-foreground/40 border-2 border-background'
+                            }
+                          />
+                        </span>
+
+                        <span
+                          className="absolute top-1/2"
+                          style={markerStyle(teamMarkerPct)}
+                          aria-label="Team Avg RR"
+                        >
+                          <span
+                            className={
+                              typeof team === 'number'
+                                ? 'block w-2.5 h-2.5 rounded-full bg-primary border-2 border-background'
+                                : 'block w-2.5 h-2.5 rounded-full bg-muted-foreground/40 border-2 border-background'
+                            }
+                          />
+                        </span>
                       </div>
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mt-3">
+
+                      <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground mt-3">
                         <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-primary inline-block" />
-                          You: {typeof you === 'number' ? you.toFixed(2) : '—'}
+                          <span className="w-2 h-2 rounded-full bg-destructive inline-block" />
+                          You:
+                          <span className="text-foreground tabular-nums">
+                            {typeof you === 'number' ? you.toFixed(2) : '—'}
+                          </span>
+                          {youPoints !== null ? (
+                            <span className="tabular-nums">({youPoints.toLocaleString()} pt)</span>
+                          ) : null}
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-foreground/70 inline-block" />
-                          Team: {typeof team === 'number' ? team.toFixed(2) : '—'}
+                          <span className="w-2 h-2 rounded-full bg-primary inline-block" />
+                          Team:
+                          <span className="text-foreground tabular-nums">
+                            {typeof team === 'number' ? team.toFixed(2) : '—'}
+                          </span>
+                          {teamPoints !== null ? (
+                            <span className="tabular-nums">({teamPoints.toLocaleString()} pt)</span>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -774,10 +871,53 @@ export default function LeagueDashboardPage({
 
       {/* Date-wise Progress (This Week: Sun–Sat) */}
       <div className="px-4 lg:px-6">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold">This Week (Sun–Sat)</h2>
-          <p className="text-sm text-muted-foreground">Week view resets every Sunday</p>
-        </div>
+        {(() => {
+          const currentWeekStart = startOfWeekSunday(new Date());
+          const weekStartLocal = addDays(currentWeekStart, -weekOffset * 7);
+
+          const leagueStartLocal = league?.start_date ? parseLocalYmd(league.start_date) : null;
+          const leagueStartWeek = leagueStartLocal ? startOfWeekSunday(leagueStartLocal) : null;
+          const maxWeekOffset = leagueStartWeek
+            ? Math.max(0, Math.floor((currentWeekStart.getTime() - leagueStartWeek.getTime()) / (7 * MS_PER_DAY)))
+            : Infinity;
+
+          const canGoPrev = Number.isFinite(maxWeekOffset) ? weekOffset < maxWeekOffset : true;
+          const canGoNext = weekOffset > 0;
+
+          return (
+            <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-lg font-semibold">This Week (Sun–Sat)</h2>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setWeekOffset((w) => (canGoPrev ? w + 1 : w))}
+                      disabled={!canGoPrev}
+                      aria-label="Previous week"
+                    >
+                      <ChevronLeft className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setWeekOffset((w) => (canGoNext ? Math.max(0, w - 1) : w))}
+                      disabled={!canGoNext}
+                      aria-label="Next week"
+                    >
+                      <ChevronRight className="size-4" />
+                    </Button>
+                  </div>
+                  <Badge variant="secondary" className="text-xs">
+                    {formatWeekRange(weekStartLocal)}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">Week view resets every Sunday</p>
+              </div>
+            </div>
+          );
+        })()}
 
         <Card>
           <CardContent className="p-0">
