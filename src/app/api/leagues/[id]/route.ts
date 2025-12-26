@@ -21,17 +21,16 @@ const updateLeagueSchema = z.object({
   is_exclusive: z.boolean().optional(),
   is_public: z.boolean().optional(),
   num_teams: z.number().int().positive().optional(),
-  team_capacity: z.number().int().positive().optional(),
-  team_size: z.number().int().positive().optional(),
+  tier_id: z.string().optional(),
   rest_days: z.number().int().min(0).optional(),
   auto_rest_day_enabled: z.boolean().optional(),
   normalize_points_by_capacity: z.boolean().optional(),
   normalize_points_by_team_size: z.boolean().optional(),
+  description: z.string().optional(),
 }).transform((input) => {
-  const { team_capacity, team_size, normalize_points_by_capacity, normalize_points_by_team_size, ...rest } = input;
+  const { normalize_points_by_capacity, normalize_points_by_team_size, ...rest } = input;
   return {
     ...rest,
-    team_capacity: team_capacity ?? team_size,
     normalize_points_by_capacity: normalize_points_by_capacity ?? normalize_points_by_team_size,
   };
 });

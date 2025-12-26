@@ -106,17 +106,18 @@ export async function POST(
       );
     }
 
-    // Get league to check team capacity limit
+    // Get league to check capacity - capacity now comes from tier
     const league = await getLeagueById(leagueId);
     if (!league) {
       return NextResponse.json({ error: 'League not found' }, { status: 404 });
     }
 
-    // Get current team size
+    // Get current team size - use a reasonable per-team limit (league_capacity / num_teams or 5)
+    const perTeamCapacity = Math.ceil((league.league_capacity || 20) / (league.num_teams || 4));
     const currentMembers = await getTeamMembers(teamId, leagueId);
-    if (currentMembers.length >= (league.team_capacity || 0)) {
+    if (currentMembers.length >= perTeamCapacity) {
       return NextResponse.json(
-        { error: `Team is full. Maximum ${league.team_capacity} members allowed.` },
+        { error: `Team is full. Maximum ${perTeamCapacity} members allowed.` },
         { status: 400 }
       );
     }

@@ -108,7 +108,7 @@ export default function MyTeamViewPage({
 
   const userTeamId = activeLeague?.team_id;
   const userTeamName = activeLeague?.team_name;
-  const teamCapacity = activeLeague?.team_capacity || 5;
+  const teamCapacity = activeLeague?.league_capacity || 20;
 
   // Fetch team members
   useEffect(() => {

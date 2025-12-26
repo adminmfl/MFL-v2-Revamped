@@ -13,34 +13,11 @@ import type {
 
 function mapDbLeagueToAdminLeague(dbLeague: any): AdminLeague {
   if (!dbLeague) return dbLeague;
-
-  const {
-    team_size,
-    normalize_points_by_team_size,
-    ...rest
-  } = dbLeague;
-
-  return {
-    ...rest,
-    team_capacity: team_size ?? 5,
-    normalize_points_by_capacity: normalize_points_by_team_size ?? false,
-  } as AdminLeague;
+  return dbLeague as AdminLeague;
 }
 
 function mapAdminLeagueInputToDbUpdates(input: Partial<AdminLeagueCreateInput | AdminLeagueUpdateInput>): Record<string, any> {
-  const updates: Record<string, any> = { ...input };
-
-  if ('team_capacity' in updates) {
-    updates.team_size = updates.team_capacity;
-    delete updates.team_capacity;
-  }
-
-  if ('normalize_points_by_capacity' in updates) {
-    updates.normalize_points_by_team_size = updates.normalize_points_by_capacity;
-    delete updates.normalize_points_by_capacity;
-  }
-
-  return updates;
+  return { ...input };
 }
 
 /**
@@ -169,10 +146,10 @@ export async function createLeague(
         start_date: input.start_date,
         end_date: input.end_date,
         num_teams: input.num_teams || 4,
-        team_size: input.team_capacity || 5,
+        tier_id: input.tier_id || null,
         rest_days: input.rest_days || 1,
         auto_rest_day_enabled: input.auto_rest_day_enabled ?? false,
-        normalize_points_by_team_size: input.normalize_points_by_capacity ?? false,
+        normalize_points_by_capacity: input.normalize_points_by_capacity ?? false,
         is_public: input.is_public || false,
         is_exclusive: input.is_exclusive ?? true,
         invite_code: generateInviteCode(),

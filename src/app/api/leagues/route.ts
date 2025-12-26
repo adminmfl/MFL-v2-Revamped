@@ -13,16 +13,12 @@ const createLeagueSchema = z.object({
   description: z.string().nullable().optional(),
   start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
   end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
+  tier_id: z.string().optional(),
   num_teams: z.number().int().positive().optional(),
-  team_capacity: z.number().int().positive().optional(),
-  team_size: z.number().int().positive().optional(),
   rest_days: z.number().int().min(0).max(7).optional(),
   is_public: z.boolean().optional(),
   is_exclusive: z.boolean().optional(),
-}).transform(({ team_capacity, team_size, ...rest }) => ({
-  ...rest,
-  team_capacity: team_capacity ?? team_size,
-}));
+});
 
 export async function GET(req: NextRequest) {
   try {
@@ -55,9 +51,9 @@ export async function POST(req: NextRequest) {
     // Validate dates
     const startDate = new Date(validated.start_date);
     const endDate = new Date(validated.end_date);
-    if (endDate <= startDate) {
+    if (endDate < startDate) {
       return NextResponse.json(
-        { error: 'End date must be after start date' },
+        { error: 'End date must be on or after start date' },
         { status: 400 }
       );
     }

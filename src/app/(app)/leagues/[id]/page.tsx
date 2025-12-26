@@ -96,7 +96,7 @@ interface LeagueDetails {
   is_public: boolean;
   is_exclusive: boolean;
   num_teams: number;
-  team_capacity: number;
+  league_capacity: number;
   rest_days: number;
   invite_code: string | null;
 }
@@ -620,7 +620,7 @@ export default function LeagueDashboardPage({
             leagueName={league.league_name}
             inviteCode={league.invite_code}
             memberCount={stats?.memberCount}
-            maxCapacity={stats?.maxCapacity || (league.num_teams * league.team_capacity)}
+            maxCapacity={stats?.maxCapacity || league.league_capacity}
           />
           {isHost && (
             <Button asChild size="sm">
@@ -1002,7 +1002,7 @@ export default function LeagueDashboardPage({
               <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center mb-2">
                 <Medal className="size-5 text-primary" />
               </div>
-              <p className="text-2xl font-bold tabular-nums">{(league.num_teams || 0) * (league.team_capacity || 0)}</p>
+              <p className="text-2xl font-bold tabular-nums">{league.league_capacity || 0}</p>
               <p className="text-xs text-muted-foreground">Max Capacity</p>
             </div>
             <div className="p-4 flex flex-col items-center text-center">

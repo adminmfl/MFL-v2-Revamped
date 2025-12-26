@@ -59,10 +59,10 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
 
     const supabase = getSupabaseServiceRole();
 
-    // Fetch memberships with league names.
+    // Fetch memberships (avoid embedded joins for maximum schema compatibility).
     const { data: memberships, error: membershipsError } = await supabase
       .from('leaguemembers')
-      .select('league_member_id, league_id, leagues!inner(league_id, league_name)')
+      .select('league_member_id, league_id')
       .eq('user_id', userId);
 
     if (membershipsError) {
@@ -73,8 +73,6 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
     const membershipRows = (memberships || []) as unknown as Array<{
       league_member_id: string;
       league_id: string;
-      // Supabase join may come back as an object or an array depending on relationship config.
-      leagues: { league_id: string; league_name: string } | Array<{ league_id: string; league_name: string }>;
     }>;
 
     if (membershipRows.length === 0) {
@@ -87,6 +85,19 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
     }
 
     const leagueMemberIds = membershipRows.map((m) => m.league_member_id);
+
+    const leagueIds = Array.from(new Set(membershipRows.map((m) => m.league_id).filter(Boolean)));
+    const { data: leaguesData, error: leaguesError } = await supabase
+      .from('leagues')
+      .select('league_id, league_name')
+      .in('league_id', leagueIds);
+
+    if (leaguesError) {
+      console.error('Error fetching leagues:', leaguesError);
+      return NextResponse.json({ success: false, error: 'Failed to fetch leagues' }, { status: 500 });
+    }
+
+    const leagueNameById = new Map((leaguesData || []).map((l: any) => [l.league_id, l.league_name] as const));
 
     // Fetch only rejected entries for all memberships.
     const { data: rejectedEntries, error: rejectedError } = await supabase
@@ -102,12 +113,11 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
 
     const membershipByLmId = new Map(
       membershipRows.map((m) => {
-        const leagueRow = Array.isArray(m.leagues) ? m.leagues[0] : m.leagues;
         return [
           m.league_member_id,
           {
             league_id: m.league_id,
-            league_name: leagueRow?.league_name || 'Unknown league',
+            league_name: leagueNameById.get(m.league_id) || 'Unknown league',
           },
         ] as const;
       })

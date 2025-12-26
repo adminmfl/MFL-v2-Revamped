@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createOrder } from '@/lib/razorpay';
 import { createPayment } from '@/lib/services/payments';
-import { getPricing, calculateTotal } from '@/lib/services/pricing';
+import { getPricing, getPricingById, calculateTotal } from '@/lib/services/pricing';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/config';
 
@@ -17,15 +17,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { leagueId } = await req.json();
+    const { leagueId, tierId } = await req.json();
     if (!leagueId) {
       return NextResponse.json({ error: 'League ID is required' }, { status: 400 });
     }
 
-    // Get current pricing
-    const pricing = await getPricing();
+    // If tierId is provided, it maps to pricing.id
+    const pricing = tierId ? await getPricingById(String(tierId)) : await getPricing();
     if (!pricing) {
-      return NextResponse.json({ error: 'Pricing not configured' }, { status: 500 });
+      return NextResponse.json(
+        { error: tierId ? 'Invalid tier pricing' : 'Pricing not configured' },
+        { status: tierId ? 400 : 500 }
+      );
     }
 
     // Calculate amounts
@@ -49,6 +52,9 @@ export async function POST(req: NextRequest) {
       total_amount: total,
       purpose: 'league_creation',
       description: `Payment for league creation`,
+      notes: {
+        ...(tierId ? { tierId: String(tierId), pricingId: pricing.id } : { pricingId: pricing.id }),
+      },
     });
 
     return NextResponse.json({

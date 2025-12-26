@@ -350,7 +350,7 @@ export default function TeamPage({ params }: { params: Promise<{ id: string }> }
         leagueId={leagueId}
         teamId={activeLeague.team_id}
         teamName={activeLeague.team_name}
-         teamCapacity={activeLeague.team_capacity || 5}
+         teamCapacity={activeLeague.league_capacity || 20}
         isCaptain={isCaptain}
       />
     );

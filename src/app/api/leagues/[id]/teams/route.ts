@@ -100,7 +100,7 @@ export async function GET(
           league_id: league.league_id,
           league_name: league.league_name,
           num_teams: league.num_teams,
-          team_capacity: league.team_capacity,
+          league_capacity: league.league_capacity || 20,
           status: league.status,
           host_user_id: league.created_by,
           normalize_points_by_capacity: league.normalize_points_by_capacity,

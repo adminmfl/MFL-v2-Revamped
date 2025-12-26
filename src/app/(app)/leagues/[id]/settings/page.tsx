@@ -80,7 +80,6 @@ export default function LeagueSettingsPage({
     is_public: false,
     is_exclusive: true,
     num_teams: '4',
-    team_capacity: '5',
     rest_days: '1',
     auto_rest_day_enabled: false,
     start_date: '',
@@ -111,7 +110,6 @@ export default function LeagueSettingsPage({
           is_public: !!league.is_public,
           is_exclusive: !!league.is_exclusive,
           num_teams: String(league.num_teams || '4'),
-          team_capacity: String(league.team_capacity || '5'),
           rest_days: String(league.rest_days ?? '1'),
           auto_rest_day_enabled: !!league.auto_rest_day_enabled,
           start_date: league.start_date,
@@ -207,7 +205,6 @@ export default function LeagueSettingsPage({
           is_public: formData.is_public,
           is_exclusive: formData.is_exclusive,
           num_teams: Number(formData.num_teams),
-          team_capacity: Number(formData.team_capacity),
           start_date: formData.start_date,
           end_date: formData.end_date,
         });
@@ -234,7 +231,6 @@ export default function LeagueSettingsPage({
           is_public: !!league.is_public,
           is_exclusive: !!league.is_exclusive,
           num_teams: String(league.num_teams || prev.num_teams),
-          team_capacity: String(league.team_capacity || prev.team_capacity),
           rest_days: String(league.rest_days ?? prev.rest_days),
           auto_rest_day_enabled: !!league.auto_rest_day_enabled,
           start_date: league.start_date,
@@ -277,8 +273,7 @@ export default function LeagueSettingsPage({
     }
   };
 
-  const totalMembers =
-    Number(formData.num_teams || 0) * Number(formData.team_capacity || 0);
+  // Note: totalMembers calculation removed - capacity now comes from tier
 
   return (
     <div className="flex flex-col gap-6 py-4 md:py-6">
@@ -443,11 +438,7 @@ export default function LeagueSettingsPage({
                 <div className="mt-4 p-3 rounded-lg bg-muted">
                   <div className="flex flex-col gap-1">
                     <p className="text-sm text-muted-foreground">
-                      Total capacity:{' '}
-                      <span className="font-semibold text-foreground">
-                        {totalMembers} members
-                      </span>{' '}
-                      across {formData.num_teams} teams
+                      Capacity is determined by your league tier.
                     </p>
                     <p className="text-xs text-muted-foreground">
                       Rest day changes apply immediately, even for active leagues.
@@ -626,7 +617,7 @@ export default function LeagueSettingsPage({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Total Capacity</span>
-                    <span className="font-medium">{totalMembers}</span>
+                    <span className="font-medium text-xs">(from tier)</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Visibility</span>
