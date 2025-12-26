@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/config';
 import { getSupabaseServiceRole } from '@/lib/supabase/client';
+import { userHasAnyRole } from '@/lib/services/roles';
 import { z } from 'zod';
 
 // ============================================================================
@@ -46,6 +47,7 @@ export async function POST(
       .select(`
         id,
         league_member_id,
+        modified_by,
         status,
         leaguemembers!inner(
           league_id,
@@ -68,38 +70,28 @@ export async function POST(
     const submissionTeamId = leagueMember.team_id;
 
     // Check user's permissions to validate this submission
-    // 1. Check if user is host
-    const { data: league } = await supabase
-      .from('leagues')
-      .select('created_by')
-      .eq('league_id', leagueId)
-      .single();
-
-    const isHost = league?.created_by === userId;
-
-    // 2. Check if user is governor
-    const { data: governorRole } = await supabase
-      .from('assignedrolesforleague')
-      .select('role_id, roles!inner(role_name)')
-      .eq('user_id', userId)
-      .eq('league_id', leagueId)
-      .maybeSingle();
-
-    const isGovernor = (governorRole?.roles as any)?.role_name === 'governor';
+    // 1) Host/Governor override
+    // NOTE: Do not use maybeSingle() for role checks: users often have multiple roles,
+    // which causes maybeSingle() to fail and incorrectly deny permissions.
+    const canOverride = await userHasAnyRole(userId, leagueId, ['host', 'governor']);
 
     // 3. Check if user is captain of the submission's team (via assignedrolesforleague)
     let isCaptainOfTeam = false;
     if (submissionTeamId) {
       // First check if user is on this team
-      const { data: memberCheck } = await supabase
+      const { data: memberRows, error: memberRowsError } = await supabase
         .from('leaguemembers')
         .select('league_member_id')
         .eq('user_id', userId)
         .eq('team_id', submissionTeamId)
         .eq('league_id', leagueId)
-        .maybeSingle();
+        .limit(1);
 
-      if (memberCheck) {
+      if (memberRowsError) {
+        console.error('Error checking team membership:', memberRowsError);
+      }
+
+      if (memberRows && memberRows.length > 0) {
         // Check if user has captain role
         const { data: captainRole } = await supabase
           .from('roles')
@@ -108,29 +100,47 @@ export async function POST(
           .single();
 
         if (captainRole) {
-          const { data: captainCheck } = await supabase
+          const { data: captainRows, error: captainRowsError } = await supabase
             .from('assignedrolesforleague')
             .select('id')
             .eq('user_id', userId)
             .eq('league_id', leagueId)
             .eq('role_id', captainRole.role_id)
-            .maybeSingle();
 
-          isCaptainOfTeam = !!captainCheck;
+            // In rare cases duplicate rows can exist; any row means captain.
+            .limit(1);
+
+          if (captainRowsError) {
+            console.error('Error checking captain role:', captainRowsError);
+          }
+
+          isCaptainOfTeam = !!(captainRows && captainRows.length > 0);
         }
       }
     }
 
     // Permission check
-    if (!isHost && !isGovernor && !isCaptainOfTeam) {
+    if (!canOverride && !isCaptainOfTeam) {
       return NextResponse.json(
         { error: 'You do not have permission to validate this submission' },
         { status: 403 }
       );
     }
 
-    // Prevent validating own submission (unless host)
-    if (!isHost && leagueMember.user_id === userId) {
+    // Hierarchy enforcement:
+    // - Host/Governor can override any decision.
+    // - Captain can only grade pending submissions (cannot overwrite host/governor or anyone).
+    if (!canOverride && isCaptainOfTeam) {
+      if (submission.status !== 'pending') {
+        return NextResponse.json(
+          { error: 'This submission has already been graded. Captains can only grade pending submissions; hosts/governors can override.' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Prevent validating own submission (unless host/governor override)
+    if (!canOverride && leagueMember.user_id === userId) {
       return NextResponse.json(
         { error: 'You cannot validate your own submission' },
         { status: 403 }

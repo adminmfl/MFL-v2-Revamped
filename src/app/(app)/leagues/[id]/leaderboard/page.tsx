@@ -5,21 +5,19 @@
 'use client';
 
 import React, { use, useState } from 'react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import {
   Trophy,
-  Users,
-  Medal,
   RefreshCw,
   AlertCircle,
   Calendar,
+  Info,
 } from 'lucide-react';
 
 import {
   Card,
   CardContent,
 } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
@@ -45,6 +43,7 @@ import {
   LeagueTeamsTable,
   LeagueIndividualsTable,
   ChallengeSpecificLeaderboard,
+  RealTimeScoreboardTable,
 } from '@/components/leaderboard';
 
 // ============================================================================
@@ -168,18 +167,38 @@ function TopPodium({ teams }: PodiumProps) {
 
 export default function LeaderboardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: leagueId } = use(params);
-  const [view, setView] = useState<'teams' | 'individuals'>('teams');
+  const [viewRawTotals, setViewRawTotals] = useState(false);
+  const [roles, setRoles] = useState<string[]>([]);
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
 
   // Fetch leaderboard data
   const {
     data,
+    rawTeams,
+    rawPendingWindow,
     isLoading,
     error,
     refetch,
     setDateRange,
   } = useLeagueLeaderboard(leagueId);
+  // Fetch user roles to decide toggle permission
+  React.useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const res = await fetch(`/api/leagues/${leagueId}/roles`);
+        if (res.ok) {
+          const json = await res.json();
+          const r = json?.roles;
+          const arr = Array.isArray(r) ? r : [r];
+          const roleNames = arr.map((x: any) => typeof x === 'string' ? x : (x?.role_name || x));
+          setRoles(roleNames.filter(Boolean));
+        }
+      } catch {}
+    };
+    if (leagueId) fetchRoles();
+  }, [leagueId]);
+  const canToggleRaw = roles.includes('host') || roles.includes('governor');
 
   // Handle date range change
   const handleApplyDateRange = () => {
@@ -217,11 +236,14 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  const teams = data?.teams || [];
+  const normalizationActive = Boolean(data?.normalization?.active);
+  const normalizationInfo = data?.normalization;
+  const teams = (viewRawTotals && canToggleRaw && rawTeams) ? rawTeams : (data?.teams || []);
   const individuals = data?.individuals || [];
   const stats = data?.stats || { total_submissions: 0, approved: 0, pending: 0, rejected: 0, total_rr: 0 };
   const dateRange = data?.dateRange;
   const league = data?.league;
+  const pendingWindow = (viewRawTotals && canToggleRaw && rawPendingWindow) ? rawPendingWindow : data?.pendingWindow;
 
   return (
     <div className="@container/main flex flex-1 flex-col gap-4 lg:gap-6">
@@ -232,12 +254,22 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
           <p className="text-muted-foreground">
             {league?.league_name ? `Rankings for ${league.league_name}` : 'See how teams and individuals are performing'}
           </p>
+          {normalizationActive && (
+            <div className="mt-1">
+              <Badge variant="secondary">Points Normalized</Badge>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={refetch}>
             <RefreshCw className="size-4 mr-2" />
             Refresh
           </Button>
+          {normalizationActive && canToggleRaw && (
+            <Button variant="ghost" size="sm" onClick={() => setViewRawTotals(v => !v)}>
+              {viewRawTotals ? 'View Normalized' : 'View Raw Totals'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -322,26 +354,90 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
       <div className="px-4 lg:px-6">
         <div className="mb-4">
           <h2 className="text-lg font-semibold">Overall Leaderboard</h2>
-          <p className="text-sm text-muted-foreground">Combined scores from workouts and challenges</p>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>
+              Combined scores from workouts and challenges
+              {dateRange?.endDate ? (
+                <> • As of {format(parseISO(dateRange.endDate), 'MMM d')}</>
+              ) : null}
+            </span>
+            {dateRange?.endDate ? (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground"
+                    aria-label="About the delayed leaderboard"
+                  >
+                    <Info className="size-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="max-w-sm" align="start">
+                  <div className="space-y-3">
+                    <p>
+                      This table shows the official standings as of{' '}
+                      {format(parseISO(dateRange.endDate), 'MMM d')}. Final points are submitted and cannot be changed.
+                    </p>
+                    <p className="text-muted-foreground">
+                      For real-time scores from today and yesterday, check the table below.
+                    </p>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            ) : null}
+          </div>
         </div>
-        <Tabs value={view} onValueChange={(v) => setView(v as 'teams' | 'individuals')}>
-          <TabsList>
-            <TabsTrigger value="teams" className="gap-2">
-              <Users className="size-4" />
-              Teams ({teams.length})
-            </TabsTrigger>
-            <TabsTrigger value="individuals" className="gap-2">
-              <Medal className="size-4" />
-              Individuals ({individuals.length})
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="teams" className="mt-4">
-            <LeagueTeamsTable teams={teams} showAvgRR={true} />
-          </TabsContent>
-          <TabsContent value="individuals" className="mt-4">
-            <LeagueIndividualsTable individuals={individuals} showAvgRR={true} />
-          </TabsContent>
-        </Tabs>
+        <div className="mt-4">
+          <LeagueTeamsTable teams={teams} showAvgRR={true} />
+        </div>
+      </div>
+
+      {/* Real-time (2-day delay window) */}
+      {pendingWindow?.dates?.length ? (
+        <div className="px-4 lg:px-6">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold">Real-time Scoreboard</h2>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>Today’s and yesterday’s scores</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground"
+                    aria-label="About the real-time scoreboard"
+                  >
+                    <Info className="size-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="max-w-sm" align="start">
+                  <div className="space-y-3">
+                    <p>
+                      This table shows real-time scores ranked by today’s points. Avg RR is calculated from both today’s and yesterday’s entries.
+                      These standings are subject to change as more entries come in.
+                    </p>
+                    <p className="text-muted-foreground">
+                      For official finalized standings, please refer to the Leaderboard table above.
+                    </p>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+          <RealTimeScoreboardTable dates={pendingWindow.dates} teams={pendingWindow.teams || []} />
+        </div>
+      ) : null}
+
+      {/* Individual Leaderboard */}
+      <div className="px-4 lg:px-6">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold">Individual Leaderboard</h2>
+          <p className="text-sm text-muted-foreground">Individual standings for the selected date range</p>
+        </div>
+        <LeagueIndividualsTable individuals={individuals} showAvgRR={true} />
       </div>
 
       {/* Challenge-Specific Leaderboard */}

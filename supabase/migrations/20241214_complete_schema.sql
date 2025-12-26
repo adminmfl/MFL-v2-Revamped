@@ -118,6 +118,7 @@ CREATE TABLE IF NOT EXISTS public.leagues (
   is_public boolean DEFAULT false,
   is_exclusive boolean DEFAULT true,
   invite_code varchar UNIQUE,
+  normalize_points_by_team_size boolean DEFAULT false,
   created_by uuid REFERENCES public.users(user_id) ON DELETE SET NULL,
   created_date timestamptz DEFAULT CURRENT_TIMESTAMP,
   modified_by uuid REFERENCES public.users(user_id) ON DELETE SET NULL,
@@ -134,6 +135,7 @@ COMMENT ON TABLE public.leagues IS 'League instances with start/end dates and st
 COMMENT ON COLUMN public.leagues.is_active IS 'Soft delete flag - false indicates deactivated league';
 COMMENT ON COLUMN public.leagues.status IS 'League lifecycle: draft → launched → active → completed';
 COMMENT ON COLUMN public.leagues.auto_rest_day_enabled IS 'When true, missing submissions are auto-marked as rest days via cron';
+COMMENT ON COLUMN public.leagues.normalize_points_by_team_size IS 'When true, points are normalized by team size to account for teams with different number of members';
 
 -- =====================================================================================
 

@@ -110,12 +110,12 @@ export function LeagueTeamsTable({ teams, showAvgRR = false }: LeagueTeamsTableP
       header: 'Points',
       cell: ({ row }) => (
         <div>
-          <p className="text-lg font-bold text-primary">
+          <p className="text-lg font-bold text-primary tabular-nums">
             {row.original.total_points}
           </p>
           {row.original.challenge_bonus > 0 && (
             <p className="text-xs text-muted-foreground">
-              {row.original.points} + {row.original.challenge_bonus} Challenge Points
+              Challenge Bonus: {row.original.challenge_bonus}
             </p>
           )}
         </div>

@@ -21,15 +21,29 @@ export async function GET(
 
     const supabase = getSupabaseServiceRole();
 
-    // Get league to verify it exists
+    // Get league (no embedded join)
     const { data: league, error: leagueError } = await supabase
       .from('leagues')
-      .select('league_id, num_teams, team_size')
+      .select('league_id, num_teams, tier_id')
       .eq('league_id', leagueId)
       .single();
 
     if (leagueError || !league) {
       return NextResponse.json({ error: 'League not found' }, { status: 404 });
+    }
+
+    // Fetch tier capacity separately
+    let leagueCapacity = 20;
+    if (league.tier_id) {
+      const { data: tierData } = await supabase
+        .from('league_tiers')
+        .select('league_capacity')
+        .eq('tier_id', league.tier_id)
+        .single();
+      
+      if (tierData?.league_capacity) {
+        leagueCapacity = tierData.league_capacity;
+      }
     }
 
     // Get member count
@@ -64,7 +78,7 @@ export async function GET(
           pendingCount: 0,
           activeMembers: 0,
           dailyAverage: 0,
-          maxCapacity: (league.num_teams || 0) * (league.team_size || 0),
+          maxCapacity: leagueCapacity,
         },
       });
     }
@@ -125,7 +139,7 @@ export async function GET(
         pendingCount: pendingCount || 0,
         activeMembers,
         dailyAverage: parseFloat(dailyAverage),
-        maxCapacity: (league.num_teams || 0) * (league.team_size || 0),
+        maxCapacity: leagueCapacity,
       },
     });
   } catch (error) {

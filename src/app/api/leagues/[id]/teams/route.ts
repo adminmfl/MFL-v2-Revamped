@@ -16,6 +16,7 @@ import {
 import { getLeagueById } from '@/lib/services/leagues';
 import { userHasAnyRole } from '@/lib/services/roles';
 import { getSupabaseServiceRole } from '@/lib/supabase/client';
+import { getTeamSizeStats } from '@/lib/utils/normalization';
 
 const createTeamSchema = z.object({
   team_name: z.string().min(1, 'Team name is required').max(100, 'Team name too long'),
@@ -77,6 +78,15 @@ export async function GET(
     // Get governors info
     const governors = await getLeagueGovernors(leagueId);
 
+    // Calculate team size variance stats
+    const teamSizeStats = getTeamSizeStats(
+      teams.map(t => ({
+        teamId: t.team_id,
+        teamName: t.team_name,
+        memberCount: t.member_count || 0,
+      }))
+    );
+
     return NextResponse.json({
       success: true,
       data: {
@@ -90,14 +100,21 @@ export async function GET(
           league_id: league.league_id,
           league_name: league.league_name,
           num_teams: league.num_teams,
-          team_size: league.team_size,
+          league_capacity: league.league_capacity || 20,
           status: league.status,
           host_user_id: league.created_by,
+          normalize_points_by_capacity: league.normalize_points_by_capacity,
+        },
+        teamSizeVariance: {
+          hasVariance: teamSizeStats.hasVariance,
+          minSize: teamSizeStats.minSize,
+          maxSize: teamSizeStats.maxSize,
+          avgSize: teamSizeStats.avgSize,
         },
         meta: {
           current_team_count: teams.length,
-          max_teams: league.num_teams,
-          can_create_more: teams.length < league.num_teams,
+          max_teams: league.num_teams ?? 0,
+          can_create_more: teams.length < (league.num_teams ?? 0),
         },
       },
     });
@@ -145,9 +162,10 @@ export async function POST(
 
     // Check if max teams reached
     const currentCount = await getTeamCountForLeague(leagueId);
-    if (currentCount >= league.num_teams) {
+    const maxTeams = league.num_teams ?? 0;
+    if (currentCount >= maxTeams) {
       return NextResponse.json(
-        { error: `Maximum of ${league.num_teams} teams allowed for this league` },
+        { error: `Maximum of ${maxTeams} teams allowed for this league` },
         { status: 400 }
       );
     }

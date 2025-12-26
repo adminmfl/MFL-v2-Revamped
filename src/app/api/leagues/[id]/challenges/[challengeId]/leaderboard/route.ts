@@ -14,12 +14,19 @@ function formatDateYYYYMMDD(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+function endOfLocalDayToUtcISOString(dateYYYYMMDD: string, tzOffsetMinutes: number): string {
+  const [y, m, d] = dateYYYYMMDD.split('-').map((p) => Number(p));
+  // Local end-of-day expressed as UTC: UTC = local + offsetMinutes
+  const utcMs = Date.UTC(y, (m || 1) - 1, d || 1, 23, 59, 59, 999) + tzOffsetMinutes * 60_000;
+  return new Date(utcMs).toISOString();
+}
+
 function buildError(message: string, status = 400) {
   return NextResponse.json({ success: false, error: message }, { status });
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string; challengeId: string }> }
 ) {
   try {
@@ -59,12 +66,23 @@ export async function GET(
     }
 
     // Apply a 2-day delay before scores appear on leaderboards.
+    const { searchParams } = new URL(req.url);
+    const tzOffsetMinutesParam = searchParams.get('tzOffsetMinutes');
+    const tzOffsetMinutes = tzOffsetMinutesParam !== null ? Number(tzOffsetMinutesParam) : null;
+    const nowLocal =
+      typeof tzOffsetMinutes === 'number' && Number.isFinite(tzOffsetMinutes)
+        ? new Date(Date.now() - tzOffsetMinutes * 60_000)
+        : new Date();
+
     const cutoffDate = (() => {
-      const d = new Date();
+      const d = new Date(nowLocal);
       d.setDate(d.getDate() - 2);
       return formatDateYYYYMMDD(d);
     })();
-    const cutoffTimestamp = new Date(`${cutoffDate}T23:59:59.999Z`).toISOString();
+    const cutoffTimestamp =
+      typeof tzOffsetMinutes === 'number' && Number.isFinite(tzOffsetMinutes)
+        ? endOfLocalDayToUtcISOString(cutoffDate, tzOffsetMinutes)
+        : new Date(`${cutoffDate}T23:59:59.999Z`).toISOString();
 
     // Fetch submissions for this challenge
     const { data: submissions, error: submissionsError } = await supabase

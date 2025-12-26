@@ -38,6 +38,26 @@ export async function getPricing(): Promise<Pricing | null> {
 }
 
 /**
+ * Get pricing configuration by id
+ */
+export async function getPricingById(pricingId: string): Promise<Pricing | null> {
+  const supabase = getSupabaseServiceRole();
+
+  const { data, error } = await supabase
+    .from('pricing')
+    .select('*')
+    .eq('id', pricingId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching pricing by id:', error);
+    return null;
+  }
+
+  return data as Pricing | null;
+}
+
+/**
  * Update pricing (admin only)
  * Creates a new active pricing record and deactivates the old one
  */

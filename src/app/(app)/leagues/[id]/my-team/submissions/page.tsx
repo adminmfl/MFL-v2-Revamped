@@ -6,6 +6,7 @@
 
 import * as React from 'react';
 import { use, useState, useEffect, useMemo } from 'react';
+import { useSession } from 'next-auth/react';
 import {
   ClipboardCheck,
   CheckCircle2,
@@ -89,6 +90,8 @@ interface TeamSubmission {
   notes: string | null;
   created_date: string;
   modified_date: string;
+  modified_by: string | null;
+  graded_by_role: 'host' | 'governor' | 'captain' | 'player' | 'system' | null;
   member: {
     user_id: string;
     username: string;
@@ -229,6 +232,8 @@ export default function TeamSubmissionsPage({
   const { id: leagueId } = use(params);
   const { activeLeague } = useLeague();
   const { isCaptain } = useRole();
+  const { data: session } = useSession();
+  const currentUserId = (session?.user as any)?.id as string | undefined;
 
   const [submissions, setSubmissions] = useState<TeamSubmission[]>([]);
   const [stats, setStats] = useState<SubmissionStats>({
@@ -402,13 +407,30 @@ export default function TeamSubmissionsPage({
     {
       accessorKey: 'status',
       header: 'Status',
-      cell: ({ row }) => <StatusBadge status={row.original.status} />,
+      cell: ({ row }) => {
+        const role = row.original.graded_by_role;
+        const showGradedBy = row.original.status !== 'pending' && (role === 'host' || role === 'governor' || role === 'captain');
+        const roleLabel = role ? role.charAt(0).toUpperCase() + role.slice(1) : '';
+        const isOwnSubmission = !!currentUserId && row.original.member.user_id === currentUserId;
+        return (
+          <div className="flex flex-col gap-0.5">
+            <StatusBadge status={row.original.status} />
+            {showGradedBy ? (
+              <span className="text-xs text-muted-foreground">Graded by {roleLabel}</span>
+            ) : null}
+            {isOwnSubmission ? (
+              <span className="text-xs text-muted-foreground">Your submission</span>
+            ) : null}
+          </div>
+        );
+      },
     },
     {
       id: 'actions',
       cell: ({ row }) => {
         const isPending = row.original.status === 'pending';
         const isValidating = validatingId === row.original.id;
+        const isOwnSubmission = !!currentUserId && row.original.member.user_id === currentUserId;
 
         return (
           <div className="flex items-center gap-1">
@@ -423,7 +445,7 @@ export default function TeamSubmissionsPage({
             >
               <Eye className="size-4" />
             </Button>
-            {isPending && (
+            {isPending && !isOwnSubmission && (
               <>
                 <Input
                   type="number"

@@ -27,37 +27,77 @@ export async function GET() {
 
     const supabase = getSupabaseServiceRole();
 
-    // Get all league memberships for the user with league details
+    // Get all league memberships for the user.
+    // NOTE: We intentionally avoid embedded joins here because some DBs no longer have
+    // `leagues.team_size`, and embedded relation queries may still reference it.
     const { data: memberships, error: membershipError } = await supabase
       .from('leaguemembers')
-      .select(`
-        league_id,
-        team_id,
-        leagues (
-          league_id,
-          league_name,
-          description,
-          status,
-          start_date,
-          end_date,
-          num_teams,
-          team_size,
-          is_public,
-          is_exclusive,
-          invite_code,
-          created_by
-        ),
-        teams (
-          team_id,
-          team_name
-        )
-      `)
+      .select('league_id, team_id')
       .eq('user_id', userId);
 
     if (membershipError) {
       console.error('Error fetching memberships:', membershipError);
       return NextResponse.json({ error: 'Failed to fetch leagues' }, { status: 500 });
     }
+
+    const leagueIds = Array.from(
+      new Set((memberships || []).map((m: any) => m.league_id).filter(Boolean))
+    );
+    const teamIds = Array.from(
+      new Set((memberships || []).map((m: any) => m.team_id).filter(Boolean))
+    );
+
+    // Early return if no memberships
+    if (leagueIds.length === 0) {
+      return NextResponse.json({ leagues: [] });
+    }
+
+    // Fetch leagues WITHOUT embedded tier join (avoids FK issues)
+    const { data: leaguesData, error: leaguesError } = await supabase
+      .from('leagues')
+      .select(
+        'league_id, league_name, description, status, start_date, end_date, num_teams, tier_id, is_public, is_exclusive, invite_code, created_by'
+      )
+      .in('league_id', leagueIds);
+
+    if (leaguesError) {
+      console.error('Error fetching leagues:', leaguesError);
+      return NextResponse.json({ error: 'Failed to fetch leagues' }, { status: 500 });
+    }
+
+    // Fetch tier capacities separately
+    const tierIds = Array.from(
+      new Set((leaguesData || []).map((l: any) => l.tier_id).filter(Boolean))
+    );
+    
+    let tierCapacityMap = new Map<string, number>();
+    if (tierIds.length > 0) {
+      const { data: tiersData } = await supabase
+        .from('league_tiers')
+        .select('tier_id, league_capacity')
+        .in('tier_id', tierIds);
+      
+      (tiersData || []).forEach((t: any) => {
+        tierCapacityMap.set(t.tier_id, t.league_capacity || 20);
+      });
+    }
+
+    let teamsData: any[] = [];
+    if (teamIds.length > 0) {
+      const { data, error: teamsError } = await supabase
+        .from('teams')
+        .select('team_id, team_name')
+        .in('team_id', teamIds);
+
+      if (teamsError) {
+        console.error('Error fetching teams:', teamsError);
+        return NextResponse.json({ error: 'Failed to fetch leagues' }, { status: 500 });
+      }
+      teamsData = data || [];
+    }
+
+    const leagueById = new Map((leaguesData || []).map((l: any) => [l.league_id, l] as const));
+    const teamById = new Map(teamsData.map((t: any) => [t.team_id, t] as const));
 
     // Get all role assignments for the user
     const { data: roleAssignments, error: roleError } = await supabase
@@ -90,9 +130,9 @@ export async function GET() {
 
     // Build the response
     const leagues = (memberships || []).map((membership: any) => {
-      const league = membership.leagues;
-      const team = membership.teams;
-      const leagueId = league?.league_id;
+      const leagueId = membership.league_id;
+      const league = leagueById.get(leagueId);
+      const team = membership.team_id ? teamById.get(membership.team_id) : null;
       const roles = rolesMap.get(leagueId) || [];
 
       // Check if user is host (created the league or has host role)
@@ -103,6 +143,9 @@ export async function GET() {
         roles.push('player');
       }
 
+      // Get league_capacity from tier map
+      const leagueCapacity = league?.tier_id ? (tierCapacityMap.get(league.tier_id) || 20) : 20;
+
       return {
         league_id: leagueId,
         name: league?.league_name || 'Unknown League',
@@ -111,12 +154,12 @@ export async function GET() {
         start_date: league?.start_date || null,
         end_date: league?.end_date || null,
         num_teams: league?.num_teams || 4,
-        team_size: league?.team_size || 5,
+        league_capacity: leagueCapacity,
         is_public: league?.is_public || false,
         is_exclusive: league?.is_exclusive || true,
         invite_code: league?.invite_code || null,
         roles: roles,
-        team_id: team?.team_id || null,
+        team_id: team?.team_id || membership.team_id || null,
         team_name: team?.team_name || null,
         is_host: isHost,
       };

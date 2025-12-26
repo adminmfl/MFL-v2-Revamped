@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { AdminLeague, LeagueStatus } from "@/types/admin";
 
 // ============================================================================
@@ -35,7 +36,6 @@ interface LeagueFormData {
   start_date: string;
   end_date: string;
   num_teams: number;
-  team_size: number;
   rest_days: number;
   auto_rest_day_enabled: boolean;
   is_public: boolean;
@@ -82,7 +82,6 @@ export function LeagueFormDialog({
     start_date: "",
     end_date: "",
     num_teams: 4,
-    team_size: 5,
     rest_days: 1,
     auto_rest_day_enabled: false,
     is_public: false,
@@ -100,7 +99,6 @@ export function LeagueFormDialog({
         start_date: league.start_date,
         end_date: league.end_date,
         num_teams: league.num_teams,
-        team_size: league.team_size,
         rest_days: league.rest_days,
         auto_rest_day_enabled: league.auto_rest_day_enabled,
         is_public: league.is_public,
@@ -115,7 +113,6 @@ export function LeagueFormDialog({
         start_date: "",
         end_date: "",
         num_teams: 4,
-        team_size: 5,
         rest_days: 1,
         auto_rest_day_enabled: false,
         is_public: false,
@@ -199,7 +196,7 @@ export function LeagueFormDialog({
           </div>
 
           {/* Team Configuration */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="num_teams">Number of Teams</Label>
               <Input
@@ -210,19 +207,6 @@ export function LeagueFormDialog({
                 value={formData.num_teams}
                 onChange={(e) =>
                   setFormData({ ...formData, num_teams: parseInt(e.target.value) || 4 })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="team_size">Team Size</Label>
-              <Input
-                id="team_size"
-                type="number"
-                min={1}
-                max={50}
-                value={formData.team_size}
-                onChange={(e) =>
-                  setFormData({ ...formData, team_size: parseInt(e.target.value) || 5 })
                 }
               />
             </div>
@@ -324,6 +308,7 @@ export function LeagueFormDialog({
                 />
               </div>
             )}
+
           </div>
 
           <DialogFooter className="pt-4">

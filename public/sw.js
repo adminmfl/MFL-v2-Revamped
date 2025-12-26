@@ -5,17 +5,22 @@ const CACHE_ASSETS = `rfl-assets-${VERSION}`;
 
 const PRECACHE_URLS = [
   '/',
-  '/dashboard',
-  '/team',
-  '/leaderboards',
-  '/rules',
   '/offline',
   '/manifest.webmanifest'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_PAGES).then((cache) => cache.addAll(PRECACHE_URLS)).then(() => self.skipWaiting())
+    (async () => {
+      const cache = await caches.open(CACHE_PAGES);
+      // Be tolerant: missing routes should not prevent SW from installing.
+      await Promise.all(
+        PRECACHE_URLS.map((u) =>
+          cache.add(u).catch(() => null)
+        )
+      );
+      await self.skipWaiting();
+    })()
   );
 });
 
@@ -31,12 +36,19 @@ self.addEventListener('activate', (event) => {
 
 function isAssetRequest(req) {
   const url = new URL(req.url);
+  if (url.pathname.startsWith('/_next/')) return false;
   return (
     url.pathname.endsWith('.css') ||
     url.pathname.endsWith('.js') ||
-    url.pathname.endsWith('.woff') || url.pathname.endsWith('.woff2') ||
-    url.pathname.endsWith('.ttf') || url.pathname.endsWith('.otf') ||
-    url.pathname.endsWith('.png') || url.pathname.endsWith('.jpg') || url.pathname.endsWith('.jpeg') || url.pathname.endsWith('.webp') || url.pathname.endsWith('.svg')
+    url.pathname.endsWith('.woff') ||
+    url.pathname.endsWith('.woff2') ||
+    url.pathname.endsWith('.ttf') ||
+    url.pathname.endsWith('.otf') ||
+    url.pathname.endsWith('.png') ||
+    url.pathname.endsWith('.jpg') ||
+    url.pathname.endsWith('.jpeg') ||
+    url.pathname.endsWith('.webp') ||
+    url.pathname.endsWith('.svg')
   );
 }
 
@@ -47,6 +59,16 @@ function isSupabaseStorage(url) {
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
+
+  // Never interfere with Next.js internal assets or API routes.
+  try {
+    const u = new URL(req.url);
+    if (u.origin === self.location.origin) {
+      if (u.pathname.startsWith('/_next/') || u.pathname.startsWith('/api/')) return;
+    }
+  } catch {
+    // ignore
+  }
 
   // Navigations: network-first with timeout → cache → offline
   if (req.mode === 'navigate') {

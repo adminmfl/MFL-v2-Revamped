@@ -58,9 +58,10 @@ export interface AdminLeague {
   status: LeagueStatus;
   is_active: boolean;
   num_teams: number;
-  team_size: number;
+  tier_id?: string | null;
   rest_days: number;
   auto_rest_day_enabled: boolean;
+  normalize_points_by_capacity: boolean;
   is_public: boolean;
   is_exclusive: boolean;
   invite_code?: string | null;
@@ -70,6 +71,7 @@ export interface AdminLeague {
   modified_date: string;
   // Computed fields
   member_count?: number;
+  league_capacity?: number;
 }
 
 export interface AdminLeagueCreateInput {
@@ -78,9 +80,10 @@ export interface AdminLeagueCreateInput {
   start_date: string;
   end_date: string;
   num_teams?: number;
-  team_size?: number;
+  tier_id?: string;
   rest_days?: number;
   auto_rest_day_enabled?: boolean;
+  normalize_points_by_capacity?: boolean;
   is_public?: boolean;
   is_exclusive?: boolean;
 }
@@ -93,9 +96,10 @@ export interface AdminLeagueUpdateInput {
   status?: LeagueStatus;
   is_active?: boolean;
   num_teams?: number;
-  team_size?: number;
+  tier_id?: string;
   rest_days?: number;
   auto_rest_day_enabled?: boolean;
+  normalize_points_by_capacity?: boolean;
   is_public?: boolean;
   is_exclusive?: boolean;
 }

@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = getSupabaseServiceRole();
 
-    // Find league by invite_code
+    // Find league by invite_code (no embedded join)
     const { data: league, error: leagueError } = await supabase
       .from('leagues')
       .select('*')
@@ -46,13 +46,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Fetch tier capacity separately
+    let maxCapacity = 20;
+    if (league.tier_id) {
+      const { data: tierData } = await supabase
+        .from('league_tiers')
+        .select('league_capacity')
+        .eq('tier_id', league.tier_id)
+        .single();
+      
+      if (tierData?.league_capacity) {
+        maxCapacity = tierData.league_capacity;
+      }
+    }
+
     // Check league capacity
     const { count: memberCount } = await supabase
       .from('leaguemembers')
       .select('*', { count: 'exact', head: true })
       .eq('league_id', league.league_id);
 
-    const maxCapacity = (league.num_teams || 4) * (league.team_size || 5);
     if ((memberCount || 0) >= maxCapacity) {
       return NextResponse.json(
         { error: 'This league is full' },
