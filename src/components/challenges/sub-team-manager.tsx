@@ -22,8 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Users, Plus, Trash2, Edit } from 'lucide-react';
+import { Users, Plus, Trash2, Edit, AlertCircle } from 'lucide-react';
 
 interface SubTeam {
   subteam_id: string;
@@ -57,6 +58,7 @@ export function SubTeamManager({
   const [subTeams, setSubTeams] = useState<SubTeam[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(false);
+  const [membersInOtherSubteams, setMembersInOtherSubteams] = useState<Set<string>>(new Set());
 
   const [pendingTeamId, setPendingTeamId] = useState('');
   const [selectedTeamId, setSelectedTeamId] = useState('');
@@ -101,6 +103,18 @@ export function SubTeamManager({
           })),
         }));
         setSubTeams(transformed);
+
+        // Identify members who are in ANY subteam for this challenge (for the current editing subteam)
+        const allMembersInSubteams = new Set<string>();
+        transformed.forEach((st: SubTeam) => {
+          // Only exclude members from the current subteam being edited
+          if (st.subteam_id !== editingId) {
+            st.members.forEach((m) => {
+              allMembersInSubteams.add(m.league_member_id);
+            });
+          }
+        });
+        setMembersInOtherSubteams(allMembersInSubteams);
       }
     } catch {
       toast.error('Failed to load sub-teams');
@@ -341,19 +355,43 @@ export function SubTeamManager({
 
             <div className="space-y-2">
               <Label>Members</Label>
+              {membersInOtherSubteams.size > 0 && (
+                <Alert className="border-yellow-200 bg-yellow-50">
+                  <AlertCircle className="h-4 w-4 text-yellow-600" />
+                  <AlertDescription className="text-yellow-800 text-sm">
+                    <strong>Already in another sub-team:</strong> Members marked with ⚠️ are already assigned to another sub-team for this challenge and cannot be selected.
+                  </AlertDescription>
+                </Alert>
+              )}
               <div className="max-h-52 overflow-y-auto rounded-md border p-3 space-y-2">
                 {teamMembers.length === 0 && (
                   <p className="text-sm text-muted-foreground">No members available for this team.</p>
                 )}
-                {teamMembers.map((m) => (
-                  <label key={m.league_member_id} className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={selectedMembers.includes(m.league_member_id)}
-                      onCheckedChange={() => toggleMember(m.league_member_id)}
-                    />
-                    <span>{m.full_name}</span>
-                  </label>
-                ))}
+                {teamMembers.map((m) => {
+                  const isInOtherSubteam = membersInOtherSubteams.has(m.league_member_id);
+                  const isSelected = selectedMembers.includes(m.league_member_id);
+                  
+                  return (
+                    <label
+                      key={m.league_member_id}
+                      className={`flex items-center gap-2 text-sm p-2 rounded ${
+                        isInOtherSubteam && !isSelected ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleMember(m.league_member_id)}
+                        disabled={isInOtherSubteam && !isSelected}
+                      />
+                      <span>
+                        {m.full_name}
+                        {isInOtherSubteam && !isSelected && (
+                          <span className="ml-2 text-yellow-600">⚠️ In another sub-team</span>
+                        )}
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
           </div>

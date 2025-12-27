@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
       .select('league_id, rest_days, status')
       .eq('auto_rest_day_enabled', true)
       .eq('is_active', true)
-      .in('status', ['active', 'launched']);
+      .eq('status', 'active');
 
     if (leaguesError) {
       console.error('Error fetching leagues with auto rest enabled:', leaguesError);

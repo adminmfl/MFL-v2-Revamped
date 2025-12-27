@@ -894,7 +894,15 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                 </div>
 
                 {isAdmin && (
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    {challenge.challenge_type === 'sub_team' && ['draft', 'scheduled', 'upcoming'].includes(challenge.status) && (
+                      <SubTeamManager
+                        leagueId={leagueId}
+                        challengeId={challenge.id}
+                        teams={teams}
+                      />
+                    )}
+
                     {isHost && (
                       <Button
                         size="sm"

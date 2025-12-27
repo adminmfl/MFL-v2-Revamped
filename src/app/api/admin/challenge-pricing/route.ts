@@ -16,6 +16,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from('challengepricing')
       .select('pricing_id, per_day_rate, tax, admin_markup, created_at, modified_at')
+      .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
@@ -38,13 +39,13 @@ export async function PUT(req: NextRequest) {
 
     const body = await req.json();
     const per_day_rate = Number(body.per_day_rate);
-    const tax = body.tax !== undefined && body.tax !== null ? Number(body.tax) : null;
+    const tax = body.tax !== undefined && body.tax !== null ? Number(body.tax) : 18;
     const admin_markup = body.admin_markup !== undefined && body.admin_markup !== null ? Number(body.admin_markup) : null;
 
     if (!Number.isFinite(per_day_rate) || per_day_rate < 0) {
       return jsonError('per_day_rate must be a non-negative number');
     }
-    if (tax !== null && !Number.isFinite(tax)) {
+    if (!Number.isFinite(tax)) {
       return jsonError('tax must be a number');
     }
     if (admin_markup !== null && !Number.isFinite(admin_markup)) {
@@ -53,12 +54,43 @@ export async function PUT(req: NextRequest) {
 
     const supabase = getSupabaseServiceRole();
 
-    // Upsert single row
-    const { data, error } = await supabase
+    // First, get the existing pricing record (should be singleton pattern)
+    const { data: existing } = await supabase
       .from('challengepricing')
-      .upsert({ per_day_rate, tax, admin_markup }, { onConflict: 'pricing_id' })
-      .select('pricing_id, per_day_rate, tax, admin_markup, created_at, modified_at')
+      .select('pricing_id')
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
+
+    let result;
+    
+    if (existing?.pricing_id) {
+      // Update existing record
+      result = await supabase
+        .from('challengepricing')
+        .update({
+          per_day_rate,
+          tax,
+          admin_markup,
+          modified_at: new Date().toISOString(),
+        })
+        .eq('pricing_id', existing.pricing_id)
+        .select('pricing_id, per_day_rate, tax, admin_markup, created_at, modified_at')
+        .single();
+    } else {
+      // Create new record
+      result = await supabase
+        .from('challengepricing')
+        .insert({
+          per_day_rate,
+          tax,
+          admin_markup,
+        })
+        .select('pricing_id, per_day_rate, tax, admin_markup, created_at, modified_at')
+        .single();
+    }
+
+    const { data, error } = result;
 
     if (error) {
       console.error('challengepricing PUT error', error);
