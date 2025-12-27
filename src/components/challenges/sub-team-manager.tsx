@@ -69,6 +69,7 @@ export function SubTeamManager({
   useEffect(() => {
     if (open && teams.length > 0 && !pendingTeamId) {
       setPendingTeamId(teams[0].team_id);
+      setSelectedTeamId(teams[0].team_id);
     }
   }, [open, teams, pendingTeamId]);
 
@@ -130,6 +131,11 @@ export function SubTeamManager({
       return;
     }
 
+    if (!selectedTeamId) {
+      toast.error('Please select a team first');
+      return;
+    }
+
     setLoading(true);
     try {
       const url = editingId
@@ -187,7 +193,6 @@ export function SubTeamManager({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {/* ✅ SMALL BUTTON – FIXED */}
         <Button
           variant="outline"
           size="sm"
@@ -210,7 +215,13 @@ export function SubTeamManager({
           <div className="space-y-2">
             <Label htmlFor="team-select">Select Team</Label>
             <div className="flex gap-2 items-end">
-              <Select value={pendingTeamId} onValueChange={setPendingTeamId}>
+              <Select
+                value={pendingTeamId}
+                onValueChange={(val) => {
+                  setPendingTeamId(val);
+                  setSelectedTeamId(val);
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Choose team..." />
                 </SelectTrigger>

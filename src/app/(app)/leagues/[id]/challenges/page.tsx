@@ -45,7 +45,7 @@ type Challenge = {
   description: string | null;
   challenge_type: 'individual' | 'team' | 'sub_team';
   total_points: number;
-  status: 'active' | 'upcoming' | 'closed';
+  status: 'draft' | 'scheduled' | 'active' | 'submission_closed' | 'closed' | 'upcoming';
   start_date: string | null;
   end_date: string | null;
   doc_url: string | null;
@@ -76,11 +76,17 @@ type SubmissionRow = ChallengeSubmission & {
 
 // Helpers -------------------------------------------------------------------
 
-function statusBadge(status: Challenge['status']) {
+function statusBadge(status: Challenge['status'], isAdmin = false) {
   const map = {
+    draft: { label: 'Draft', className: 'bg-amber-100 text-amber-800' },
+    scheduled: { label: 'Scheduled', className: 'bg-blue-100 text-blue-700' },
     active: { label: 'Active', className: 'bg-green-100 text-green-700' },
-    upcoming: { label: 'Upcoming', className: 'bg-blue-100 text-blue-700' },
+    submission_closed: {
+      label: isAdmin ? 'Submission Closed' : 'Closed',
+      className: 'bg-purple-100 text-purple-700',
+    },
     closed: { label: 'Closed', className: 'bg-gray-100 text-gray-700' },
+    upcoming: { label: 'Scheduled', className: 'bg-blue-100 text-blue-700' }, // legacy mapping
   } as const;
   const cfg = map[status] || map.active;
   return <Badge className={cn('w-fit', cfg.className)} variant="outline">{cfg.label}</Badge>;
@@ -122,10 +128,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
     description: '',
     challengeType: 'individual' as Challenge['challenge_type'],
     totalPoints: 0,
-    startDate: '',
-    endDate: '',
     docUrl: '',
-    status: 'active' as Challenge['status'],
   });
 
   // Activate preset dialog state
@@ -154,6 +157,12 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
   const [reviewFilterSubTeamId, setReviewFilterSubTeamId] = React.useState<string>('');
   const [teams, setTeams] = React.useState<Array<{ team_id: string; team_name: string }>>([]);
   const [subTeams, setSubTeams] = React.useState<Array<{ subteam_id: string; name: string }>>([]);
+  // Finish creation dialog state (for draft challenges)
+  const [finishOpen, setFinishOpen] = React.useState(false);
+  const [finishChallenge, setFinishChallenge] = React.useState<Challenge | null>(null);
+  const [finishStart, setFinishStart] = React.useState('');
+  const [finishEnd, setFinishEnd] = React.useState('');
+  const [finishing, setFinishing] = React.useState(false);
   // Delete dialog state
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [challengeToDelete, setChallengeToDelete] = React.useState<Challenge | null>(null);
@@ -263,10 +272,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
         description: createForm.description,
         challengeType: createForm.challengeType,
         totalPoints: Number(createForm.totalPoints) || 0,
-        startDate: createForm.startDate || null,
-        endDate: createForm.endDate || null,
         docUrl,
-        status: createForm.status,
         isCustom: true,
       };
 
@@ -277,12 +283,6 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
       });
 
       const json = await res.json();
-      
-      // Check if payment is required
-      if (res.status === 402) {
-        toast.error('Payment required for custom challenges. Feature coming soon.');
-        return;
-      }
 
       if (!res.ok || !json.success) {
         throw new Error(json.error || 'Failed to create challenge');
@@ -296,10 +296,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
         description: '',
         challengeType: 'individual',
         totalPoints: 0,
-        startDate: '',
-        endDate: '',
         docUrl: '',
-        status: 'active',
       });
       fetchChallenges();
     } catch (err) {
@@ -366,6 +363,48 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
   const handleDeleteClick = (challenge: Challenge) => {
     setChallengeToDelete(challenge);
     setDeleteOpen(true);
+  };
+
+  const handleFinishClick = (challenge: Challenge) => {
+    setFinishChallenge(challenge);
+    setFinishStart(challenge.start_date || '');
+    setFinishEnd(challenge.end_date || '');
+    setFinishOpen(true);
+  };
+
+  const handleFinishSubmit = async () => {
+    if (!finishChallenge) return;
+    if (!finishStart || !finishEnd) {
+      toast.error('Start date and end date are required');
+      return;
+    }
+    setFinishing(true);
+    try {
+      const payload = {
+        startDate: finishStart,
+        endDate: finishEnd,
+      };
+
+      const res = await fetch(`/api/leagues/${leagueId}/challenges/${finishChallenge.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'Failed to finish setup');
+      }
+
+      toast.success('Challenge updated');
+      setFinishOpen(false);
+      setFinishChallenge(null);
+      fetchChallenges();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to finish setup');
+    } finally {
+      setFinishing(false);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -637,7 +676,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                   <CardTitle className="text-lg font-semibold leading-tight">
                     {challenge.name}
                   </CardTitle>
-                  {statusBadge(challenge.status)}
+                  {statusBadge(challenge.status, isAdmin)}
                 </div>
 
                 <CardDescription>
@@ -692,7 +731,12 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
               {/* ACTIONS */}
               <div className="mt-auto px-6 pb-5 space-y-3">
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => handleOpenSubmit(challenge)}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleOpenSubmit(challenge)}
+                    disabled={['draft', 'scheduled', 'submission_closed', 'closed'].includes(challenge.status)}
+                  >
                     Submit Proof
                   </Button>
 
@@ -700,27 +744,29 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                     submissionStatusBadge(challenge.my_submission.status)}
 
                   {isAdmin && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleOpenReview(challenge)}
-                      className="ml-auto"
-                    >
-                      Review
-                    </Button>
+                    challenge.status === 'draft' ? (
+                      <Button
+                        size="sm"
+                        onClick={() => handleFinishClick(challenge)}
+                        className="ml-auto"
+                      >
+                        Finish Creation
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenReview(challenge)}
+                        className="ml-auto"
+                      >
+                        Review
+                      </Button>
+                    )
                   )}
                 </div>
 
                 {isAdmin && (
                   <div className="flex items-center justify-between">
-                    {challenge.challenge_type === 'sub_team' && (
-                      <SubTeamManager
-                        leagueId={leagueId}
-                        challengeId={challenge.id}
-                        teams={teams}
-                      />
-                    )}
-
                     {isHost && (
                       <Button
                         size="sm"
@@ -745,15 +791,10 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
           <DialogHeader>
             <DialogTitle>Create Custom Challenge</DialogTitle>
             <DialogDescription>
-              Set up a new league-scoped challenge. Custom challenges require payment.
+              Set up a new league-scoped challenge.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateChallenge} className="space-y-4">
-            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
-              <p className="text-sm text-amber-900">
-                <strong>Note:</strong> Creating a custom challenge requires a one-time payment. You will be prompted to complete payment after filling in the details.
-              </p>
-            </div>
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
               <Input
@@ -801,24 +842,6 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Start Date</Label>
-                <Input
-                  type="date"
-                  value={createForm.startDate}
-                  onChange={(e) => setCreateForm((p) => ({ ...p, startDate: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>End Date</Label>
-                <Input
-                  type="date"
-                  value={createForm.endDate}
-                  onChange={(e) => setCreateForm((p) => ({ ...p, endDate: e.target.value }))}
-                />
-              </div>
-            </div>
             <div className="space-y-2">
               <Label htmlFor="doc-upload">Challenge Rules Document (Optional)</Label>
               <Input
@@ -836,27 +859,11 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                 Upload rules as PDF, Word document, or image (max 10MB)
               </p>
             </div>
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select
-                value={createForm.status}
-                onValueChange={(val) => setCreateForm((p) => ({ ...p, status: val as Challenge['status'] }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="upcoming">Upcoming</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit">Create</Button>
+              <Button type="submit">Save</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -1106,6 +1113,57 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Finish Creation Dialog */}
+      <Dialog open={finishOpen} onOpenChange={setFinishOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Finish Challenge Creation</DialogTitle>
+            <DialogDescription>
+              Set start and end dates to move this challenge out of draft.
+            </DialogDescription>
+          </DialogHeader>
+          {finishChallenge?.challenge_type === 'sub_team' && (
+            <div className="rounded-md border bg-muted/40 p-3 text-sm space-y-2">
+              <p className="font-medium">Need sub-teams?</p>
+              <p className="text-muted-foreground">
+                Create sub-teams before activating this challenge.
+              </p>
+              <div>
+                <SubTeamManager leagueId={leagueId} challengeId={finishChallenge.id} teams={teams} />
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="finish-start">Start Date</Label>
+              <Input
+                id="finish-start"
+                type="date"
+                value={finishStart}
+                onChange={(e) => setFinishStart(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="finish-end">End Date</Label>
+              <Input
+                id="finish-end"
+                type="date"
+                value={finishEnd}
+                onChange={(e) => setFinishEnd(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFinishOpen(false)} disabled={finishing}>
+              Cancel
+            </Button>
+            <Button onClick={handleFinishSubmit} disabled={finishing}>
+              {finishing ? 'Saving...' : 'Save & Activate'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

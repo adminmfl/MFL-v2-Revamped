@@ -6,6 +6,34 @@ import { getSupabaseServiceRole } from '@/lib/supabase/client';
 // Shared helpers ------------------------------------------------------------
 type LeagueRole = 'host' | 'governor' | 'captain' | 'player' | null;
 
+type ChallengeStatus =
+  | 'draft'
+  | 'scheduled'
+  | 'active'
+  | 'submission_closed'
+  | 'closed'
+  | 'upcoming'; // keep legacy value for compatibility
+
+const challengeStatusOrder: ChallengeStatus[] = [
+  'draft',
+  'scheduled',
+  'active',
+  'submission_closed',
+  'closed',
+  'upcoming',
+];
+
+const defaultChallengeStatus: ChallengeStatus = 'draft';
+
+function normalizeStatus(status: ChallengeStatus | string | null | undefined): ChallengeStatus {
+  if (!status) return defaultChallengeStatus;
+  if (status === 'upcoming') return 'scheduled';
+  if (challengeStatusOrder.includes(status as ChallengeStatus)) {
+    return status as ChallengeStatus;
+  }
+  return defaultChallengeStatus;
+}
+
 type Membership = {
   leagueMemberId: string;
   role: LeagueRole;
@@ -160,7 +188,7 @@ export async function GET(
         doc_url: c.doc_url || template?.doc_url || null,
         start_date: c.start_date,
         end_date: c.end_date,
-        status: c.status,
+        status: normalizeStatus(c.status),
         template_id: c.challenge_id,
         my_submission: mySubmissions[challengeId] || null,
         stats: statsByChallenge[challengeId] || null,
@@ -238,33 +266,14 @@ export async function POST(
       docUrl,
       templateId,
       isCustom = false,
-      status = 'active',
+      status = defaultChallengeStatus,
     } = body;
 
     if (!name && !templateId) {
       return buildError('Name or templateId is required', 400);
     }
 
-    // If custom challenge, require payment first (return payment request)
-    if (isCustom && totalPoints > 0) {
-      return NextResponse.json({
-        success: false,
-        requiresPayment: true,
-        message: 'Custom challenges require payment. Complete payment first.',
-        challenge: {
-          name,
-          description,
-          challengeType,
-          totalPoints,
-          startDate,
-          endDate,
-          docUrl,
-          status,
-        },
-      }, { status: 402 }); // 402 Payment Required
-    }
-
-    // Note: Preset-based challenges (isCustom = false) do NOT require payment
+    const normalizedStatus = normalizeStatus(status);
 
     const insertPayload: Record<string, any> = {
       league_id: leagueId,
@@ -278,7 +287,7 @@ export async function POST(
       challenge_id: templateId ?? null,
       is_custom: isCustom,
       payment_id: null, // Would be set after payment succeeds
-      status,
+      status: normalizedStatus,
     };
 
     const { data, error } = await supabase
