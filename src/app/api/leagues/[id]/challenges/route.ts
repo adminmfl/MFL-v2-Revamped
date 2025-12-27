@@ -112,6 +112,7 @@ export async function GET(
         id,
         league_id,
         challenge_id,
+        pricing_id,
         name,
         description,
         challenge_type,
@@ -180,6 +181,7 @@ export async function GET(
         id: challengeId,
         league_id: c.league_id,
         name: c.name || template?.name || 'Challenge',
+        pricing_id: c.pricing_id || null,
         description: c.description || null,
         challenge_type: c.challenge_type,
         total_points: Number(c.total_points || template?.total_points || 0),
@@ -224,11 +226,19 @@ export async function GET(
       }
     }
 
+    // Fetch singleton pricing for display/defaults
+    const { data: defaultPricing } = await supabase
+      .from('challengepricing')
+      .select('pricing_id, per_day_rate, admin_markup, tax')
+      .limit(1)
+      .maybeSingle();
+
     return NextResponse.json({
       success: true,
       data: {
         active: activePayload,
         availablePresets,
+        defaultPricing: defaultPricing || null,
       },
     });
   } catch (err) {
@@ -267,6 +277,7 @@ export async function POST(
       templateId,
       isCustom = false,
       status = defaultChallengeStatus,
+      pricingId: incomingPricingId,
     } = body;
 
     if (!name && !templateId) {
@@ -274,6 +285,15 @@ export async function POST(
     }
 
     const normalizedStatus = normalizeStatus(status);
+
+    // Fetch the default pricing_id from the singleton challengepricing table
+    const { data: defaultPricing } = await supabase
+      .from('challengepricing')
+      .select('pricing_id')
+      .limit(1)
+      .maybeSingle();
+
+    const resolvedPricingId = incomingPricingId || defaultPricing?.pricing_id || null;
 
     const insertPayload: Record<string, any> = {
       league_id: leagueId,
@@ -288,6 +308,7 @@ export async function POST(
       is_custom: isCustom,
       payment_id: null, // Would be set after payment succeeds
       status: normalizedStatus,
+      pricing_id: resolvedPricingId,
     };
 
     const { data, error } = await supabase

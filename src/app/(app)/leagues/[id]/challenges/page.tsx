@@ -51,6 +51,7 @@ type Challenge = {
   doc_url: string | null;
   is_custom: boolean;
   template_id: string | null;
+  pricing_id?: string | null;
   my_submission: ChallengeSubmission | null;
   stats: { pending: number; approved: number; rejected: number } | null;
 };
@@ -119,6 +120,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
   const [error, setError] = React.useState<string | null>(null);
   const [challenges, setChallenges] = React.useState<Challenge[]>([]);
   const [presets, setPresets] = React.useState<any[]>([]);
+  const [pricing, setPricing] = React.useState<{ pricing_id?: string | null; per_day_rate?: number | null; tax?: number | null } | null>(null);
   const [selectedPresetId, setSelectedPresetId] = React.useState<string>('');
 
   // Create challenge dialog state
@@ -163,6 +165,23 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
   const [finishStart, setFinishStart] = React.useState('');
   const [finishEnd, setFinishEnd] = React.useState('');
   const [finishing, setFinishing] = React.useState(false);
+
+  const finishDays = React.useMemo(() => {
+    if (!finishStart || !finishEnd) return 0;
+    const start = new Date(finishStart);
+    const end = new Date(finishEnd);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+    const diff = Math.floor((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
+    return diff >= 0 ? diff + 1 : 0; // inclusive of both start and end
+  }, [finishStart, finishEnd]);
+
+  const finishAmount = React.useMemo(() => {
+    if (!pricing?.per_day_rate || !finishDays) return 0;
+    const base = finishDays * (pricing.per_day_rate || 0);
+    const taxPercent = pricing.tax != null ? pricing.tax : 0;
+    const taxMultiplier = taxPercent / 100;
+    return base + taxMultiplier * base;
+  }, [pricing, finishDays]);
   // Delete dialog state
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [challengeToDelete, setChallengeToDelete] = React.useState<Challenge | null>(null);
@@ -178,6 +197,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
       }
       setChallenges(json.data?.active || []);
       setPresets(json.data?.availablePresets || []);
+      setPricing(json.data?.defaultPricing || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load challenges');
     } finally {
@@ -191,6 +211,35 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
       fetchTeams();
     }
   }, [fetchChallenges, isAdmin]);
+
+  // Fallback: ensure pricing is loaded when finish dialog opens
+  React.useEffect(() => {
+    if (!finishOpen || pricing) return;
+    fetch(`/api/leagues/${leagueId}/challenges`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json?.success && json?.data?.defaultPricing) {
+          setPricing(json.data.defaultPricing);
+        }
+      })
+      .catch(() => {
+        /* ignore */
+      });
+  }, [finishOpen, pricing, leagueId]);
+
+  // Utility to load Razorpay script lazily
+  const loadRazorpay = React.useCallback(async () => {
+    if (typeof window === 'undefined') return null;
+    if ((window as any).Razorpay) return (window as any).Razorpay;
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Failed to load Razorpay')); 
+      document.body.appendChild(script);
+    });
+    return (window as any).Razorpay;
+  }, []);
 
   const handleActivatePreset = () => {
     const preset = presets.find((p) => p.id === selectedPresetId);
@@ -378,28 +427,94 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
       toast.error('Start date and end date are required');
       return;
     }
+    if (!pricing?.per_day_rate) {
+      toast.error('Pricing not available');
+      return;
+    }
+    const base = (finishDays || 0) * (pricing.per_day_rate || 0);
+    const taxPercent = pricing.tax != null ? pricing.tax : 0;
+    const amount = base + (taxPercent / 100) * base;
+    if (!amount || amount <= 0) {
+      toast.error('Amount is invalid');
+      return;
+    }
     setFinishing(true);
     try {
-      const payload = {
-        startDate: finishStart,
-        endDate: finishEnd,
-      };
-
-      const res = await fetch(`/api/leagues/${leagueId}/challenges/${finishChallenge.id}`, {
-        method: 'PATCH',
+      // Create order on server using trusted pricing
+      const orderRes = await fetch('/api/payments/challenge-order', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          leagueId,
+          challengeId: finishChallenge.id,
+          startDate: finishStart,
+          endDate: finishEnd,
+        }),
       });
 
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || 'Failed to finish setup');
+      const orderJson = await orderRes.json();
+      if (!orderRes.ok || orderJson.error) {
+        throw new Error(orderJson.error || 'Failed to start payment');
       }
 
-      toast.success('Challenge updated');
-      setFinishOpen(false);
-      setFinishChallenge(null);
-      fetchChallenges();
+      const Razorpay = await loadRazorpay();
+      if (!Razorpay) throw new Error('Razorpay unavailable');
+
+      const options = {
+        key: orderJson.keyId,
+        amount: orderJson.amount, // paise
+        currency: orderJson.currency || 'INR',
+        name: 'Challenge Activation',
+        description: finishChallenge.name,
+        order_id: orderJson.orderId,
+        notes: {
+          leagueId,
+          challengeId: finishChallenge.id,
+        },
+        handler: async (response: any) => {
+          try {
+            const verifyRes = await fetch('/api/payments/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId: response.razorpay_order_id,
+                paymentId: response.razorpay_payment_id,
+                signature: response.razorpay_signature,
+              }),
+            });
+            const verifyJson = await verifyRes.json();
+            if (!verifyRes.ok || verifyJson.error) {
+              throw new Error(verifyJson.error || 'Payment verification failed');
+            }
+
+            // Activate challenge after payment confirmation
+            const payload = { startDate: finishStart, endDate: finishEnd };
+            const patchRes = await fetch(`/api/leagues/${leagueId}/challenges/${finishChallenge.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            const patchJson = await patchRes.json();
+            if (!patchRes.ok || !patchJson.success) {
+              throw new Error(patchJson.error || 'Failed to update challenge after payment');
+            }
+
+            toast.success('Payment successful. Challenge activated.');
+            setFinishOpen(false);
+            setFinishChallenge(null);
+            fetchChallenges();
+          } catch (err: any) {
+            toast.error(err?.message || 'Payment succeeded but activation failed');
+          }
+        },
+        theme: { color: '#0F172A' },
+      } as any;
+
+      const rzp = new Razorpay(options);
+      rzp.on('payment.failed', (resp: any) => {
+        toast.error(resp?.error?.description || 'Payment failed');
+      });
+      rzp.open();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to finish setup');
     } finally {
@@ -1156,12 +1271,21 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
               />
             </div>
           </div>
+          <div className="rounded-md border bg-muted/40 p-3 text-sm space-y-1">
+            <p className="font-medium">Pricing</p>
+            <p>Duration: {finishDays || '-'} day{finishDays === 1 ? '' : 's'}</p>
+            <p>
+              {pricing?.per_day_rate != null
+                ? `Total: ₹${finishAmount.toFixed(2)} (₹${pricing.per_day_rate} per day + tax ${pricing.tax != null ? `${pricing.tax.toFixed(2)}%` : '(tax missing)'})`
+                : 'Pricing not available'}
+            </p>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setFinishOpen(false)} disabled={finishing}>
               Cancel
             </Button>
             <Button onClick={handleFinishSubmit} disabled={finishing}>
-              {finishing ? 'Saving...' : 'Save & Activate'}
+              {finishing ? 'Processing...' : 'Pay & Activate'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -9,6 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
+  DialogClose,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -191,7 +193,18 @@ export function SubTeamManager({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(val) => {
+        setOpen(val);
+        if (!val) {
+          setCreateOpen(false);
+          setEditingId(null);
+          setSubTeamName('');
+          setSelectedMembers([]);
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button
           variant="outline"
@@ -298,6 +311,63 @@ export function SubTeamManager({
           )}
         </div>
       </DialogContent>
+
+      <Dialog open={createOpen} onOpenChange={(val) => {
+        setCreateOpen(val);
+        if (!val) {
+          setEditingId(null);
+          setSubTeamName('');
+          setSelectedMembers([]);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingId ? 'Edit Sub-Team' : 'Create Sub-Team'}</DialogTitle>
+            <DialogDescription>
+              Assign a name and members for the sub-team{selectedTeam ? ` in ${selectedTeam.team_name}` : ''}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="subteam-name">Sub-Team Name</Label>
+              <Input
+                id="subteam-name"
+                placeholder="e.g. Team Alpha"
+                value={subTeamName}
+                onChange={(e) => setSubTeamName(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Members</Label>
+              <div className="max-h-52 overflow-y-auto rounded-md border p-3 space-y-2">
+                {teamMembers.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No members available for this team.</p>
+                )}
+                {teamMembers.map((m) => (
+                  <label key={m.league_member_id} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={selectedMembers.includes(m.league_member_id)}
+                      onCheckedChange={() => toggleMember(m.league_member_id)}
+                    />
+                    <span>{m.full_name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex items-center gap-2">
+            <DialogClose asChild>
+              <Button variant="outline" disabled={loading}>Cancel</Button>
+            </DialogClose>
+            <Button onClick={handleCreateOrUpdate} disabled={loading}>
+              {loading ? 'Saving...' : editingId ? 'Update Sub-Team' : 'Create Sub-Team'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
