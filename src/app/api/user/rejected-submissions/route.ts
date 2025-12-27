@@ -99,16 +99,15 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
 
     const leagueNameById = new Map((leaguesData || []).map((l: any) => [l.league_id, l.league_name] as const));
 
-    // Fetch only rejected entries for all memberships.
-    const { data: rejectedEntries, error: rejectedError } = await supabase
+    // Fetch all entries for these memberships so we can decide per-day latest status.
+    const { data: entries, error: entriesError } = await supabase
       .from('effortentry')
-      .select('league_member_id, date')
-      .in('league_member_id', leagueMemberIds)
-      .eq('status', 'rejected');
+      .select('league_member_id, date, status, created_date, modified_date')
+      .in('league_member_id', leagueMemberIds);
 
-    if (rejectedError) {
-      console.error('Error fetching rejected submissions:', rejectedError);
-      return NextResponse.json({ success: false, error: 'Failed to fetch rejected submissions' }, { status: 500 });
+    if (entriesError) {
+      console.error('Error fetching submissions:', entriesError);
+      return NextResponse.json({ success: false, error: 'Failed to fetch submissions' }, { status: 500 });
     }
 
     const membershipByLmId = new Map(
@@ -123,29 +122,55 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
       })
     );
 
-    const byLeague = new Map<string, RejectedLeagueSummary>();
+    // For each (league_member_id, date), take the latest entry and count it as rejected only if that latest status is rejected.
+    type EntryRow = { league_member_id: string; date: string; status: string; created_date: string | null; modified_date: string | null };
+    const latestByMemberDate = new Map<string, EntryRow>();
 
-    for (const row of (rejectedEntries || []) as Array<{ league_member_id: string; date: string }>) {
-      const meta = membershipByLmId.get(row.league_member_id);
-      if (!meta) continue;
-
-      const existing = byLeague.get(meta.league_id);
+    const allEntries = (entries || []) as EntryRow[];
+    for (const row of allEntries) {
+      if (!row.date || !row.league_member_id) continue;
+      const key = `${row.league_member_id}::${row.date}`;
+      const existing = latestByMemberDate.get(key);
+      const ts = (row.modified_date || row.created_date || '').toString();
       if (!existing) {
-        byLeague.set(meta.league_id, {
-          league_id: meta.league_id,
-          league_name: meta.league_name,
-          rejectedCount: 1,
-          latestDate: row.date || null,
-        });
+        latestByMemberDate.set(key, row);
       } else {
-        existing.rejectedCount += 1;
-        if (row.date && (!existing.latestDate || row.date > existing.latestDate)) {
-          existing.latestDate = row.date;
+        const existingTs = (existing.modified_date || existing.created_date || '').toString();
+        if (ts > existingTs) {
+          latestByMemberDate.set(key, row);
         }
       }
     }
 
-    const leagues = Array.from(byLeague.values()).sort((a, b) => {
+    // Deduplicate by date per league, counting only if latest status for that day is rejected.
+    const byLeague = new Map<string, { dates: Set<string>; latestDate: string | null; meta: { league_id: string; league_name: string } }>();
+
+    for (const entry of latestByMemberDate.values()) {
+      if (entry.status !== 'rejected') continue;
+      const meta = membershipByLmId.get(entry.league_member_id);
+      if (!meta) continue;
+
+      const key = meta.league_id;
+      const bucket = byLeague.get(key) ?? {
+        dates: new Set<string>(),
+        latestDate: null,
+        meta,
+      };
+
+      bucket.dates.add(entry.date);
+      if (!bucket.latestDate || entry.date > bucket.latestDate) {
+        bucket.latestDate = entry.date;
+      }
+
+      byLeague.set(key, bucket);
+    }
+
+    const leagues: RejectedLeagueSummary[] = Array.from(byLeague.values()).map(({ dates, latestDate, meta }) => ({
+      league_id: meta.league_id,
+      league_name: meta.league_name,
+      rejectedCount: dates.size,
+      latestDate,
+    })).sort((a, b) => {
       // Sort with most recent rejection first.
       const ad = a.latestDate || '';
       const bd = b.latestDate || '';

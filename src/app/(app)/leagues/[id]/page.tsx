@@ -171,7 +171,7 @@ export default function LeagueDashboardPage({
           fetch(`/api/leagues/${id}`),
           fetch(`/api/leagues/${id}/stats`),
           // Only need a count; endpoint returns stats alongside the list.
-          fetch(`/api/leagues/${id}/my-submissions?status=rejected`),
+          fetch(`/api/leagues/${id}/my-submissions`),
         ]);
 
         if (!leagueRes.ok) throw new Error('Failed to fetch league');
@@ -195,11 +195,25 @@ export default function LeagueDashboardPage({
           // Rejected reminder is best-effort: ignore auth/membership failures.
           if (rejectedRes.ok) {
             const rejectedData = await rejectedRes.json();
-            const count =
-              rejectedData?.success && rejectedData?.data
-                ? Number(rejectedData.data?.stats?.total ?? rejectedData.data?.submissions?.length ?? 0)
-                : 0;
-            setRejectedCount(Number.isFinite(count) ? count : 0);
+            if (rejectedData?.success && rejectedData?.data?.submissions) {
+              const submissions: Array<{ date?: string; status?: string; created_date?: string; modified_date?: string }> = rejectedData.data.submissions;
+
+              // For each date, pick the latest submission and count it only if it is still rejected.
+              const latestByDate = new Map<string, { status: string; ts: string }>();
+              submissions.forEach((s) => {
+                if (!s?.date) return;
+                const ts = (s.modified_date || s.created_date || '').toString();
+                const existing = latestByDate.get(s.date);
+                if (!existing || ts > existing.ts) {
+                  latestByDate.set(s.date, { status: s.status || 'pending', ts });
+                }
+              });
+
+              const rejectedDays = Array.from(latestByDate.values()).filter((v) => v.status === 'rejected').length;
+              setRejectedCount(rejectedDays);
+            } else {
+              setRejectedCount(0);
+            }
           } else {
             setRejectedCount(0);
           }
