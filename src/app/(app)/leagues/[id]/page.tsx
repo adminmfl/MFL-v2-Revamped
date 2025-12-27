@@ -632,13 +632,15 @@ export default function LeagueDashboardPage({
         </div>
 
         <div className="flex gap-2 flex-wrap">
-          <InviteDialog
-            leagueId={league.league_id}
-            leagueName={league.league_name}
-            inviteCode={league.invite_code}
-            memberCount={stats?.memberCount}
-            maxCapacity={stats?.maxCapacity || league.league_capacity}
-          />
+          {isHost && (
+            <InviteDialog
+              leagueId={league.league_id}
+              leagueName={league.league_name}
+              inviteCode={league.invite_code}
+              memberCount={stats?.memberCount}
+              maxCapacity={stats?.maxCapacity || league.league_capacity}
+            />
+          )}
           {isHost && (
             <Button asChild size="sm">
               <Link href={`/leagues/${id}/settings`}>
