@@ -68,6 +68,16 @@ export async function POST(req: NextRequest) {
     }
       const normalizedDate = normalizeDateOnly(date);
 
+    // Allow submissions only for today unless this is an explicit reupload of a rejected entry
+    const today = new Date();
+    const todayYmd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    if (!reupload_of && normalizedDate !== todayYmd) {
+      return NextResponse.json(
+        { error: 'You can only submit for today. Use the resubmit flow for rejected entries.' },
+        { status: 400 }
+      );
+    }
+
     if (!type || !['workout', 'rest'].includes(type)) {
       return NextResponse.json({ error: "type must be 'workout' or 'rest'" }, { status: 400 });
     }
@@ -116,6 +126,53 @@ export async function POST(req: NextRequest) {
       } else if (userAge > 65) {
         minSteps = 5000; maxSteps = 10000;
         baseDuration = 30;
+      }
+    }
+
+    // If this is a resubmission, ensure the original belongs to the user, is rejected, and has no approved resubmission.
+    if (reupload_of) {
+      const { data: original, error: originalError } = await supabase
+        .from('effortentry')
+        .select('id, league_member_id, status, date')
+        .eq('id', reupload_of)
+        .maybeSingle();
+
+      if (originalError) {
+        console.error('Original entry lookup error:', originalError);
+        return NextResponse.json({ error: 'Failed to validate resubmission' }, { status: 500 });
+      }
+      if (!original) {
+        return NextResponse.json({ error: 'Original submission not found for resubmit' }, { status: 404 });
+      }
+      if (original.league_member_id !== membership.league_member_id) {
+        return NextResponse.json({ error: 'You can only resubmit your own rejected submissions' }, { status: 403 });
+      }
+      if (original.status !== 'rejected') {
+        return NextResponse.json({ error: 'Only rejected submissions can be resubmitted' }, { status: 400 });
+      }
+
+      // Resubmission must keep the same date as the original
+      const originalDate = normalizeDateOnly(original.date as any);
+      if (originalDate && normalizedDate !== originalDate) {
+        return NextResponse.json({ error: 'Resubmissions must use the original submission date' }, { status: 400 });
+      }
+
+      // Block further uploads once any resubmission was approved
+      const { data: childResubs, error: childError } = await supabase
+        .from('effortentry')
+        .select('id, status')
+        .eq('reupload_of', reupload_of)
+        .eq('league_member_id', membership.league_member_id)
+        .order('created_date', { ascending: false });
+
+      if (childError) {
+        console.error('Resubmission lookup error:', childError);
+        return NextResponse.json({ error: 'Failed to validate resubmission history' }, { status: 500 });
+      }
+
+      const hasApprovedResub = (childResubs || []).some((row) => row.status === 'approved');
+      if (hasApprovedResub) {
+        return NextResponse.json({ error: 'This submission already has an approved resubmission. Further uploads are not allowed.' }, { status: 409 });
       }
     }
 

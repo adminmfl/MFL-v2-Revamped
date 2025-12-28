@@ -28,39 +28,6 @@ export interface LeagueActivity {
 }
 
 // ============================================================================
-// Utility: Normalize activity name to workout_type value
-// ============================================================================
-
-function normalizeActivityName(name: string): string {
-  const normalizations: Record<string, string> = {
-    'running': 'run',
-    'run': 'run',
-    'cycling': 'cycling',
-    'walking': 'walking',
-    'gym workout': 'strength',
-    'strength training': 'strength',
-    'strength': 'strength',
-    'yoga': 'yoga',
-    'yoga/stretching': 'yoga',
-    'swimming': 'swimming',
-    'hiit': 'hiit',
-    'cardio': 'cardio',
-    'sports': 'sports',
-    'steps': 'steps',
-    'golf': 'golf',
-    'meditation': 'meditation',
-    'horse riding': 'horse_riding',
-    'badminton': 'badminton_pickleball',
-    'pickleball': 'badminton_pickleball',
-    'basketball': 'basketball_cricket',
-    'cricket': 'basketball_cricket',
-  };
-
-  const lower = name.toLowerCase().trim();
-  return normalizations[lower] || lower.replace(/\s+/g, '_');
-}
-
-// ============================================================================
 // GET Handler - Get activities for a league
 // ============================================================================
 
@@ -149,7 +116,7 @@ export async function GET(
           description: activity.description,
           category_id: activity.category_id,
           category: activity.activity_categories,
-          value: normalizeActivityName(activity.activity_name),
+          value: activity.activity_name,
         };
       });
 
@@ -174,7 +141,7 @@ export async function GET(
           description: a.description,
           category_id: a.category_id,
           category: a.activity_categories,
-          value: normalizeActivityName(a.activity_name),
+          value: a.activity_name,
         }));
       }
     }

@@ -795,9 +795,6 @@ export default function LeagueDashboardPage({
                           <span className="text-foreground tabular-nums">
                             {typeof you === 'number' ? you.toFixed(2) : '—'}
                           </span>
-                          {youPoints !== null ? (
-                            <span className="tabular-nums">({youPoints.toLocaleString()} pt)</span>
-                          ) : null}
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-primary inline-block" />
@@ -805,9 +802,6 @@ export default function LeagueDashboardPage({
                           <span className="text-foreground tabular-nums">
                             {typeof team === 'number' ? team.toFixed(2) : '—'}
                           </span>
-                          {teamPoints !== null ? (
-                            <span className="tabular-nums">({teamPoints.toLocaleString()} pt)</span>
-                          ) : null}
                         </div>
                       </div>
                     </div>
