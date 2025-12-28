@@ -69,6 +69,32 @@ export async function PUT(
       return buildError('Only hosts/governors can update sub-teams', 403);
     }
 
+    // Fetch challenge to check status
+    const { data: subteamData, error: subteamFetchError } = await supabase
+      .from('challenge_subteams')
+      .select('league_challenge_id')
+      .eq('subteam_id', subteamId)
+      .single();
+
+    if (subteamFetchError || !subteamData) {
+      return buildError('Subteam not found', 404);
+    }
+
+    // Check challenge status - only allow edits while challenge is upcoming (not activated)
+    const { data: challenge, error: challengeError } = await supabase
+      .from('leagueschallenges')
+      .select('id, status')
+      .eq('id', subteamData.league_challenge_id)
+      .single();
+
+    if (challengeError || !challenge) {
+      return buildError('Challenge not found', 404);
+    }
+
+    if (!['draft', 'scheduled', 'upcoming'].includes(challenge.status)) {
+      return buildError('Sub-teams can only be edited before the challenge is activated', 403);
+    }
+
     const body = await req.json();
     const { name, memberIds } = body;
 
@@ -87,6 +113,44 @@ export async function PUT(
 
     // Update members if provided
     if (memberIds && Array.isArray(memberIds)) {
+      // First, fetch the challenge_id for this subteam to validate members
+      const { data: subteamData, error: subteamError } = await supabase
+        .from('challenge_subteams')
+        .select('league_challenge_id')
+        .eq('subteam_id', subteamId)
+        .single();
+
+      if (subteamError || !subteamData) {
+        return buildError('Subteam not found', 404);
+      }
+
+      // Check if any new members are already in another subteam for this challenge
+      if (memberIds.length > 0) {
+        const { data: existingMembers, error: checkError } = await supabase
+          .from('challenge_subteam_members')
+          .select('league_member_id, challenge_subteams(league_challenge_id), subteam_id')
+          .in('league_member_id', memberIds);
+
+        if (checkError) {
+          console.error('Error checking existing subteam members:', checkError);
+          return buildError('Failed to validate members', 500);
+        }
+
+        // Check if any member is already in a different subteam for this challenge
+        const membersInOtherSubteams = existingMembers?.filter(
+          (m: any) =>
+            m.challenge_subteams?.league_challenge_id === subteamData.league_challenge_id &&
+            m.subteam_id !== subteamId // Exclude the current subteam
+        );
+
+        if (membersInOtherSubteams && membersInOtherSubteams.length > 0) {
+          return buildError(
+            `${membersInOtherSubteams.length} member(s) are already assigned to another subteam for this challenge`,
+            400
+          );
+        }
+      }
+
       // Delete existing members
       await supabase
         .from('challenge_subteam_members')
@@ -135,6 +199,32 @@ export async function DELETE(
     const membership = await getMembership(session.user.id, leagueId);
     if (!membership || !isHostOrGovernor(membership.role)) {
       return buildError('Only hosts/governors can delete sub-teams', 403);
+    }
+
+    // Fetch subteam to get challenge
+    const { data: subteamData, error: subteamFetchError } = await supabase
+      .from('challenge_subteams')
+      .select('league_challenge_id')
+      .eq('subteam_id', subteamId)
+      .single();
+
+    if (subteamFetchError || !subteamData) {
+      return buildError('Subteam not found', 404);
+    }
+
+    // Check challenge status - only allow deletions while challenge is upcoming (not activated)
+    const { data: challenge, error: challengeError } = await supabase
+      .from('leagueschallenges')
+      .select('id, status')
+      .eq('id', subteamData.league_challenge_id)
+      .single();
+
+    if (challengeError || !challenge) {
+      return buildError('Challenge not found', 404);
+    }
+
+    if (!['draft', 'scheduled', 'upcoming'].includes(challenge.status)) {
+      return buildError('Sub-teams can only be deleted before the challenge is activated', 403);
     }
 
     const { error } = await supabase

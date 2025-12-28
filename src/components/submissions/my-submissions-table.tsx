@@ -242,20 +242,29 @@ export function MySubmissionsTable({
     return submissions.filter((s) => s.status === statusFilter);
   }, [submissions, statusFilter]);
 
+  // Track originals that already have a reupload child so we don't offer another resubmit.
+  const originalsWithReupload = React.useMemo(() => {
+    const parents = new Set<string>();
+    submissions.forEach((sub) => {
+      if (sub.reupload_of) parents.add(sub.reupload_of);
+    });
+    return parents;
+  }, [submissions]);
+
   // Determine which submissions can be resubmitted
-  // Core Rule: Re-submit button appears ONLY on original submissions (reupload_of = null) when rejected
+  // Core Rule: Re-submit button appears ONLY on original submissions (reupload_of = null)
+  // when rejected AND no newer reupload already exists for it.
   const resubmittableIds = React.useMemo(() => {
     const canResubmit = new Set<string>();
 
     submissions.forEach((sub) => {
-      // Only original submissions can have re-submit button
-      if (sub.reupload_of === null && sub.status === 'rejected') {
+      if (sub.reupload_of === null && sub.status === 'rejected' && !originalsWithReupload.has(sub.id)) {
         canResubmit.add(sub.id);
       }
     });
 
     return canResubmit;
-  }, [submissions]);
+  }, [submissions, originalsWithReupload]);
 
   // Note: Only reupload entries (reupload_of != null) should display the
   // "Re-submitted" indicator. Originals should remain unmarked.
@@ -348,8 +357,15 @@ export function MySubmissionsTable({
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-1.5 flex-wrap">
             <StatusBadge status={row.original.status} />
-            {/* Show (Re-submitted) label only on reupload entries */}
+            {/* Show (Re-submitted) label on reupload entries */}
             {Boolean(row.original.reupload_of) && (
+              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800">
+                <RefreshCw className="size-2.5 mr-1" />
+                Re-submitted
+              </Badge>
+            )}
+            {/* If an original has already been reuploaded, mark it as such and hide Re-submit button */}
+            {row.original.reupload_of === null && originalsWithReupload.has(row.original.id) && (
               <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800">
                 <RefreshCw className="size-2.5 mr-1" />
                 Re-submitted

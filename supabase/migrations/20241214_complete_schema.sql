@@ -97,6 +97,24 @@ COMMENT ON COLUMN public.pricing.config IS 'JSON field for future extensibility 
 
 -- =====================================================================================
 
+CREATE TABLE IF NOT EXISTS public.challengepricing (
+  pricing_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  per_day_rate numeric NOT NULL CHECK (per_day_rate >= 0),
+  admin_markup numeric CHECK (admin_markup IS NULL OR admin_markup >= 0),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  modified_at timestamptz NOT NULL DEFAULT now(),
+  tax numeric NOT NULL DEFAULT 18
+);
+
+CREATE INDEX IF NOT EXISTS idx_challengepricing_created_at ON public.challengepricing(created_at);
+
+COMMENT ON TABLE public.challengepricing IS 'Challenge-specific pricing configuration (singleton pattern)';
+COMMENT ON COLUMN public.challengepricing.per_day_rate IS 'Base price per day for challenges';
+COMMENT ON COLUMN public.challengepricing.admin_markup IS 'Optional markup percentage applied by admin';
+COMMENT ON COLUMN public.challengepricing.tax IS 'Tax percentage applied to challenge pricing';
+
+-- =====================================================================================
+
 CREATE TABLE IF NOT EXISTS public.league_tiers (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
@@ -432,6 +450,7 @@ CREATE TABLE IF NOT EXISTS public.leagueschallenges (
   created_at timestamptz DEFAULT CURRENT_TIMESTAMP,
   created_by uuid REFERENCES public.users(user_id) ON DELETE SET NULL,
   updated_at timestamptz DEFAULT now(),
+  pricing_id uuid REFERENCES public.challengepricing(pricing_id) ON DELETE SET NULL,
   CONSTRAINT unique_league_challenge UNIQUE (league_id, challenge_id)
 );
 

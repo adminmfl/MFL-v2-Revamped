@@ -131,11 +131,51 @@ export async function POST(
       return buildError('Only hosts/governors can create sub-teams', 403);
     }
 
+    // Check challenge status - only allow edits while challenge is upcoming (not activated)
+    const { data: challenge, error: challengeError } = await supabase
+      .from('leagueschallenges')
+      .select('id, status')
+      .eq('id', challengeId)
+      .single();
+
+    if (challengeError || !challenge) {
+      return buildError('Challenge not found', 404);
+    }
+
+    if (!['draft', 'scheduled', 'upcoming'].includes(challenge.status)) {
+      return buildError('Sub-teams can only be edited before the challenge is activated', 403);
+    }
+
     const body = await req.json();
     const { name, teamId, memberIds } = body;
 
     if (!name || !teamId) {
       return buildError('Name and teamId are required', 400);
+    }
+
+    // Check if any members are already in another subteam for this challenge
+    if (memberIds && Array.isArray(memberIds) && memberIds.length > 0) {
+      const { data: existingMembers, error: checkError } = await supabase
+        .from('challenge_subteam_members')
+        .select('league_member_id, challenge_subteams(league_challenge_id)')
+        .in('league_member_id', memberIds);
+
+      if (checkError) {
+        console.error('Error checking existing subteam members:', checkError);
+        return buildError('Failed to validate members', 500);
+      }
+
+      // Check if any member is already in a subteam for this challenge
+      const membersInOtherSubteams = existingMembers?.filter(
+        (m: any) => m.challenge_subteams?.league_challenge_id === challengeId
+      );
+
+      if (membersInOtherSubteams && membersInOtherSubteams.length > 0) {
+        return buildError(
+          `${membersInOtherSubteams.length} member(s) are already assigned to another subteam for this challenge`,
+          400
+        );
+      }
     }
 
     // Create sub-team

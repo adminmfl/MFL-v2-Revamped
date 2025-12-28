@@ -12,6 +12,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -22,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { AlertCircle } from "lucide-react";
 
 // ============================================================================
 // Types
@@ -76,6 +87,7 @@ export function ChallengeFormDialog({
   onSubmit,
 }: ChallengeFormDialogProps) {
   const isEditing = !!challenge;
+  const [showConfirmation, setShowConfirmation] = React.useState(false);
 
   const [formData, setFormData] = React.useState<ChallengeFormData>({
     name: "",
@@ -131,6 +143,17 @@ export function ChallengeFormDialog({
       return;
     }
 
+    // Show confirmation dialog for new challenges (not for edits)
+    if (!isEditing) {
+      setShowConfirmation(true);
+      return;
+    }
+
+    // For editing, proceed directly
+    proceedWithSubmit();
+  };
+
+  const proceedWithSubmit = () => {
     onSubmit({
       ...(challenge && { id: challenge.id }),
       ...formData,
@@ -142,6 +165,7 @@ export function ChallengeFormDialog({
       isEditing ? "Challenge updated successfully" : "Challenge created successfully"
     );
     onOpenChange(false);
+    setShowConfirmation(false);
   };
 
   return (
@@ -323,6 +347,42 @@ export function ChallengeFormDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* Confirmation Dialog for Creating New Challenges */}
+      <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-destructive" />
+              Important: Challenge Details Are Final
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 pt-2">
+              <p>
+                Once this challenge is created, <strong>you will not be able to change any of these details:</strong>
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-sm text-foreground">
+                <li>Challenge name and description</li>
+                <li>Challenge type (individual, team, or sub-team)</li>
+                <li>Start and end dates</li>
+                <li>Points and difficulty</li>
+                <li>Category and duration</li>
+              </ul>
+              <p className="pt-2 text-sm">
+                Please review all details carefully before proceeding. This action cannot be undone.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Review Again</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={proceedWithSubmit}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Yes, Create Challenge
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

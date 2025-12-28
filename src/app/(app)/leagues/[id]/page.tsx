@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
+import { useAuth } from '@/hooks/use-auth';
 import { useRole } from '@/contexts/role-context';
 import { Button } from '@/components/ui/button';
 import { InviteDialog } from '@/components/league/invite-dialog';
@@ -140,8 +141,12 @@ export default function LeagueDashboardPage({
   const [recentDays, setRecentDays] = React.useState<RecentDayRow[] | null>(null);
   const [weekOffset, setWeekOffset] = React.useState(0);
 
+  const { user } = useAuth();
+
   const [mySummary, setMySummary] = React.useState<{
-    points: number;
+    points: number; // approved workout points
+    totalPoints: number; // includes challenge bonuses
+    challengePoints: number; // difference (total - points)
     avgRR: number | null;
     restUsed: number;
     restUnused: number | null;
@@ -171,7 +176,7 @@ export default function LeagueDashboardPage({
           fetch(`/api/leagues/${id}`),
           fetch(`/api/leagues/${id}/stats`),
           // Only need a count; endpoint returns stats alongside the list.
-          fetch(`/api/leagues/${id}/my-submissions?status=rejected`),
+          fetch(`/api/leagues/${id}/my-submissions`),
         ]);
 
         if (!leagueRes.ok) throw new Error('Failed to fetch league');
@@ -195,11 +200,25 @@ export default function LeagueDashboardPage({
           // Rejected reminder is best-effort: ignore auth/membership failures.
           if (rejectedRes.ok) {
             const rejectedData = await rejectedRes.json();
-            const count =
-              rejectedData?.success && rejectedData?.data
-                ? Number(rejectedData.data?.stats?.total ?? rejectedData.data?.submissions?.length ?? 0)
-                : 0;
-            setRejectedCount(Number.isFinite(count) ? count : 0);
+            if (rejectedData?.success && rejectedData?.data?.submissions) {
+              const submissions: Array<{ date?: string; status?: string; created_date?: string; modified_date?: string }> = rejectedData.data.submissions;
+
+              // For each date, pick the latest submission and count it only if it is still rejected.
+              const latestByDate = new Map<string, { status: string; ts: string }>();
+              submissions.forEach((s) => {
+                if (!s?.date) return;
+                const ts = (s.modified_date || s.created_date || '').toString();
+                const existing = latestByDate.get(s.date);
+                if (!existing || ts > existing.ts) {
+                  latestByDate.set(s.date, { status: s.status || 'pending', ts });
+                }
+              });
+
+              const rejectedDays = Array.from(latestByDate.values()).filter((v) => v.status === 'rejected').length;
+              setRejectedCount(rejectedDays);
+            } else {
+              setRejectedCount(0);
+            }
           } else {
             setRejectedCount(0);
           }
@@ -447,6 +466,7 @@ export default function LeagueDashboardPage({
         }
 
         // Team Avg RR from leaderboard (best-effort, uses official leaderboard calculations).
+        let leaderboardData: any = null;
         if (teamId) {
           try {
             const tzOffsetMinutes = new Date().getTimezoneOffset();
@@ -456,6 +476,7 @@ export default function LeagueDashboardPage({
             );
             if (lbRes.ok) {
               const lb = await lbRes.json();
+              leaderboardData = lb;
               const teams: Array<{ team_id: string; avg_rr: number; points?: number; total_points?: number }> =
                 lb?.data?.teams || lb?.data?.teamRankings || [];
               const mine = teams.find((t) => String(t.team_id) === String(teamId));
@@ -475,8 +496,36 @@ export default function LeagueDashboardPage({
           }
         }
 
-        console.log('[MySummary] Final values:', { points, avgRR, restUsed, restUnused, missedDays, teamAvgRR, teamPoints });
-        setMySummary({ points, avgRR, restUsed, restUnused, missedDays, teamAvgRR, teamPoints });
+          // Also fetch leaderboard to find user's total points (includes challenge bonuses)
+          try {
+            const tzOffsetMinutes = new Date().getTimezoneOffset();
+            // If we already fetched leaderboard for the team, reuse it.
+            const lbRes = leaderboardData
+              ? null
+              : await fetch(
+                  `/api/leagues/${id}/leaderboard?full=true&tzOffsetMinutes=${encodeURIComponent(String(tzOffsetMinutes))}`,
+                  { credentials: 'include' }
+                );
+
+            const lbJson = lbRes ? (await lbRes.json()) : leaderboardData;
+            const individuals: Array<{ user_id?: string; points?: number }> = lbJson?.data?.individuals || lbJson?.data?.individualRankings || [];
+            let totalPoints = points;
+            let challengePoints = 0;
+            if (user && Array.isArray(individuals) && individuals.length > 0) {
+              const mine = individuals.find((it) => String(it.user_id) === String(user.id));
+              if (mine && typeof mine.points === 'number' && Number.isFinite(mine.points)) {
+                totalPoints = Math.max(0, Math.round(mine.points));
+                challengePoints = Math.max(0, totalPoints - points);
+              }
+            }
+
+            // set totals with fallback to workout points
+            setMySummary({ points, totalPoints, challengePoints, avgRR, restUsed, restUnused, missedDays, teamAvgRR, teamPoints });
+          } catch (err) {
+            // Fallback: no leaderboard available, use workout-only points
+            setMySummary({ points, totalPoints: points, challengePoints: 0, avgRR, restUsed, restUnused, missedDays, teamAvgRR, teamPoints });
+          }
+          console.log('[MySummary] Final values:', { points, avgRR, restUsed, restUnused, missedDays, teamAvgRR, teamPoints });
       } catch {
         setMySummary(null);
       }
@@ -539,9 +588,9 @@ export default function LeagueDashboardPage({
     ? [
         {
           title: 'Points',
-          value: mySummary.points.toLocaleString(),
+          value: mySummary.totalPoints.toLocaleString(),
           changeLabel: 'Your score',
-          description: 'Approved workouts',
+          description: `${mySummary.points.toLocaleString()} + ${mySummary.challengePoints.toLocaleString()} (workouts + challenges)`,
           icon: Zap,
         },
         {
@@ -618,13 +667,15 @@ export default function LeagueDashboardPage({
         </div>
 
         <div className="flex gap-2 flex-wrap">
-          <InviteDialog
-            leagueId={league.league_id}
-            leagueName={league.league_name}
-            inviteCode={league.invite_code}
-            memberCount={stats?.memberCount}
-            maxCapacity={stats?.maxCapacity || league.league_capacity}
-          />
+          {isHost && (
+            <InviteDialog
+              leagueId={league.league_id}
+              leagueName={league.league_name}
+              inviteCode={league.invite_code}
+              memberCount={stats?.memberCount}
+              maxCapacity={stats?.maxCapacity || league.league_capacity}
+            />
+          )}
           {isHost && (
             <Button asChild size="sm">
               <Link href={`/leagues/${id}/settings`}>

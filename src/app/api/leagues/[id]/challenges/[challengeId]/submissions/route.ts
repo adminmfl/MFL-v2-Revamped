@@ -175,8 +175,8 @@ export async function POST(
       return buildError('Challenge not found in this league', 404);
     }
 
-    if (challenge.status === 'closed') {
-      return buildError('Challenge is closed', 400);
+    if (['draft', 'scheduled', 'submission_closed', 'closed', 'upcoming'].includes(String(challenge.status))) {
+      return buildError('Challenge is not accepting submissions', 400);
     }
 
     const body = await req.json();
