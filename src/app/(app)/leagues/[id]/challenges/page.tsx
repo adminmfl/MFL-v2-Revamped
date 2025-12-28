@@ -194,7 +194,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
     return finishBase * ((finishTaxPercent || 0) / 100);
   }, [finishBase, finishTaxPercent]);
 
-  const pricingPillClass = 'rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/80 shadow-sm';
+  const pricingPillClass = 'rounded-full border border-border bg-gray-100 px-3 py-1 text-xs font-medium text-foreground shadow-sm dark:border-white/15 dark:bg-white/5 dark:text-white/80';
   // Delete dialog state
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [challengeToDelete, setChallengeToDelete] = React.useState<Challenge | null>(null);
@@ -1262,7 +1262,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
             </DialogDescription>
           </DialogHeader>
           {finishChallenge?.challenge_type === 'sub_team' && (
-            <div className="rounded-md border bg-muted/40 p-3 text-sm space-y-2">
+            <div className="rounded-md border bg-white/50 dark:bg-muted/40 p-3 text-sm space-y-2 text-foreground dark:text-white mb-4">
               <p className="font-medium">Need sub-teams?</p>
               <p className="text-muted-foreground">
                 Create sub-teams before activating this challenge.
@@ -1292,19 +1292,19 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
               />
             </div>
           </div>
-          <div className="rounded-xl border border-primary/20 bg-[#0d1930] text-white shadow-2xl">
+          <div className="mt-4 rounded-xl border border-border bg-white text-foreground shadow-2xl dark:bg-[#0d1930] dark:text-white dark:border-primary/20">
             <div className="flex flex-col gap-3 px-4 pt-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-1">
                 <p className="text-lg font-semibold leading-tight">
                   {finishChallenge?.name || 'Challenge Pricing'}
                 </p>
-                <p className="text-sm text-white/70">
+                <p className="text-sm text-muted-foreground">
                   {finishChallenge?.description || 'Review duration and payable amount before activation.'}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <span className={`${pricingPillClass} bg-blue-500/10 text-blue-100 border-blue-500/30`}>Draft</span>
-                <span className={`${pricingPillClass} bg-green-500/10 text-green-100 border-green-500/30`}>Pay to Activate</span>
+                <span className={`${pricingPillClass} bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-500/10 dark:text-blue-100 dark:border-blue-500/30`}>Draft</span>
+                <span className={`${pricingPillClass} bg-green-50 text-green-800 border-green-200 dark:bg-green-500/10 dark:text-green-100 dark:border-green-500/30`}>Pay to Activate</span>
               </div>
             </div>
 
@@ -1322,26 +1322,26 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
               </span>
             </div>
 
-            <div className="mt-4 border-t border-white/10 px-4 py-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="mt-4 border-t border-border px-4 py-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wide text-white/60">Base amount</p>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Base amount</p>
                 <p className="text-xl font-semibold">₹{finishBase.toFixed(2)}</p>
-                <p className="text-xs text-white/60">
+                <p className="text-xs text-muted-foreground">
                   ₹{pricing?.per_day_rate?.toFixed ? pricing.per_day_rate.toFixed(2) : pricing?.per_day_rate ?? '—'} × {finishDays || 0} day{finishDays === 1 ? '' : 's'}
                 </p>
               </div>
               <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wide text-white/60">Tax</p>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Tax</p>
                 <p className="text-xl font-semibold">₹{finishTaxAmount.toFixed(2)}</p>
-                <p className="text-xs text-white/60">{finishTaxPercent?.toFixed ? finishTaxPercent.toFixed(2) : finishTaxPercent}%</p>
+                <p className="text-xs text-muted-foreground">{finishTaxPercent?.toFixed ? finishTaxPercent.toFixed(2) : finishTaxPercent}%</p>
               </div>
 
-              <div className="sm:col-span-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 flex items-center justify-between">
+              <div className="sm:col-span-2 rounded-lg border px-4 py-3 flex items-center justify-between bg-gray-50 dark:bg-white/5 border-border dark:border-white/10">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-white/60">Total payable</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Total payable</p>
                   <p className="text-2xl font-bold">₹{finishAmount.toFixed(2)}</p>
                 </div>
-                <div className="text-right text-xs text-white/60 space-y-1">
+                <div className="text-right text-xs text-muted-foreground space-y-1">
                   {pricing?.admin_markup != null && (
                     <p>Admin markup: {pricing.admin_markup.toFixed ? pricing.admin_markup.toFixed(2) : pricing.admin_markup}%</p>
                   )}
