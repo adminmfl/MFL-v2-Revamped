@@ -114,11 +114,228 @@ export default function ProfilePage() {
     };
   }, [userLeagues]);
 
+  // Activities logged: one activity per day across all approved submissions in all leagues
+  const [activitiesLogged, setActivitiesLogged] = React.useState<number>(0);
+  const [activitiesLoading, setActivitiesLoading] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    let mounted = true;
+
+    async function fetchActivities() {
+      if (!userLeagues || userLeagues.length === 0) {
+        if (mounted) setActivitiesLogged(0);
+        return;
+      }
+
+      setActivitiesLoading(true);
+
+      try {
+        const promises = userLeagues.map((l) =>
+          fetch(`/api/leagues/${l.league_id}/my-submissions?status=approved`).then((r) => r.json())
+            .catch((e) => ({ success: false, data: { submissions: [] } }))
+        );
+
+        const results = await Promise.all(promises);
+
+        const dateSet = new Set<string>();
+        for (const res of results) {
+          if (res && res.success && Array.isArray(res.data?.submissions)) {
+            for (const s of res.data.submissions) {
+              if (s && s.date) {
+                dateSet.add(s.date);
+              }
+            }
+          }
+        }
+
+        if (mounted) setActivitiesLogged(dateSet.size);
+      } catch (err) {
+        console.error('Error fetching activities for profile:', err);
+        if (mounted) setActivitiesLogged(0);
+      } finally {
+        if (mounted) setActivitiesLoading(false);
+      }
+    }
+
+    fetchActivities();
+
+    return () => {
+      mounted = false;
+    };
+  }, [userLeagues]);
+
+  // Challenge points (approved special challenge submissions)
+  const [challengePoints, setChallengePoints] = React.useState<number>(0);
+  const [challengeLoading, setChallengeLoading] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    let mounted = true;
+
+    async function fetchChallengePoints() {
+      if (!userLeagues || userLeagues.length === 0) {
+        if (mounted) setChallengePoints(0);
+        return;
+      }
+
+      setChallengeLoading(true);
+
+      try {
+        let totalChallenge = 0;
+
+        const promises = userLeagues.map((l) =>
+          fetch(`/api/leagues/${l.league_id}/challenges`).then((r) => r.json()).catch(() => ({ success: false }))
+        );
+
+        const results = await Promise.all(promises);
+
+        for (const res of results) {
+          if (!res || !res.success || !Array.isArray(res.data?.active)) continue;
+          for (const ch of res.data.active) {
+            const mySub = ch.my_submission;
+            if (mySub && (mySub.status === 'approved' || mySub.status === 'accepted')) {
+              const pts =
+                mySub.awarded_points !== null && mySub.awarded_points !== undefined
+                  ? Number(mySub.awarded_points)
+                  : Number(ch.total_points || 0);
+              if (!Number.isNaN(pts) && pts > 0) totalChallenge += pts;
+            }
+          }
+        }
+
+        if (mounted) setChallengePoints(totalChallenge);
+      } catch (err) {
+        console.error('Error fetching challenge points for profile:', err);
+        if (mounted) setChallengePoints(0);
+      } finally {
+        if (mounted) setChallengeLoading(false);
+      }
+    }
+
+    fetchChallengePoints();
+
+    return () => {
+      mounted = false;
+    };
+  }, [userLeagues]);
+
+  const totalPoints = activitiesLogged + challengePoints;
+
+  // Streaks: per-league longest consecutive active days and current ongoing streaks
+  const [currentStreak, setCurrentStreak] = React.useState<number>(0);
+  const [bestStreak, setBestStreak] = React.useState<number>(0);
+  const [streaksLoading, setStreaksLoading] = React.useState<boolean>(false);
+
+  // Helper: add days to YYYY-MM-DD
+  function addDaysYYYYMMDD(dateString: string, days: number) {
+    const [y, m, d] = dateString.split('-').map((p) => Number(p));
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + days);
+    const yy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getDate()).padStart(2, '0');
+    return `${yy}-${mm}-${dd}`;
+  }
+
+  function todayYYYYMMDDLocal() {
+    const dt = new Date();
+    const yy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getDate()).padStart(2, '0');
+    return `${yy}-${mm}-${dd}`;
+  }
+
+  React.useEffect(() => {
+    let mounted = true;
+
+    async function computeStreaks() {
+      if (!userLeagues || userLeagues.length === 0) {
+        if (mounted) {
+          setCurrentStreak(0);
+          setBestStreak(0);
+        }
+        return;
+      }
+
+      setStreaksLoading(true);
+
+      try {
+        const promises = userLeagues.map((l) =>
+          fetch(`/api/leagues/${l.league_id}/my-submissions?status=approved`).then((r) => r.json()).catch(() => ({ success: false, data: { submissions: [] } }))
+        );
+
+        const results = await Promise.all(promises);
+
+        let overallBest = 0;
+        let overallCurrent = 0;
+
+        for (const res of results) {
+          if (!res || !res.success || !Array.isArray(res.data?.submissions)) continue;
+          const subs = res.data.submissions as any[];
+          const dates = Array.from(new Set(subs.map((s) => s.date).filter(Boolean))).sort();
+          if (dates.length === 0) continue;
+
+          const dateSet = new Set(dates);
+
+          // Longest consecutive run for this league
+          let longest = 0;
+          for (const d of dates) {
+            const prev = addDaysYYYYMMDD(d, -1);
+            if (!dateSet.has(prev)) {
+              // start of sequence
+              let len = 1;
+              let next = addDaysYYYYMMDD(d, 1);
+              while (dateSet.has(next)) {
+                len++;
+                next = addDaysYYYYMMDD(next, 1);
+              }
+              if (len > longest) longest = len;
+            }
+          }
+
+          // Current ongoing streak: only count if the sequence reaches today
+          const today = todayYYYYMMDDLocal();
+          let curLen = 0;
+          if (dateSet.has(today)) {
+            let cursor = today;
+            while (dateSet.has(cursor)) {
+              curLen++;
+              cursor = addDaysYYYYMMDD(cursor, -1);
+            }
+          } else {
+            curLen = 0;
+          }
+
+          if (longest > overallBest) overallBest = longest;
+          if (curLen > overallCurrent) overallCurrent = curLen;
+        }
+
+        if (mounted) {
+          setBestStreak(overallBest);
+          setCurrentStreak(overallCurrent);
+        }
+      } catch (err) {
+        console.error('Error computing streaks for profile:', err);
+        if (mounted) {
+          setBestStreak(0);
+          setCurrentStreak(0);
+        }
+      } finally {
+        if (mounted) setStreaksLoading(false);
+      }
+    }
+
+    computeStreaks();
+
+    return () => {
+      mounted = false;
+    };
+  }, [userLeagues]);
+
   // Activity stats (mock data - will be real once activity tracking is implemented)
   const activityStats: StatCard[] = [
     {
       title: 'Activities Logged',
-      value: 0,
+      value: activitiesLoading ? '...' : activitiesLogged,
       change: 0,
       changeLabel: 'Start logging!',
       description: 'Total workouts submitted',
@@ -126,7 +343,7 @@ export default function ProfilePage() {
     },
     {
       title: 'Total Points',
-      value: 0,
+      value: activitiesLoading || challengeLoading ? '...' : totalPoints,
       change: 0,
       changeLabel: 'Earn points',
       description: 'Points earned across leagues',
@@ -134,7 +351,7 @@ export default function ProfilePage() {
     },
     {
       title: 'Current Streak',
-      value: '0 days',
+      value: streaksLoading ? '...' : `${currentStreak} days`,
       change: 0,
       changeLabel: 'Build your streak',
       description: 'Consecutive active days',
@@ -142,7 +359,7 @@ export default function ProfilePage() {
     },
     {
       title: 'Best Streak',
-      value: '0 days',
+      value: streaksLoading ? '...' : `${bestStreak} days`,
       change: 0,
       changeLabel: 'Set a record',
       description: 'Your longest streak ever',

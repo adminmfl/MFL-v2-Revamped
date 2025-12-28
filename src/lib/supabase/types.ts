@@ -61,10 +61,10 @@ export const calculateRR = (entry: Partial<WorkoutEntry> & { age?: number }): nu
     return Math.min(1 + (capped - minSteps) / (maxSteps - minSteps), 2.0);
   }
   if (entry.workout_type === 'golf' && entry.holes) {
-    return entry.holes >= 9 ? Math.min(entry.holes / 9, 2.5) : 0;
+    return entry.holes >= 9 ? Math.min(entry.holes / 9, 2.0) : 0;
   }
   if (entry.duration) {
-    return entry.duration >= baseDuration ? Math.min(entry.duration / baseDuration, 2.5) : 0;
+    return entry.duration >= baseDuration ? Math.min(entry.duration / baseDuration, 2.0) : 0;
   }
   return 1.0;
 }

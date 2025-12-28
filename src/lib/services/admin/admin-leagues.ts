@@ -11,6 +11,15 @@ import type {
   AdminLeagueFilters,
 } from '@/types/admin';
 
+function mapDbLeagueToAdminLeague(dbLeague: any): AdminLeague {
+  if (!dbLeague) return dbLeague;
+  return dbLeague as AdminLeague;
+}
+
+function mapAdminLeagueInputToDbUpdates(input: Partial<AdminLeagueCreateInput | AdminLeagueUpdateInput>): Record<string, any> {
+  return { ...input };
+}
+
 /**
  * Generate a unique 8-character invite code
  */
@@ -33,8 +42,7 @@ export async function getAllLeagues(filters?: AdminLeagueFilters): Promise<Admin
     // First get leagues
     let query = supabase
       .from('leagues')
-      .select('*')
-      .order('created_date', { ascending: false });
+      .select('*');
 
     // Apply filters
     if (filters?.search) {
@@ -75,13 +83,12 @@ export async function getAllLeagues(filters?: AdminLeagueFilters): Promise<Admin
       countMap[m.league_id] = (countMap[m.league_id] || 0) + 1;
     });
 
-    // Attach member counts to leagues
-    const leaguesWithCounts = leagues.map((league) => ({
-      ...league,
-      member_count: countMap[league.league_id] || 0,
-    }));
-
-    return leaguesWithCounts as AdminLeague[];
+    return leagues.map((league) =>
+      mapDbLeagueToAdminLeague({
+        ...league,
+        member_count: countMap[league.league_id] || 0,
+      })
+    );
   } catch (err) {
     console.error('Error in getAllLeagues:', err);
     return [];
@@ -111,10 +118,10 @@ export async function getLeagueById(leagueId: string): Promise<AdminLeague | nul
       .select('*', { count: 'exact', head: true })
       .eq('league_id', leagueId);
 
-    return {
+    return mapDbLeagueToAdminLeague({
       ...data,
       member_count: count || 0,
-    } as AdminLeague;
+    });
   } catch (err) {
     console.error('Error in getLeagueById:', err);
     return null;
@@ -138,9 +145,10 @@ export async function createLeague(
         start_date: input.start_date,
         end_date: input.end_date,
         num_teams: input.num_teams || 4,
-        team_size: input.team_size || 5,
+        tier_id: input.tier_id || null,
         rest_days: input.rest_days || 1,
         auto_rest_day_enabled: input.auto_rest_day_enabled ?? false,
+        normalize_points_by_capacity: input.normalize_points_by_capacity ?? false,
         is_public: input.is_public || false,
         is_exclusive: input.is_exclusive ?? true,
         invite_code: generateInviteCode(),
@@ -156,7 +164,7 @@ export async function createLeague(
       return null;
     }
 
-    return { ...data, member_count: 0 } as AdminLeague;
+    return mapDbLeagueToAdminLeague({ ...data, member_count: 0 });
   } catch (err) {
     console.error('Error in createLeague:', err);
     return null;
@@ -176,7 +184,7 @@ export async function updateLeague(
     const { data, error } = await supabase
       .from('leagues')
       .update({
-        ...input,
+        ...mapAdminLeagueInputToDbUpdates(input),
         modified_by: modifiedBy || null,
         modified_date: new Date().toISOString(),
       })
@@ -195,10 +203,10 @@ export async function updateLeague(
       .select('*', { count: 'exact', head: true })
       .eq('league_id', leagueId);
 
-    return {
+    return mapDbLeagueToAdminLeague({
       ...data,
       member_count: count || 0,
-    } as AdminLeague;
+    });
   } catch (err) {
     console.error('Error in updateLeague:', err);
     return null;

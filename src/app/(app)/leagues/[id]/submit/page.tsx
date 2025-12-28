@@ -5,9 +5,9 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import Tesseract from 'tesseract.js';
 import Confetti from 'react-confetti';
 import {
@@ -101,8 +101,13 @@ export default function SubmitActivityPage({
 }) {
   const { id: leagueId } = React.use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { activeLeague } = useLeague();
   const { canSubmitWorkouts } = useRole();
+
+  // Check if this is a resubmission
+  const resubmitId = searchParams.get('resubmit');
+  const isResubmission = !!resubmitId;
 
   // Fetch league activities
   const {
@@ -168,6 +173,54 @@ export default function SubmitActivityPage({
     }
   }, [submissionType, fetchRestDayStats]);
 
+  // Pre-fill form data when resubmitting
+  React.useEffect(() => {
+    if (resubmitId) {
+      const dateParam = searchParams.get('date');
+      const typeParam = searchParams.get('type');
+      const workoutTypeParam = searchParams.get('workout_type');
+      const durationParam = searchParams.get('duration');
+      const distanceParam = searchParams.get('distance');
+      const stepsParam = searchParams.get('steps');
+      const holesParam = searchParams.get('holes');
+      const notesParam = searchParams.get('notes');
+      const proofUrlParam = searchParams.get('proof_url');
+
+      // Set submission type
+      if (typeParam === 'rest') {
+        setSubmissionType('rest');
+      } else {
+        setSubmissionType('workout');
+      }
+
+      // Set date
+      if (dateParam) {
+        try {
+          setActivityDate(parseISO(dateParam));
+        } catch (e) {
+          console.error('Invalid date parameter:', e);
+        }
+      }
+
+      // Set form data
+      setFormData({
+        activity_type: workoutTypeParam || '',
+        duration: durationParam || '',
+        distance: distanceParam || '',
+        steps: stepsParam || '',
+        holes: holesParam || '',
+        notes: notesParam || '',
+      });
+
+      // Set proof URL as image preview (if it's a URL)
+      if (proofUrlParam) {
+        setImagePreview(proofUrlParam);
+      }
+
+      toast.info('Resubmitting rejected workout. Update as needed.');
+    }
+  }, [resubmitId, searchParams]);
+
   // Image upload state - store file in memory until submission
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
   const [imagePreview, setImagePreview] = React.useState<string | null>(null);
@@ -223,12 +276,12 @@ export default function SubmitActivityPage({
 
     if (activityValue === 'golf' && formData.holes) {
       const holes = parseInt(formData.holes);
-      return Math.min(holes / 9, 2.5);
+      return Math.min(holes / 9, 2.0);
     }
 
     if (formData.duration) {
       const duration = parseInt(formData.duration);
-      return Math.min(duration / 45, 2.5);
+      return Math.min(duration / 45, 2.0);
     }
 
     return 1.0;
@@ -332,6 +385,38 @@ export default function SubmitActivityPage({
       return;
     }
 
+    // Enforce RR eligibility: RR must be between 1 and 2.
+    // We use a backend preview so age-based thresholds match server logic.
+    try {
+      const previewPayload: Record<string, any> = {
+        league_id: leagueId,
+        type: 'workout',
+        workout_type: formData.activity_type,
+      };
+      if (formData.duration) previewPayload.duration = parseInt(formData.duration);
+      if (formData.distance) previewPayload.distance = parseFloat(formData.distance);
+      if (formData.steps) previewPayload.steps = parseInt(formData.steps);
+      if (formData.holes) previewPayload.holes = parseInt(formData.holes);
+
+      const previewRes = await fetch('/api/entries/preview-rr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(previewPayload),
+      });
+      const previewJson = await previewRes.json();
+      if (!previewRes.ok) {
+        throw new Error(previewJson.error || 'Failed to validate RR');
+      }
+      const canSubmit = Boolean(previewJson?.data?.canSubmit);
+      if (!canSubmit) {
+        toast.error('Workout RR must be at least 1.0 to submit. Please increase duration/distance/steps.');
+        return;
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to validate RR');
+      return;
+    }
+
     if (!selectedFile) {
       toast.error('Proof screenshot is required');
       return;
@@ -384,6 +469,16 @@ export default function SubmitActivityPage({
       }
       if (formData.holes) {
         payload.holes = parseInt(formData.holes);
+      }
+      
+      // Add notes if provided
+      if (formData.notes) {
+        payload.notes = formData.notes;
+      }
+      
+      // Add reupload_of if this is a resubmission
+      if (resubmitId) {
+        payload.reupload_of = resubmitId;
       }
 
       const response = await fetch('/api/entries/upsert', {

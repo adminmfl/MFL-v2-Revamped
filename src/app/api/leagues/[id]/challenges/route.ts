@@ -6,6 +6,34 @@ import { getSupabaseServiceRole } from '@/lib/supabase/client';
 // Shared helpers ------------------------------------------------------------
 type LeagueRole = 'host' | 'governor' | 'captain' | 'player' | null;
 
+type ChallengeStatus =
+  | 'draft'
+  | 'scheduled'
+  | 'active'
+  | 'submission_closed'
+  | 'closed'
+  | 'upcoming'; // keep legacy value for compatibility
+
+const challengeStatusOrder: ChallengeStatus[] = [
+  'draft',
+  'scheduled',
+  'active',
+  'submission_closed',
+  'closed',
+  'upcoming',
+];
+
+const defaultChallengeStatus: ChallengeStatus = 'draft';
+
+function normalizeStatus(status: ChallengeStatus | string | null | undefined): ChallengeStatus {
+  if (!status) return defaultChallengeStatus;
+  if (status === 'upcoming') return 'scheduled';
+  if (challengeStatusOrder.includes(status as ChallengeStatus)) {
+    return status as ChallengeStatus;
+  }
+  return defaultChallengeStatus;
+}
+
 type Membership = {
   leagueMemberId: string;
   role: LeagueRole;
@@ -84,6 +112,7 @@ export async function GET(
         id,
         league_id,
         challenge_id,
+        pricing_id,
         name,
         description,
         challenge_type,
@@ -152,6 +181,7 @@ export async function GET(
         id: challengeId,
         league_id: c.league_id,
         name: c.name || template?.name || 'Challenge',
+        pricing_id: c.pricing_id || null,
         description: c.description || null,
         challenge_type: c.challenge_type,
         total_points: Number(c.total_points || template?.total_points || 0),
@@ -160,7 +190,7 @@ export async function GET(
         doc_url: c.doc_url || template?.doc_url || null,
         start_date: c.start_date,
         end_date: c.end_date,
-        status: c.status,
+        status: normalizeStatus(c.status),
         template_id: c.challenge_id,
         my_submission: mySubmissions[challengeId] || null,
         stats: statsByChallenge[challengeId] || null,
@@ -196,11 +226,19 @@ export async function GET(
       }
     }
 
+    // Fetch singleton pricing for display/defaults
+    const { data: defaultPricing } = await supabase
+      .from('challengepricing')
+      .select('pricing_id, per_day_rate, admin_markup, tax')
+      .limit(1)
+      .maybeSingle();
+
     return NextResponse.json({
       success: true,
       data: {
         active: activePayload,
         availablePresets,
+        defaultPricing: defaultPricing || null,
       },
     });
   } catch (err) {
@@ -238,33 +276,24 @@ export async function POST(
       docUrl,
       templateId,
       isCustom = false,
-      status = 'active',
+      status = defaultChallengeStatus,
+      pricingId: incomingPricingId,
     } = body;
 
     if (!name && !templateId) {
       return buildError('Name or templateId is required', 400);
     }
 
-    // If custom challenge, require payment first (return payment request)
-    if (isCustom && totalPoints > 0) {
-      return NextResponse.json({
-        success: false,
-        requiresPayment: true,
-        message: 'Custom challenges require payment. Complete payment first.',
-        challenge: {
-          name,
-          description,
-          challengeType,
-          totalPoints,
-          startDate,
-          endDate,
-          docUrl,
-          status,
-        },
-      }, { status: 402 }); // 402 Payment Required
-    }
+    const normalizedStatus = normalizeStatus(status);
 
-    // Note: Preset-based challenges (isCustom = false) do NOT require payment
+    // Fetch the default pricing_id from the singleton challengepricing table
+    const { data: defaultPricing } = await supabase
+      .from('challengepricing')
+      .select('pricing_id')
+      .limit(1)
+      .maybeSingle();
+
+    const resolvedPricingId = incomingPricingId || defaultPricing?.pricing_id || null;
 
     const insertPayload: Record<string, any> = {
       league_id: leagueId,
@@ -278,7 +307,8 @@ export async function POST(
       challenge_id: templateId ?? null,
       is_custom: isCustom,
       payment_id: null, // Would be set after payment succeeds
-      status,
+      status: normalizedStatus,
+      pricing_id: resolvedPricingId,
     };
 
     const { data, error } = await supabase

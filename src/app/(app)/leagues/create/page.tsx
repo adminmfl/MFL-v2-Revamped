@@ -23,6 +23,7 @@ import {
   Share2,
   Crown,
   Plus,
+  Check,
 } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
@@ -33,6 +34,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   Select,
   SelectContent,
@@ -56,19 +58,11 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { TierConfig, PriceBreakdown, TierValidationResult } from '@/lib/services/tier-helpers';
 
 // ============================================================================
 // Types
 // ============================================================================
-
-interface PricingData {
-  basePrice: number;
-  platformFee: number;
-  gstPercentage: number;
-  subtotal: number;
-  gst: number;
-  total: number;
-}
 
 declare global {
   interface Window {
@@ -87,7 +81,7 @@ export default function CreateLeaguePage() {
   const [step, setStep] = React.useState<'form' | 'payment' | 'success'>('form');
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [pricing, setPricing] = React.useState<PricingData | null>(null);
+  const [pricing, setPricing] = React.useState<PriceBreakdown | null>(null);
   const [pricingLoading, setPricingLoading] = React.useState(true);
   const [createdLeagueId, setCreatedLeagueId] = React.useState<string | null>(null);
   const [showConfetti, setShowConfetti] = React.useState(false);
@@ -95,14 +89,24 @@ export default function CreateLeaguePage() {
 
   // Date state
   const [startDate, setStartDate] = React.useState<Date | undefined>();
+  const [duration, setDuration] = React.useState(30);
   const [endDate, setEndDate] = React.useState<Date | undefined>();
+
+  // Tier state
+  const [tiers, setTiers] = React.useState<TierConfig[]>([]);
+  const [selectedTierId, setSelectedTierId] = React.useState<string | null>(null);
+  
+  // Price preview state
+  const [pricePreview, setPricePreview] = React.useState<PriceBreakdown | null>(null);
+  const [validation, setValidation] = React.useState<TierValidationResult | null>(null);
+  const [previewLoading, setPreviewLoading] = React.useState(false);
 
   // Form state
   const [formData, setFormData] = React.useState({
     league_name: '',
     description: '',
     num_teams: '4',
-    team_size: '5',
+    max_participants: '20',
     rest_days: '1',
     is_public: false,
     is_exclusive: true,
@@ -130,34 +134,116 @@ export default function CreateLeaguePage() {
     }
   }, [step]);
 
-  // Fetch pricing on mount
+  const startOfTodayLocal = React.useCallback(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  // Ensure start date is always set (mandatory) defaulting to today
   React.useEffect(() => {
-    const fetchPricing = async () => {
+    if (!startDate) {
+      setStartDate(startOfTodayLocal());
+    }
+  }, [startDate, startOfTodayLocal]);
+
+  const selectedTier = React.useMemo(
+    () => tiers.find((t) => t.tier_id === selectedTierId) || null,
+    [tiers, selectedTierId]
+  );
+
+  // Update end date when start date or duration changes
+  React.useEffect(() => {
+    if (startDate && duration > 0) {
+      const end = new Date(startDate);
+      end.setDate(end.getDate() + duration - 1);
+      end.setHours(0, 0, 0, 0);
+      setEndDate(end);
+    }
+  }, [startDate, duration]);
+
+  // Fetch tiers on mount
+  React.useEffect(() => {
+    const fetchTiers = async () => {
       try {
-        const res = await fetch('/api/leagues/pricing');
-        const data = await res.json();
-        if (data.pricing) {
-          const { base_price, platform_fee, gst_percentage } = data.pricing;
-          const subtotal = base_price + platform_fee;
-          const gst = subtotal * (gst_percentage / 100);
-          const total = subtotal + gst;
-          setPricing({
-            basePrice: base_price,
-            platformFee: platform_fee,
-            gstPercentage: gst_percentage,
-            subtotal,
-            gst,
-            total,
-          });
+        const res = await fetch('/api/leagues/tiers');
+        const json = await res.json();
+
+        if (!res.ok || !json.success) {
+          console.error('Failed to fetch tiers:', json.error);
+          return;
+        }
+
+        const tierList: TierConfig[] = json.data?.tiers || [];
+        setTiers(tierList);
+
+        // Select first tier by default (sorted by display_order from API)
+        if (tierList.length > 0 && !selectedTierId) {
+          setSelectedTierId(tierList[0].tier_id);
+          // Set default duration based on tier max
+          const defaultDays = Math.min(30, tierList[0].max_days);
+          setDuration(defaultDays);
+          // Set default max participants
+          setFormData(prev => ({
+            ...prev,
+            max_participants: tierList[0].max_participants.toString()
+          }));
         }
       } catch (err) {
-        console.error('Failed to fetch pricing:', err);
+        console.error('Failed to fetch tiers:', err);
       } finally {
         setPricingLoading(false);
       }
     };
-    fetchPricing();
+    fetchTiers();
   }, []);
+
+  // Fetch price preview when tier, duration, or estimated participants change
+  React.useEffect(() => {
+    if (!selectedTierId || !duration) {
+      setPricePreview(null);
+      setValidation(null);
+      return;
+    }
+
+    const estimatedParticipants = parseInt(formData.max_participants) || parseInt(formData.num_teams) * 5;
+
+    const fetchPreview = async () => {
+      setPreviewLoading(true);
+      try {
+        const res = await fetch('/api/tiers/preview-price', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tier_id: selectedTierId,
+            duration_days: duration,
+            estimated_participants: estimatedParticipants,
+          }),
+        });
+
+        const json = await res.json();
+
+        if (res.ok && json.success) {
+          setPricePreview(json.price_breakdown);
+          setValidation(json.validation);
+        } else {
+          console.error('Price preview failed:', json.error);
+          setPricePreview(null);
+          setValidation(null);
+        }
+      } catch (err) {
+        console.error('Price preview error:', err);
+        setPricePreview(null);
+        setValidation(null);
+      } finally {
+        setPreviewLoading(false);
+      }
+    };
+
+    // Debounce price preview requests
+    const timeout = setTimeout(fetchPreview, 500);
+    return () => clearTimeout(timeout);
+  }, [selectedTierId, duration, formData.num_teams, formData.max_participants]);
 
   // Load Razorpay script
   React.useEffect(() => {
@@ -191,12 +277,16 @@ export default function CreateLeaguePage() {
       setError('Please enter a league name');
       return;
     }
-    if (!startDate || !endDate) {
-      setError('Please select start and end dates');
+    if (!selectedTierId) {
+      setError('Please select a tier');
       return;
     }
-    if (endDate <= startDate) {
-      setError('End date must be after start date');
+    if (!startDate || !endDate) {
+      setError('Please select league dates');
+      return;
+    }
+    if (validation && !validation.valid) {
+      setError('Please fix validation errors before proceeding');
       return;
     }
 
@@ -204,37 +294,25 @@ export default function CreateLeaguePage() {
     setError(null);
 
     try {
-      // Step 1: Create the league first (draft status)
-      const createRes = await fetch('/api/leagues', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          league_name: formData.league_name.trim(),
-          description: formData.description.trim() || null,
-          start_date: format(startDate, 'yyyy-MM-dd'),
-          end_date: format(endDate, 'yyyy-MM-dd'),
-          num_teams: parseInt(formData.num_teams),
-          team_size: parseInt(formData.team_size),
-          rest_days: parseInt(formData.rest_days),
-          is_public: formData.is_public,
-          is_exclusive: formData.is_exclusive,
-        }),
-      });
+      // Prepare league data for payment
+      const leagueData = {
+        league_name: formData.league_name.trim(),
+        description: formData.description.trim() || null,
+        start_date: format(startDate, 'yyyy-MM-dd'),
+        end_date: format(endDate, 'yyyy-MM-dd'),
+        tier_id: selectedTierId,
+        num_teams: parseInt(formData.num_teams),
+        max_participants: parseInt(formData.max_participants),
+        rest_days: parseInt(formData.rest_days),
+        is_public: formData.is_public,
+        is_exclusive: formData.is_exclusive,
+      };
 
-      const createData = await createRes.json();
-
-      if (!createRes.ok) {
-        throw new Error(createData.error || 'Failed to create league');
-      }
-
-      const leagueId = createData.data?.league_id || createData.league_id;
-      setCreatedLeagueId(leagueId);
-
-      // Step 2: Create Razorpay order
+      // Create Razorpay order with league data
       const orderRes = await fetch('/api/payments/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leagueId }),
+        body: JSON.stringify({ leagueData }),
       });
 
       const orderData = await orderRes.json();
@@ -243,7 +321,7 @@ export default function CreateLeaguePage() {
         throw new Error(orderData.error || 'Failed to create payment order');
       }
 
-      // Step 3: Open Razorpay checkout
+      // Open Razorpay checkout
       const options = {
         key: orderData.keyId,
         amount: orderData.amount,
@@ -253,7 +331,7 @@ export default function CreateLeaguePage() {
         order_id: orderData.orderId,
         handler: async function (response: any) {
           try {
-            // Step 4: Verify payment
+            // Verify payment
             const verifyRes = await fetch('/api/payments/verify', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -268,6 +346,11 @@ export default function CreateLeaguePage() {
 
             if (!verifyRes.ok) {
               throw new Error(verifyData.error || 'Payment verification failed');
+            }
+
+            // Set league ID from verification response
+            if (verifyData.payment?.league_id) {
+              setCreatedLeagueId(verifyData.payment.league_id);
             }
 
             // Success!
@@ -298,16 +381,58 @@ export default function CreateLeaguePage() {
     }
   };
 
-  // Calculate league duration
-  const duration =
-    startDate && endDate
-      ? Math.ceil(
-          (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-        ) + 1
-      : 0;
+  const tierCapacity = parseInt(formData.max_participants) || Number(selectedTier?.max_participants) || 0;
+  const totalMembers = tierCapacity;
 
-  const totalMembers =
-    parseInt(formData.num_teams) * parseInt(formData.team_size);
+  /**
+   * Get valid team options based on tier capacity
+   * Min = 2, Max = tier's league_capacity
+   * Basic: 10, Medium: 30, Pro: 60
+   */
+  const getValidTeamOptions = React.useCallback((capacity: number): number[] => {
+    const minTeams = 2;
+    // Extended standard options to support up to 60 teams
+    const standardOptions = [2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20, 24, 30, 32, 40, 48, 50, 60];
+    
+    // If no tier selected yet, show options up to 10 (basic tier default)
+    if (capacity <= 0) {
+      return standardOptions.filter(n => n <= 10);
+    }
+    
+    const maxTeams = capacity; // Max teams = tier capacity
+    const options: number[] = [];
+    
+    for (const n of standardOptions) {
+      if (n >= minTeams && n <= maxTeams) {
+        options.push(n);
+      }
+    }
+    
+    // If no standard options fit, at least include minTeams
+    if (options.length === 0) {
+      options.push(minTeams);
+    }
+    
+    return options;
+  }, []);
+
+  const teamOptions = React.useMemo(
+    () => getValidTeamOptions(tierCapacity),
+    [tierCapacity, getValidTeamOptions]
+  );
+
+  // Reset num_teams if current value exceeds tier capacity
+  React.useEffect(() => {
+    if (teamOptions.length === 0) return;
+    const currentTeams = parseInt(formData.num_teams, 10);
+    const maxAvailable = Math.max(...teamOptions);
+    if (currentTeams > maxAvailable) {
+      setFormData((prev) => ({
+        ...prev,
+        num_teams: maxAvailable.toString(),
+      }));
+    }
+  }, [teamOptions, formData.num_teams]);
 
   // Success State - Show Dialog with Confetti
   if (step === 'success') {
@@ -407,6 +532,96 @@ export default function CreateLeaguePage() {
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Main Form - 2 columns */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Tier Selector */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Sparkles className="size-5 text-primary" />
+                  Choose Tier
+                </CardTitle>
+                <CardDescription>
+                  Pick a plan for your league. Pricing and duration update automatically.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {tiers.map((tier) => {
+                    const isSelected = selectedTierId === tier.tier_id;
+                    const isFeatured = tier.is_featured;
+
+                    return (
+                      <button
+                        key={tier.tier_id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedTierId(tier.tier_id);
+                          // Update duration if current exceeds tier max
+                          if (duration > tier.max_days) {
+                            setDuration(tier.max_days);
+                          }
+                        }}
+                        className={cn(
+                          'relative flex flex-col items-start gap-2 p-4 rounded-xl border-2 transition-all duration-200',
+                          'hover:border-primary/50 hover:bg-primary/5',
+                          isSelected
+                            ? 'border-primary bg-primary/10 shadow-md shadow-primary/20'
+                            : 'border-border bg-card'
+                        )}
+                      >
+                        {isFeatured && (
+                          <Badge className="absolute -top-2 -right-2" variant="default">
+                            Featured
+                          </Badge>
+                        )}
+                        {isSelected && (
+                          <div className="absolute -top-2 -left-2 size-5 rounded-full bg-primary flex items-center justify-center">
+                            <Check className="size-3 text-primary-foreground" />
+                          </div>
+                        )}
+                        
+                        <div className="flex flex-col gap-1 w-full">
+                          <span className={cn(
+                            'text-base font-semibold',
+                            isSelected && 'text-primary'
+                          )}>
+                            {tier.display_name}
+                          </span>
+                          
+                          {tier.pricing.pricing_type === 'fixed' && tier.pricing.fixed_price && (
+                            <span className={cn(
+                              'text-lg font-bold',
+                              isSelected ? 'text-primary' : 'text-foreground'
+                            )}>
+                              ₹{Math.round(tier.pricing.fixed_price)}
+                            </span>
+                          )}
+                          
+                          {tier.pricing.pricing_type === 'dynamic' && (
+                            <span className="text-sm text-muted-foreground">
+                              Custom pricing
+                            </span>
+                          )}
+                          
+                          <span className="text-xs text-muted-foreground">
+                            Up to {tier.max_days} days
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {tier.max_participants} participants
+                          </span>
+                        </div>
+
+                        {tier.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {tier.description}
+                          </p>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Basic Info Card */}
             <Card>
               <CardHeader>
@@ -455,10 +670,10 @@ export default function CreateLeaguePage() {
                   Schedule
                 </CardTitle>
                 <CardDescription>
-                  Set the start and end dates for your league
+                  Choose a start date (required)
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Start Date */}
                   <div className="space-y-2">
@@ -473,7 +688,7 @@ export default function CreateLeaguePage() {
                           )}
                         >
                           <CalendarIcon className="mr-2 size-4" />
-                          {startDate ? format(startDate, 'PPP') : <span>Pick start date</span>}
+                          {startDate ? format(startDate, 'PPP') : <span>Start today</span>}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
@@ -481,50 +696,60 @@ export default function CreateLeaguePage() {
                           mode="single"
                           selected={startDate}
                           onSelect={setStartDate}
-                          disabled={(date) => date < new Date()}
+                          disabled={(date) => date < startOfTodayLocal()}
                           initialFocus
                         />
                       </PopoverContent>
                     </Popover>
                   </div>
 
-                  {/* End Date */}
+                  {/* Duration Selector */}
                   <div className="space-y-2">
-                    <Label>End Date *</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            'w-full justify-start text-left font-normal',
-                            !endDate && 'text-muted-foreground'
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 size-4" />
-                          {endDate ? format(endDate, 'PPP') : <span>Pick end date</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={endDate}
-                          onSelect={setEndDate}
-                          disabled={(date) => date < (startDate || new Date())}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <Label htmlFor="duration">
+                      League Duration (days) *
+                      {selectedTier && (
+                        <span className="text-xs text-muted-foreground ml-2">
+                          Max: {selectedTier.max_days} days
+                        </span>
+                      )}
+                    </Label>
+                    <Input
+                      id="duration"
+                      type="number"
+                      min={1}
+                      max={selectedTier?.max_days || 365}
+                      value={duration}
+                      onChange={(e) => setDuration(parseInt(e.target.value) || 1)}
+                      required
+                    />
+                    {validation && !validation.valid && validation.errors.some(e => e.includes('Duration')) && (
+                      <p className="text-sm text-destructive">
+                        {validation.errors.find(e => e.includes('Duration'))}
+                      </p>
+                    )}
+                    {validation && validation.warnings.some(w => w.includes('Duration')) && (
+                      <p className="text-sm text-yellow-600">
+                        {validation.warnings.find(w => w.includes('Duration'))}
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                {duration > 0 && (
-                  <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/10">
-                    <p className="text-sm text-muted-foreground">
-                      League duration:{' '}
-                      <span className="font-semibold text-foreground">{duration} days</span>
-                    </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>End Date</Label>
+                    <div className="h-10 px-3 flex items-center rounded-md border bg-muted text-sm">
+                      {endDate ? format(endDate, 'PPP') : '—'}
+                    </div>
                   </div>
-                )}
+
+                  <div className="space-y-2">
+                    <Label>Total Days</Label>
+                    <div className="h-10 px-3 flex items-center rounded-md border bg-muted text-sm">
+                      {duration > 0 ? `${duration} days` : '—'}
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -540,7 +765,7 @@ export default function CreateLeaguePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Number of Teams</Label>
                     <Select
@@ -551,7 +776,7 @@ export default function CreateLeaguePage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {[2, 3, 4, 5, 6, 8, 10, 12, 16, 20].map((n) => (
+                        {teamOptions.map((n) => (
                           <SelectItem key={n} value={n.toString()}>
                             {n} teams
                           </SelectItem>
@@ -559,24 +784,35 @@ export default function CreateLeaguePage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  
                   <div className="space-y-2">
-                    <Label>Team Size</Label>
-                    <Select
-                      value={formData.team_size}
-                      onValueChange={(v) => handleSelectChange('team_size', v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[3, 4, 5, 6, 8, 10, 12, 15, 20].map((n) => (
-                          <SelectItem key={n} value={n.toString()}>
-                            {n} members
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="max_participants">
+                      Max Participants *
+                      {selectedTier && (
+                        <span className="text-xs text-muted-foreground ml-2">
+                          Limit: {selectedTier.max_participants}
+                        </span>
+                      )}
+                    </Label>
+                    <Input
+                      id="max_participants"
+                      type="number"
+                      min={parseInt(formData.num_teams) || 2}
+                      max={selectedTier?.max_participants || 1000}
+                      value={formData.max_participants}
+                      onChange={handleChange}
+                      name="max_participants"
+                      required
+                    />
+                    {validation && !validation.valid && validation.errors.some(e => e.includes('Participants')) && (
+                      <p className="text-sm text-destructive">
+                        {validation.errors.find(e => e.includes('Participants'))}
+                      </p>
+                    )}
                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                   <div className="space-y-2">
                     <Label>Rest Days/Week</Label>
                     <Select
@@ -595,13 +831,20 @@ export default function CreateLeaguePage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Avg Team Size</Label>
+                    <div className="h-10 px-3 flex items-center rounded-md border bg-muted text-sm">
+                      {Math.round(tierCapacity / parseInt(formData.num_teams))} players/team
+                    </div>
+                  </div>
                 </div>
 
                 <div className="mt-4 p-3 rounded-lg bg-muted">
                   <p className="text-sm text-muted-foreground">
                     Total capacity:{' '}
                     <span className="font-semibold text-foreground">
-                      {totalMembers} members
+                      {tierCapacity} players
                     </span>{' '}
                     across {formData.num_teams} teams
                   </p>
@@ -664,6 +907,12 @@ export default function CreateLeaguePage() {
               <CardContent className="space-y-4">
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
+                    <span className="text-muted-foreground">Tier</span>
+                    <span className="font-medium">
+                      {selectedTier?.display_name || '—'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-muted-foreground">League Name</span>
                     <span className="font-medium truncate max-w-[150px]">
                       {formData.league_name || '—'}
@@ -681,50 +930,81 @@ export default function CreateLeaguePage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Total Capacity</span>
-                    <span className="font-medium">{totalMembers}</span>
+                    <span className="font-medium">{tierCapacity} players</span>
                   </div>
                 </div>
 
+                <Separator />
+
                 {/* Pricing Section */}
-                <div className="pt-4 border-t">
+                <div>
                   <div className="flex items-center gap-2 mb-3">
                     <CreditCard className="size-4 text-primary" />
                     <span className="font-medium">Payment Details</span>
                   </div>
-                  {pricingLoading ? (
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-6 w-full" />
+                  {previewLoading ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="size-4 animate-spin" />
+                      <span className="text-sm text-muted-foreground">Calculating...</span>
                     </div>
-                  ) : pricing ? (
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Base Price</span>
-                        <span>₹{pricing.basePrice.toFixed(2)}</span>
+                  ) : pricePreview ? (
+                    <div className="space-y-2">
+                      {pricePreview.pricing_type === 'dynamic' && pricePreview.breakdown_details && (
+                        <div className="space-y-1 text-xs text-muted-foreground mb-2">
+                          {pricePreview.breakdown_details.map((detail, idx) => (
+                            <p key={idx}>{detail}</p>
+                          ))}
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Subtotal:</span>
+                        <span>₹{pricePreview.subtotal.toFixed(2)}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Platform Fee</span>
-                        <span>₹{pricing.platformFee.toFixed(2)}</span>
+                      
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>GST ({pricePreview.pricing_type === 'fixed' && selectedTier?.pricing.gst_percentage ? selectedTier.pricing.gst_percentage : 18}%):</span>
+                        <span>₹{pricePreview.gst_amount.toFixed(2)}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">GST ({pricing.gstPercentage}%)</span>
-                        <span>₹{pricing.gst.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between pt-2 border-t font-semibold text-base">
-                        <span>Total</span>
+                      
+                      <Separator />
+                      
+                      <div className="flex justify-between text-base font-bold">
+                        <span>Total:</span>
                         <span className="text-primary flex items-center">
-                          <IndianRupee className="size-4" />
-                          {pricing.total.toFixed(2)}
+                          <IndianRupee className="size-3 mr-0.5" />
+                          {pricePreview.total.toFixed(2)}
                         </span>
                       </div>
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      Pricing not available
+                      Select tier and duration to see pricing
                     </p>
                   )}
                 </div>
+
+                {validation && !validation.valid && (
+                  <div className="rounded-lg bg-destructive/10 p-3 border border-destructive/20">
+                    <h4 className="text-sm font-semibold text-destructive mb-1">Validation Errors</h4>
+                    <ul className="text-xs text-destructive space-y-1">
+                      {validation.errors.map((error, idx) => (
+                        <li key={idx}>• {error}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {validation && validation.valid && validation.warnings.length > 0 && (
+                  <div className="rounded-lg bg-yellow-50 dark:bg-yellow-900/20 p-3 border border-yellow-200 dark:border-yellow-800">
+                    <h4 className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 mb-1">Warnings</h4>
+                    <ul className="text-xs text-yellow-700 dark:text-yellow-300 space-y-1">
+                      {validation.warnings.map((warning, idx) => (
+                        <li key={idx}>• {warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 {/* Error */}
                 {error && (
@@ -737,7 +1017,7 @@ export default function CreateLeaguePage() {
                 <div className="pt-4 space-y-3">
                   <Button
                     onClick={handleCreateLeague}
-                    disabled={loading || !pricing}
+                    disabled={loading || !pricePreview || !validation?.valid}
                     className="w-full"
                   >
                     {loading ? (

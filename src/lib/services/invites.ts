@@ -17,7 +17,7 @@ export interface LeagueInviteInfo {
   start_date: string;
   end_date: string;
   num_teams: number;
-  team_size: number;
+  league_capacity: number;
   is_public: boolean;
   member_count: number;
   max_capacity: number;
@@ -65,7 +65,7 @@ export async function validateInviteCode(code: string): Promise<LeagueInviteInfo
     const supabase = getSupabaseServiceRole();
     const normalizedCode = code.trim().toUpperCase();
 
-    // Find league by invite_code
+    // Find league by invite_code (no embedded join)
     const { data: league, error } = await supabase
       .from('leagues')
       .select('*')
@@ -76,15 +76,28 @@ export async function validateInviteCode(code: string): Promise<LeagueInviteInfo
       return null;
     }
 
+    // Fetch tier capacity separately
+    let leagueCapacity = 20;
+    if (league.tier_id) {
+      const { data: tierData } = await supabase
+        .from('league_tiers')
+        .select('league_capacity')
+        .eq('tier_id', league.tier_id)
+        .single();
+      
+      if (tierData?.league_capacity) {
+        leagueCapacity = tierData.league_capacity;
+      }
+    }
+
     // Get member count
     const { count: memberCount } = await supabase
       .from('leaguemembers')
       .select('*', { count: 'exact', head: true })
       .eq('league_id', league.league_id);
 
-    const maxCapacity = (league.num_teams || 4) * (league.team_size || 5);
     const currentCount = memberCount || 0;
-    const isFull = currentCount >= maxCapacity;
+    const isFull = currentCount >= leagueCapacity;
     const canJoin = league.status !== 'completed' && !isFull;
 
     return {
@@ -95,10 +108,10 @@ export async function validateInviteCode(code: string): Promise<LeagueInviteInfo
       start_date: league.start_date,
       end_date: league.end_date,
       num_teams: league.num_teams || 4,
-      team_size: league.team_size || 5,
+      league_capacity: leagueCapacity,
       is_public: league.is_public || false,
       member_count: currentCount,
-      max_capacity: maxCapacity,
+      max_capacity: leagueCapacity,
       is_full: isFull,
       can_join: canJoin,
     };
@@ -266,7 +279,7 @@ export async function validateTeamInviteCode(code: string): Promise<TeamInviteIn
       return null;
     }
 
-    // Get the league this team is in (via teamleagues junction)
+    // Get the league this team is in (via teamleagues junction) - no embedded tier join
     const { data: teamLeague, error: tlError } = await supabase
       .from('teamleagues')
       .select(`
@@ -278,7 +291,7 @@ export async function validateTeamInviteCode(code: string): Promise<TeamInviteIn
           status,
           start_date,
           end_date,
-          team_size
+          tier_id
         )
       `)
       .eq('team_id', team.team_id)
@@ -290,6 +303,20 @@ export async function validateTeamInviteCode(code: string): Promise<TeamInviteIn
 
     const league = teamLeague.leagues as any;
 
+    // Fetch tier capacity separately
+    let leagueCapacity = 20;
+    if (league.tier_id) {
+      const { data: tierData } = await supabase
+        .from('league_tiers')
+        .select('league_capacity')
+        .eq('tier_id', league.tier_id)
+        .single();
+      
+      if (tierData?.league_capacity) {
+        leagueCapacity = tierData.league_capacity;
+      }
+    }
+
     // Get team member count in this league
     const { count: teamMemberCount } = await supabase
       .from('leaguemembers')
@@ -297,7 +324,8 @@ export async function validateTeamInviteCode(code: string): Promise<TeamInviteIn
       .eq('league_id', league.league_id)
       .eq('team_id', team.team_id);
 
-    const teamMaxCapacity = league.team_size || 5;
+    // For team capacity, we'll use a reasonable default (5)
+    const teamMaxCapacity = 5;
     const currentTeamCount = teamMemberCount || 0;
     const isTeamFull = currentTeamCount >= teamMaxCapacity;
     const canJoin = league.status !== 'completed' && !isTeamFull;

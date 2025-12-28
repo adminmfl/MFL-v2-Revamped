@@ -27,10 +27,32 @@ export async function getPricing(): Promise<Pricing | null> {
     .from('pricing')
     .select('*')
     .eq('is_active', true)
+    .order('updated_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   if (error) {
     console.error('Error fetching pricing:', error);
+    return null;
+  }
+
+  return data as Pricing | null;
+}
+
+/**
+ * Get pricing configuration by id
+ */
+export async function getPricingById(pricingId: string): Promise<Pricing | null> {
+  const supabase = getSupabaseServiceRole();
+
+  const { data, error } = await supabase
+    .from('pricing')
+    .select('*')
+    .eq('id', pricingId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching pricing by id:', error);
     return null;
   }
 

@@ -231,6 +231,17 @@
   background: linear-gradient(135deg, #FFB800 0%, #F59E0B 100%);
 }
 
+/* Soft tinted stat tile background (used in league dashboard summary cards) */
+.gradient-box {
+  background: color-mix(in oklab, var(--card) 88%, var(--chart-2) 12%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.dark .gradient-box {
+  background: color-mix(in oklab, var(--card) 90%, var(--chart-2) 10%);
+}
+
 /* Dark mode hero gradient */
 .dark .gradient-hero {
   background: linear-gradient(135deg, #0A1628 0%, #1E3A5F 50%, #0A1628 100%);

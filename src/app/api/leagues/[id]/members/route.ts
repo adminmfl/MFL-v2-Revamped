@@ -1,6 +1,8 @@
 /**
  * GET /api/leagues/[id]/members - List league members (with roles)
  * POST /api/leagues/[id]/members - Add member (Host/Governor only)
+ * PATCH /api/leagues/[id]/members - Move member to different team (Host only)
+ * DELETE /api/leagues/[id]/members - Remove member from league (Host only)
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
@@ -11,11 +13,18 @@ import {
 } from '@/lib/services/memberships';
 import { getUserRolesInLeague } from '@/lib/services/leagues';
 import { userHasAnyRole } from '@/lib/services/roles';
+import { getLeagueMembersWithTeams, assignMemberToTeam } from '@/lib/services/teams';
 import { z } from 'zod';
+import { getSupabaseServiceRole } from '@/lib/supabase/client';
 
 const addMemberSchema = z.object({
   user_id: z.string().uuid('Invalid user ID'),
   team_id: z.string().uuid('Invalid team ID').optional(),
+});
+
+const moveMemberSchema = z.object({
+  memberId: z.string().min(1, 'Member ID required'),
+  teamId: z.string().min(1, 'Team ID required'),
 });
 
 export async function GET(
@@ -111,6 +120,203 @@ export async function POST(
     }
     return NextResponse.json(
       { error: 'Failed to add member' },
+      { status: 500 }
+    );
+  }
+}
+
+// ============================================================================
+// PATCH: Move member to different team (host only)
+// ============================================================================
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: leagueId } = await params;
+    const session = (await getServerSession(authOptions as any)) as import('next-auth').Session | null;
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Host only
+    const isHost = await userHasAnyRole(session.user.id, leagueId, ['host']);
+    if (!isHost) {
+      return NextResponse.json(
+        { error: 'Only league host can move members' },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const { memberId, teamId } = moveMemberSchema.parse(body);
+
+    const supabase = getSupabaseServiceRole();
+
+    // Verify member exists in league
+    const { data: member, error: memberError } = await supabase
+      .from('leaguemembers')
+      .select('league_member_id, user_id, league_id, team_id')
+      .eq('league_member_id', memberId)
+      .eq('league_id', leagueId)
+      .single();
+
+    if (memberError || !member) {
+      return NextResponse.json(
+        { error: 'Member not found in league' },
+        { status: 404 }
+      );
+    }
+
+    // Verify team exists in league
+    const { data: teamLink, error: teamError } = await supabase
+      .from('teamleagues')
+      .select('team_id')
+      .eq('team_id', teamId)
+      .eq('league_id', leagueId)
+      .single();
+
+    if (teamError || !teamLink) {
+      return NextResponse.json(
+        { error: 'Team not found in league' },
+        { status: 404 }
+      );
+    }
+
+    // Move member to team
+    const success = await assignMemberToTeam(memberId, teamId, session.user.id);
+
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Failed to move member' },
+        { status: 500 }
+      );
+    }
+
+    // Fetch and return updated member
+    const { data: updatedMember } = await supabase
+      .from('leaguemembers')
+      .select(`
+        league_member_id,
+        user_id,
+        team_id,
+        league_id,
+        users!leaguemembers_user_id_fkey(username, email),
+        teams(team_name)
+      `)
+      .eq('league_member_id', memberId)
+      .single();
+
+    return NextResponse.json({
+      data: {
+        league_member_id: updatedMember?.league_member_id,
+        user_id: updatedMember?.user_id,
+        team_id: updatedMember?.team_id,
+        league_id: updatedMember?.league_id,
+        username: (updatedMember?.users as any)?.username,
+        email: (updatedMember?.users as any)?.email,
+        team_name: (updatedMember?.teams as any)?.team_name,
+      },
+      success: true,
+    });
+  } catch (error) {
+    console.error('Error moving member:', error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: error.errors },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json(
+      { error: 'Failed to move member' },
+      { status: 500 }
+    );
+  }
+}
+
+// ============================================================================
+// DELETE: Remove member from league (host only)
+// ============================================================================
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: leagueId } = await params;
+    const session = (await getServerSession(authOptions as any)) as import('next-auth').Session | null;
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Host only
+    const isHost = await userHasAnyRole(session.user.id, leagueId, ['host']);
+    if (!isHost) {
+      return NextResponse.json(
+        { error: 'Only league host can remove members' },
+        { status: 403 }
+      );
+    }
+
+    // Get member ID from query string
+    const memberId = request.nextUrl.searchParams.get('memberId');
+    if (!memberId) {
+      return NextResponse.json(
+        { error: 'Member ID required' },
+        { status: 400 }
+      );
+    }
+
+    const supabase = getSupabaseServiceRole();
+
+    // Verify member exists in league
+    const { data: member, error: memberError } = await supabase
+      .from('leaguemembers')
+      .select('league_member_id, user_id, league_id')
+      .eq('league_member_id', memberId)
+      .eq('league_id', leagueId)
+      .single();
+
+    if (memberError || !member) {
+      return NextResponse.json(
+        { error: 'Member not found in league' },
+        { status: 404 }
+      );
+    }
+
+    // Delete the league member record
+    const { error: deleteError } = await supabase
+      .from('leaguemembers')
+      .delete()
+      .eq('league_member_id', memberId);
+
+    if (deleteError) {
+      console.error('Error deleting member:', deleteError);
+      return NextResponse.json(
+        { error: 'Failed to remove member' },
+        { status: 500 }
+      );
+    }
+
+    // Also clean up any roles assigned to this user in this league
+    await supabase
+      .from('assignedrolesforleague')
+      .delete()
+      .eq('user_id', member.user_id)
+      .eq('league_id', leagueId);
+
+    return NextResponse.json({
+      message: 'Member removed from league',
+      data: { memberId },
+      success: true,
+    });
+  } catch (error) {
+    console.error('Error removing member from league:', error);
+    return NextResponse.json(
+      { error: 'Failed to remove member' },
       { status: 500 }
     );
   }

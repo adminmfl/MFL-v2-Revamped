@@ -111,6 +111,7 @@ $$ LANGUAGE sql SECURITY DEFINER STABLE;
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.email_otps ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pricing ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.league_tiers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.leagues ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.activities ENABLE ROW LEVEL SECURITY;
@@ -232,6 +233,64 @@ CREATE POLICY pricing_delete_admin ON public.pricing
   );
 
 -- =====================================================================================
+-- LEAGUE TIERS POLICIES
+-- =====================================================================================
+
+-- Everyone can read active tiers
+CREATE POLICY league_tiers_select_active ON public.league_tiers
+  FOR SELECT
+  USING (is_active = true);
+
+-- Admins can read all tiers (including inactive)
+CREATE POLICY league_tiers_select_admin ON public.league_tiers
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.users
+      WHERE users.user_id = auth.uid()
+      AND users.platform_role = 'admin'
+    )
+  );
+
+-- Only admins can insert/update/delete tiers
+CREATE POLICY league_tiers_insert_admin ON public.league_tiers
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.users
+      WHERE users.user_id = auth.uid()
+      AND users.platform_role = 'admin'
+    )
+  );
+
+CREATE POLICY league_tiers_update_admin ON public.league_tiers
+  FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.users
+      WHERE users.user_id = auth.uid()
+      AND users.platform_role = 'admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.users
+      WHERE users.user_id = auth.uid()
+      AND users.platform_role = 'admin'
+    )
+  );
+
+CREATE POLICY league_tiers_delete_admin ON public.league_tiers
+  FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.users
+      WHERE users.user_id = auth.uid()
+      AND users.platform_role = 'admin'
+    )
+  );
+
+-- =====================================================================================
 -- ROLES POLICIES
 -- =====================================================================================
 
@@ -264,6 +323,9 @@ CREATE POLICY roles_update_admin ON public.roles
 -- =====================================================================================
 -- LEAGUES POLICIES
 -- =====================================================================================
+
+-- League status lifecycle: scheduled → active → ended → completed
+-- Additional terminal states: cancelled, abandoned
 
 -- Everyone can read public leagues
 CREATE POLICY leagues_select_public ON public.leagues
@@ -801,6 +863,58 @@ CREATE POLICY payments_update_all ON public.payments
   WITH CHECK (true);
 
 -- =====================================================================================
+-- CHALLENGE PRICING POLICIES (ADMIN ONLY)
+-- =====================================================================================
+
+-- Enable RLS on challengepricing
+ALTER TABLE public.challengepricing ENABLE ROW LEVEL SECURITY;
+
+-- All authenticated users can read pricing (needed for challenge creation)
+CREATE POLICY challengepricing_select_all ON public.challengepricing
+  FOR SELECT
+  USING (true);
+
+-- Only admins can insert pricing
+CREATE POLICY challengepricing_insert_admin ON public.challengepricing
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.users
+      WHERE user_id = auth.uid()
+      AND platform_role = 'admin'
+    )
+  );
+
+-- Only admins can update pricing
+CREATE POLICY challengepricing_update_admin ON public.challengepricing
+  FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.users
+      WHERE user_id = auth.uid()
+      AND platform_role = 'admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.users
+      WHERE user_id = auth.uid()
+      AND platform_role = 'admin'
+    )
+  );
+
+-- Only admins can delete pricing
+CREATE POLICY challengepricing_delete_admin ON public.challengepricing
+  FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.users
+      WHERE user_id = auth.uid()
+      AND platform_role = 'admin'
+    )
+  );
+
+-- =====================================================================================
 -- GRANTS (SCHEMA & TABLE ACCESS)
 -- =====================================================================================
 
@@ -820,6 +934,7 @@ GRANT INSERT, UPDATE, DELETE ON public.effortentry TO authenticated;
 GRANT INSERT, UPDATE, DELETE ON public.challenge_submissions TO authenticated;
 GRANT INSERT ON public.payments TO authenticated;
 GRANT UPDATE ON public.payments TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.challengepricing TO authenticated;
 
 -- Grant EXECUTE on helper functions to authenticated
 GRANT EXECUTE ON FUNCTION public.get_user_roles_in_league(uuid, uuid) TO authenticated;

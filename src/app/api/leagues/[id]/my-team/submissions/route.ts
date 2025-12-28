@@ -28,6 +28,9 @@ export interface TeamSubmission {
   notes: string | null;
   created_date: string;
   modified_date: string;
+  modified_by: string | null;
+  reupload_of: string | null;
+  graded_by_role: 'host' | 'governor' | 'captain' | 'player' | 'system' | null;
   member: {
     user_id: string;
     username: string;
@@ -128,7 +131,8 @@ export async function GET(
     const { data: teamMembers, error: membersError } = await supabase
       .from('leaguemembers')
       .select('league_member_id, user_id, users!leaguemembers_user_id_fkey(username, email)')
-      .eq('team_id', membership.team_id);
+      .eq('team_id', membership.team_id)
+      .eq('league_id', leagueId);
 
     if (membersError) {
       console.error('Error fetching team members:', membersError);
@@ -179,7 +183,9 @@ export async function GET(
         proof_url,
         notes,
         created_date,
-        modified_date
+        modified_date,
+        modified_by,
+        reupload_of
       `)
       .in('league_member_id', memberIds)
       .order('date', { ascending: false });
@@ -199,9 +205,54 @@ export async function GET(
       );
     }
 
-    // Enrich submissions with member info
-    const enrichedSubmissions: TeamSubmission[] = (submissions || []).map((s) => ({
+    const leagueCreatedBy = leagueData?.created_by || null;
+    const modifiedByUserIds = Array.from(
+      new Set(
+        (submissions || [])
+          .map((s: any) => s?.modified_by as string | null)
+          .filter((v: string | null): v is string => !!v)
+      )
+    );
+
+    const rolesByUser = new Map<string, Set<string>>();
+    if (modifiedByUserIds.length > 0) {
+      const { data: roleRows, error: roleRowsError } = await supabase
+        .from('assignedrolesforleague')
+        .select('user_id, roles!inner(role_name)')
+        .eq('league_id', leagueId)
+        .in('user_id', modifiedByUserIds);
+
+      if (roleRowsError) {
+        console.error('Error fetching grader roles:', roleRowsError);
+      } else {
+        for (const row of (roleRows || []) as any[]) {
+          const uid = row.user_id as string;
+          const rn = row.roles?.role_name as string | undefined;
+          if (!uid || !rn) continue;
+          if (!rolesByUser.has(uid)) rolesByUser.set(uid, new Set());
+          rolesByUser.get(uid)!.add(rn);
+        }
+      }
+    }
+
+    const getGradedByRole = (modifiedBy: string | null, status: string): TeamSubmission['graded_by_role'] => {
+      if (!modifiedBy) return null;
+      if (status === 'pending') return null;
+      if (leagueCreatedBy && modifiedBy === leagueCreatedBy) return 'host';
+      const roles = rolesByUser.get(modifiedBy);
+      if (!roles) return 'player';
+      if (roles.has('governor')) return 'governor';
+      if (roles.has('captain')) return 'captain';
+      if (roles.has('host')) return 'host';
+      if (roles.has('player')) return 'player';
+      return 'player';
+    };
+
+    // Enrich submissions with member info + grader info
+    const enrichedSubmissions: TeamSubmission[] = (submissions || []).map((s: any) => ({
       ...s,
+      modified_by: (s?.modified_by ?? null) as string | null,
+      graded_by_role: getGradedByRole((s?.modified_by ?? null) as string | null, s.status),
       member: memberMap.get(s.league_member_id) || {
         user_id: '',
         username: 'Unknown',
@@ -209,18 +260,22 @@ export async function GET(
       },
     }));
 
+    // Include all team submissions (including captain's own) for visibility.
+    // Validation rules are still enforced by /api/submissions/[id]/validate.
+    const visibleSubmissions = enrichedSubmissions;
+
     // Calculate summary stats
     const stats = {
-      total: submissions?.length || 0,
-      pending: submissions?.filter((s) => s.status === 'pending').length || 0,
-      approved: submissions?.filter((s) => s.status === 'approved').length || 0,
-      rejected: submissions?.filter((s) => s.status === 'rejected').length || 0,
+      total: visibleSubmissions.length,
+      pending: visibleSubmissions.filter((s) => s.status === 'pending').length,
+      approved: visibleSubmissions.filter((s) => s.status === 'approved').length,
+      rejected: visibleSubmissions.filter((s) => s.status === 'rejected').length,
     };
 
     return NextResponse.json({
       success: true,
       data: {
-        submissions: enrichedSubmissions,
+        submissions: visibleSubmissions,
         stats,
         teamId: membership.team_id,
       },

@@ -45,12 +45,13 @@ type Challenge = {
   description: string | null;
   challenge_type: 'individual' | 'team' | 'sub_team';
   total_points: number;
-  status: 'active' | 'upcoming' | 'closed';
+  status: 'draft' | 'scheduled' | 'active' | 'submission_closed' | 'closed' | 'upcoming';
   start_date: string | null;
   end_date: string | null;
   doc_url: string | null;
   is_custom: boolean;
   template_id: string | null;
+  pricing_id?: string | null;
   my_submission: ChallengeSubmission | null;
   stats: { pending: number; approved: number; rejected: number } | null;
 };
@@ -76,11 +77,17 @@ type SubmissionRow = ChallengeSubmission & {
 
 // Helpers -------------------------------------------------------------------
 
-function statusBadge(status: Challenge['status']) {
+function statusBadge(status: Challenge['status'], isAdmin = false) {
   const map = {
+    draft: { label: 'Draft', className: 'bg-amber-100 text-amber-800' },
+    scheduled: { label: 'Scheduled', className: 'bg-blue-100 text-blue-700' },
     active: { label: 'Active', className: 'bg-green-100 text-green-700' },
-    upcoming: { label: 'Upcoming', className: 'bg-blue-100 text-blue-700' },
+    submission_closed: {
+      label: isAdmin ? 'Submission Closed' : 'Closed',
+      className: 'bg-purple-100 text-purple-700',
+    },
     closed: { label: 'Closed', className: 'bg-gray-100 text-gray-700' },
+    upcoming: { label: 'Scheduled', className: 'bg-blue-100 text-blue-700' }, // legacy mapping
   } as const;
   const cfg = map[status] || map.active;
   return <Badge className={cn('w-fit', cfg.className)} variant="outline">{cfg.label}</Badge>;
@@ -113,6 +120,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
   const [error, setError] = React.useState<string | null>(null);
   const [challenges, setChallenges] = React.useState<Challenge[]>([]);
   const [presets, setPresets] = React.useState<any[]>([]);
+  const [pricing, setPricing] = React.useState<{ pricing_id?: string | null; per_day_rate?: number | null; tax?: number | null } | null>(null);
   const [selectedPresetId, setSelectedPresetId] = React.useState<string>('');
 
   // Create challenge dialog state
@@ -122,10 +130,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
     description: '',
     challengeType: 'individual' as Challenge['challenge_type'],
     totalPoints: 0,
-    startDate: '',
-    endDate: '',
     docUrl: '',
-    status: 'active' as Challenge['status'],
   });
 
   // Activate preset dialog state
@@ -154,6 +159,42 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
   const [reviewFilterSubTeamId, setReviewFilterSubTeamId] = React.useState<string>('');
   const [teams, setTeams] = React.useState<Array<{ team_id: string; team_name: string }>>([]);
   const [subTeams, setSubTeams] = React.useState<Array<{ subteam_id: string; name: string }>>([]);
+  // Finish creation dialog state (for draft challenges)
+  const [finishOpen, setFinishOpen] = React.useState(false);
+  const [finishChallenge, setFinishChallenge] = React.useState<Challenge | null>(null);
+  const [finishStart, setFinishStart] = React.useState('');
+  const [finishEnd, setFinishEnd] = React.useState('');
+  const [finishing, setFinishing] = React.useState(false);
+
+  const finishDays = React.useMemo(() => {
+    if (!finishStart || !finishEnd) return 0;
+    const start = new Date(finishStart);
+    const end = new Date(finishEnd);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+    const diff = Math.floor((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
+    return diff >= 0 ? diff + 1 : 0; // inclusive of both start and end
+  }, [finishStart, finishEnd]);
+
+  const finishAmount = React.useMemo(() => {
+    if (!pricing?.per_day_rate || !finishDays) return 0;
+    const base = finishDays * (pricing.per_day_rate || 0);
+    const taxPercent = pricing.tax != null ? pricing.tax : 0;
+    const taxMultiplier = taxPercent / 100;
+    return base + taxMultiplier * base;
+  }, [pricing, finishDays]);
+
+  const finishBase = React.useMemo(() => {
+    if (!pricing?.per_day_rate || !finishDays) return 0;
+    return finishDays * (pricing.per_day_rate || 0);
+  }, [pricing, finishDays]);
+
+  const finishTaxPercent = pricing?.tax != null ? pricing.tax : 0;
+  const finishTaxAmount = React.useMemo(() => {
+    if (!finishBase) return 0;
+    return finishBase * ((finishTaxPercent || 0) / 100);
+  }, [finishBase, finishTaxPercent]);
+
+  const pricingPillClass = 'rounded-full border border-border bg-gray-100 px-3 py-1 text-xs font-medium text-foreground shadow-sm dark:border-white/15 dark:bg-white/5 dark:text-white/80';
   // Delete dialog state
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [challengeToDelete, setChallengeToDelete] = React.useState<Challenge | null>(null);
@@ -169,6 +210,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
       }
       setChallenges(json.data?.active || []);
       setPresets(json.data?.availablePresets || []);
+      setPricing(json.data?.defaultPricing || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load challenges');
     } finally {
@@ -182,6 +224,35 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
       fetchTeams();
     }
   }, [fetchChallenges, isAdmin]);
+
+  // Fallback: ensure pricing is loaded when finish dialog opens
+  React.useEffect(() => {
+    if (!finishOpen || pricing) return;
+    fetch(`/api/leagues/${leagueId}/challenges`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json?.success && json?.data?.defaultPricing) {
+          setPricing(json.data.defaultPricing);
+        }
+      })
+      .catch(() => {
+        /* ignore */
+      });
+  }, [finishOpen, pricing, leagueId]);
+
+  // Utility to load Razorpay script lazily
+  const loadRazorpay = React.useCallback(async () => {
+    if (typeof window === 'undefined') return null;
+    if ((window as any).Razorpay) return (window as any).Razorpay;
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Failed to load Razorpay')); 
+      document.body.appendChild(script);
+    });
+    return (window as any).Razorpay;
+  }, []);
 
   const handleActivatePreset = () => {
     const preset = presets.find((p) => p.id === selectedPresetId);
@@ -263,10 +334,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
         description: createForm.description,
         challengeType: createForm.challengeType,
         totalPoints: Number(createForm.totalPoints) || 0,
-        startDate: createForm.startDate || null,
-        endDate: createForm.endDate || null,
         docUrl,
-        status: createForm.status,
         isCustom: true,
       };
 
@@ -277,12 +345,6 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
       });
 
       const json = await res.json();
-      
-      // Check if payment is required
-      if (res.status === 402) {
-        toast.error('Payment required for custom challenges. Feature coming soon.');
-        return;
-      }
 
       if (!res.ok || !json.success) {
         throw new Error(json.error || 'Failed to create challenge');
@@ -296,10 +358,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
         description: '',
         challengeType: 'individual',
         totalPoints: 0,
-        startDate: '',
-        endDate: '',
         docUrl: '',
-        status: 'active',
       });
       fetchChallenges();
     } catch (err) {
@@ -366,6 +425,114 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
   const handleDeleteClick = (challenge: Challenge) => {
     setChallengeToDelete(challenge);
     setDeleteOpen(true);
+  };
+
+  const handleFinishClick = (challenge: Challenge) => {
+    setFinishChallenge(challenge);
+    setFinishStart(challenge.start_date || '');
+    setFinishEnd(challenge.end_date || '');
+    setFinishOpen(true);
+  };
+
+  const handleFinishSubmit = async () => {
+    if (!finishChallenge) return;
+    if (!finishStart || !finishEnd) {
+      toast.error('Start date and end date are required');
+      return;
+    }
+    if (!pricing?.per_day_rate) {
+      toast.error('Pricing not available');
+      return;
+    }
+    const base = (finishDays || 0) * (pricing.per_day_rate || 0);
+    const taxPercent = pricing.tax != null ? pricing.tax : 0;
+    const amount = base + (taxPercent / 100) * base;
+    if (!amount || amount <= 0) {
+      toast.error('Amount is invalid');
+      return;
+    }
+    setFinishing(true);
+    try {
+      // Create order on server using trusted pricing
+      const orderRes = await fetch('/api/payments/challenge-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leagueId,
+          challengeId: finishChallenge.id,
+          startDate: finishStart,
+          endDate: finishEnd,
+        }),
+      });
+
+      const orderJson = await orderRes.json();
+      if (!orderRes.ok || orderJson.error) {
+        throw new Error(orderJson.error || 'Failed to start payment');
+      }
+
+      const Razorpay = await loadRazorpay();
+      if (!Razorpay) throw new Error('Razorpay unavailable');
+
+      const options = {
+        key: orderJson.keyId,
+        amount: orderJson.amount, // paise
+        currency: orderJson.currency || 'INR',
+        name: 'Challenge Activation',
+        description: finishChallenge.name,
+        order_id: orderJson.orderId,
+        notes: {
+          leagueId,
+          challengeId: finishChallenge.id,
+        },
+        handler: async (response: any) => {
+          try {
+            const verifyRes = await fetch('/api/payments/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId: response.razorpay_order_id,
+                paymentId: response.razorpay_payment_id,
+                signature: response.razorpay_signature,
+              }),
+            });
+            const verifyJson = await verifyRes.json();
+            if (!verifyRes.ok || verifyJson.error) {
+              throw new Error(verifyJson.error || 'Payment verification failed');
+            }
+
+            // Activate challenge after payment confirmation
+            const payload = { startDate: finishStart, endDate: finishEnd };
+            const patchRes = await fetch(`/api/leagues/${leagueId}/challenges/${finishChallenge.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            const patchJson = await patchRes.json();
+            if (!patchRes.ok || !patchJson.success) {
+              throw new Error(patchJson.error || 'Failed to update challenge after payment');
+            }
+
+            toast.success('Payment successful. Challenge activated.');
+            setFinishOpen(false);
+            setFinishChallenge(null);
+            fetchChallenges();
+          } catch (err: any) {
+            toast.error(err?.message || 'Payment succeeded but activation failed');
+          }
+        },
+        theme: { color: '#0F172A' },
+      } as any;
+
+      const rzp = new Razorpay(options);
+      rzp.on('payment.failed', (resp: any) => {
+        toast.error(resp?.error?.description || 'Payment failed');
+      });
+      rzp.open();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to finish setup');
+    } finally {
+      setFinishing(false);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -637,7 +804,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                   <CardTitle className="text-lg font-semibold leading-tight">
                     {challenge.name}
                   </CardTitle>
-                  {statusBadge(challenge.status)}
+                  {statusBadge(challenge.status, isAdmin)}
                 </div>
 
                 <CardDescription>
@@ -692,7 +859,12 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
               {/* ACTIONS */}
               <div className="mt-auto px-6 pb-5 space-y-3">
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => handleOpenSubmit(challenge)}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleOpenSubmit(challenge)}
+                    disabled={['draft', 'scheduled', 'submission_closed', 'closed'].includes(challenge.status)}
+                  >
                     Submit Proof
                   </Button>
 
@@ -700,20 +872,30 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                     submissionStatusBadge(challenge.my_submission.status)}
 
                   {isAdmin && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleOpenReview(challenge)}
-                      className="ml-auto"
-                    >
-                      Review
-                    </Button>
+                    challenge.status === 'draft' ? (
+                      <Button
+                        size="sm"
+                        onClick={() => handleFinishClick(challenge)}
+                        className="ml-auto"
+                      >
+                        Finish Creation
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenReview(challenge)}
+                        className="ml-auto"
+                      >
+                        Review
+                      </Button>
+                    )
                   )}
                 </div>
 
                 {isAdmin && (
-                  <div className="flex items-center justify-between">
-                    {challenge.challenge_type === 'sub_team' && (
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    {challenge.challenge_type === 'sub_team' && ['draft', 'scheduled', 'upcoming'].includes(challenge.status) && (
                       <SubTeamManager
                         leagueId={leagueId}
                         challengeId={challenge.id}
@@ -745,15 +927,10 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
           <DialogHeader>
             <DialogTitle>Create Custom Challenge</DialogTitle>
             <DialogDescription>
-              Set up a new league-scoped challenge. Custom challenges require payment.
+              Set up a new league-scoped challenge.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateChallenge} className="space-y-4">
-            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
-              <p className="text-sm text-amber-900">
-                <strong>Note:</strong> Creating a custom challenge requires a one-time payment. You will be prompted to complete payment after filling in the details.
-              </p>
-            </div>
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
               <Input
@@ -801,24 +978,6 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Start Date</Label>
-                <Input
-                  type="date"
-                  value={createForm.startDate}
-                  onChange={(e) => setCreateForm((p) => ({ ...p, startDate: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>End Date</Label>
-                <Input
-                  type="date"
-                  value={createForm.endDate}
-                  onChange={(e) => setCreateForm((p) => ({ ...p, endDate: e.target.value }))}
-                />
-              </div>
-            </div>
             <div className="space-y-2">
               <Label htmlFor="doc-upload">Challenge Rules Document (Optional)</Label>
               <Input
@@ -836,27 +995,11 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                 Upload rules as PDF, Word document, or image (max 10MB)
               </p>
             </div>
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select
-                value={createForm.status}
-                onValueChange={(val) => setCreateForm((p) => ({ ...p, status: val as Challenge['status'] }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="upcoming">Upcoming</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit">Create</Button>
+              <Button type="submit">Save</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -1106,6 +1249,115 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Finish Creation Dialog */}
+      <Dialog open={finishOpen} onOpenChange={setFinishOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Finish Challenge Creation</DialogTitle>
+            <DialogDescription>
+              Set start and end dates to move this challenge out of draft.
+            </DialogDescription>
+          </DialogHeader>
+          {finishChallenge?.challenge_type === 'sub_team' && (
+            <div className="rounded-md border bg-white/50 dark:bg-muted/40 p-3 text-sm space-y-2 text-foreground dark:text-white mb-4">
+              <p className="font-medium">Need sub-teams?</p>
+              <p className="text-muted-foreground">
+                Create sub-teams before activating this challenge.
+              </p>
+              <div>
+                <SubTeamManager leagueId={leagueId} challengeId={finishChallenge.id} teams={teams} />
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="finish-start">Start Date</Label>
+              <Input
+                id="finish-start"
+                type="date"
+                value={finishStart}
+                onChange={(e) => setFinishStart(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="finish-end">End Date</Label>
+              <Input
+                id="finish-end"
+                type="date"
+                value={finishEnd}
+                onChange={(e) => setFinishEnd(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="mt-4 rounded-xl border border-border bg-white text-foreground shadow-2xl dark:bg-[#0d1930] dark:text-white dark:border-primary/20">
+            <div className="flex flex-col gap-3 px-4 pt-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="space-y-1">
+                <p className="text-lg font-semibold leading-tight">
+                  {finishChallenge?.name || 'Challenge Pricing'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {finishChallenge?.description || 'Review duration and payable amount before activation.'}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className={`${pricingPillClass} bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-500/10 dark:text-blue-100 dark:border-blue-500/30`}>Draft</span>
+                <span className={`${pricingPillClass} bg-green-50 text-green-800 border-green-200 dark:bg-green-500/10 dark:text-green-100 dark:border-green-500/30`}>Pay to Activate</span>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2 px-4">
+              <span className={pricingPillClass}>
+                Duration: {finishDays || '-'} day{finishDays === 1 ? '' : 's'}
+              </span>
+              {finishChallenge?.challenge_type && (
+                <span className={pricingPillClass}>
+                  Type: {finishChallenge.challenge_type.replace('_', ' ')}
+                </span>
+              )}
+              <span className={pricingPillClass}>
+                Points: {finishChallenge?.total_points ?? 0}
+              </span>
+            </div>
+
+            <div className="mt-4 border-t border-border px-4 py-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Base amount</p>
+                <p className="text-xl font-semibold">₹{finishBase.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground">
+                  ₹{pricing?.per_day_rate?.toFixed ? pricing.per_day_rate.toFixed(2) : pricing?.per_day_rate ?? '—'} × {finishDays || 0} day{finishDays === 1 ? '' : 's'}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Tax</p>
+                <p className="text-xl font-semibold">₹{finishTaxAmount.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground">{finishTaxPercent?.toFixed ? finishTaxPercent.toFixed(2) : finishTaxPercent}%</p>
+              </div>
+
+              <div className="sm:col-span-2 rounded-lg border px-4 py-3 flex items-center justify-between bg-gray-50 dark:bg-white/5 border-border dark:border-white/10">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Total payable</p>
+                  <p className="text-2xl font-bold">₹{finishAmount.toFixed(2)}</p>
+                </div>
+                <div className="text-right text-xs text-muted-foreground space-y-1">
+                  {pricing?.admin_markup != null && (
+                    <p>Admin markup: {pricing.admin_markup.toFixed ? pricing.admin_markup.toFixed(2) : pricing.admin_markup}%</p>
+                  )}
+                  <p>Includes taxes</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFinishOpen(false)} disabled={finishing}>
+              Cancel
+            </Button>
+            <Button onClick={handleFinishSubmit} disabled={finishing}>
+              {finishing ? 'Processing...' : 'Pay & Activate'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

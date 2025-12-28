@@ -58,9 +58,10 @@ export interface AdminLeague {
   status: LeagueStatus;
   is_active: boolean;
   num_teams: number;
-  team_size: number;
+  tier_id?: string | null;
   rest_days: number;
   auto_rest_day_enabled: boolean;
+  normalize_points_by_capacity: boolean;
   is_public: boolean;
   is_exclusive: boolean;
   invite_code?: string | null;
@@ -70,6 +71,7 @@ export interface AdminLeague {
   modified_date: string;
   // Computed fields
   member_count?: number;
+  league_capacity?: number;
 }
 
 export interface AdminLeagueCreateInput {
@@ -78,9 +80,10 @@ export interface AdminLeagueCreateInput {
   start_date: string;
   end_date: string;
   num_teams?: number;
-  team_size?: number;
+  tier_id?: string;
   rest_days?: number;
   auto_rest_day_enabled?: boolean;
+  normalize_points_by_capacity?: boolean;
   is_public?: boolean;
   is_exclusive?: boolean;
 }
@@ -93,11 +96,64 @@ export interface AdminLeagueUpdateInput {
   status?: LeagueStatus;
   is_active?: boolean;
   num_teams?: number;
-  team_size?: number;
+  tier_id?: string;
   rest_days?: number;
   auto_rest_day_enabled?: boolean;
+  normalize_points_by_capacity?: boolean;
   is_public?: boolean;
   is_exclusive?: boolean;
+}
+
+// ============================================================================
+// League Tier Types
+// ============================================================================
+
+export type TierPricingType = 'fixed' | 'dynamic';
+
+export interface AdminTier {
+  id: string;
+  name: string;
+  display_name: string;
+  description?: string | null;
+  pricing_type: TierPricingType;
+  fixed_price?: number | null;
+  base_fee?: number | null;
+  per_day_rate?: number | null;
+  per_participant_rate?: number | null;
+  gst_percentage?: number;
+  max_days: number;
+  max_participants: number;
+  pricing_id?: string;
+  display_order?: number;
+  is_featured?: boolean;
+  features?: string[];
+  is_active: boolean;
+  active_leagues?: number;
+  total_leagues?: number;
+  created_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AdminTierCreateInput {
+  name: string;
+  display_name: string;
+  description?: string | null;
+  pricing_type: TierPricingType;
+  fixed_price?: number | null;
+  base_fee?: number | null;
+  per_day_rate?: number | null;
+  per_participant_rate?: number | null;
+  gst_percentage?: number;
+  max_days: number;
+  max_participants: number;
+  display_order?: number;
+  is_featured?: boolean;
+  features?: string[];
+}
+
+export interface AdminTierUpdateInput extends Partial<AdminTierCreateInput> {
+  is_active?: boolean;
 }
 
 // ============================================================================

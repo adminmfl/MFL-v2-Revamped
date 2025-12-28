@@ -48,37 +48,67 @@ type PresetChallenge = {
   created_date: string;
 };
 
+type ChallengePricing = {
+  pricing_id?: string;
+  per_day_rate: number;
+  tax: number | null;
+  admin_markup: number | null;
+};
+
 export default function AdminChallengesPage() {
   const [loading, setLoading] = React.useState(true);
   const [challenges, setChallenges] = React.useState<PresetChallenge[]>([]);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editingChallenge, setEditingChallenge] = React.useState<PresetChallenge | null>(null);
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+
   const [formData, setFormData] = React.useState({
     name: '',
     description: '',
     challenge_type: 'individual' as 'individual' | 'team' | 'sub_team',
   });
 
+  const [pricing, setPricing] = React.useState<ChallengePricing | null>(null);
+  const [pricingEditMode, setPricingEditMode] = React.useState(false);
+  const [savingPricing, setSavingPricing] = React.useState(false);
+
+  /* ---------------- Fetch Challenges ---------------- */
+
   const fetchChallenges = React.useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch('/api/admin/challenges');
       const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || 'Failed to load challenges');
-      }
+      if (!res.ok || !json.success) throw new Error(json.error);
       setChallenges(json.data || []);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to load challenges');
+    } catch {
+      toast.error('Failed to load challenges');
     } finally {
       setLoading(false);
     }
   }, []);
 
+  /* ---------------- Fetch Pricing ---------------- */
+
+  const fetchPricing = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/challenge-pricing');
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error);
+
+      setPricing(json.data || { per_day_rate: 0, tax: null, admin_markup: null });
+      setPricingEditMode(false); // ✅ always view mode after fetch
+    } catch {
+      toast.error('Failed to load pricing');
+    }
+  }, []);
+
   React.useEffect(() => {
     fetchChallenges();
-  }, [fetchChallenges]);
+    fetchPricing();
+  }, [fetchChallenges, fetchPricing]);
+
+  /* ---------------- Challenge CRUD ---------------- */
 
   const handleOpenDialog = (challenge?: PresetChallenge) => {
     if (challenge) {
@@ -102,238 +132,254 @@ export default function AdminChallengesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
-      let docUrl = editingChallenge?.doc_url || null;
+      let docUrl = editingChallenge?.doc_url ?? null;
 
-      // Upload document if file selected
       if (selectedFile) {
-        const formDataUpload = new FormData();
-        formDataUpload.append('file', selectedFile);
+        const fd = new FormData();
+        fd.append('file', selectedFile);
 
         const uploadRes = await fetch('/api/upload/challenge-document', {
           method: 'POST',
-          body: formDataUpload,
+          body: fd,
         });
 
-        const uploadData = await uploadRes.json();
-        if (!uploadRes.ok) {
-          throw new Error(uploadData.error || 'Document upload failed');
-        }
-
-        docUrl = uploadData.data.url;
+        const uploadJson = await uploadRes.json();
+        if (!uploadRes.ok) throw new Error(uploadJson.error);
+        docUrl = uploadJson.data.url;
       }
 
-      const payload = {
-        name: formData.name,
-        description: formData.description,
-        challenge_type: formData.challenge_type,
-        doc_url: docUrl,
-      };
-
-      const url = editingChallenge
-        ? `/api/admin/challenges/${editingChallenge.challenge_id}`
-        : '/api/admin/challenges';
-
-      const res = await fetch(url, {
-        method: editingChallenge ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const res = await fetch(
+        editingChallenge
+          ? `/api/admin/challenges/${editingChallenge.challenge_id}`
+          : '/api/admin/challenges',
+        {
+          method: editingChallenge ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...formData, doc_url: docUrl }),
+        }
+      );
 
       const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || 'Failed to save challenge');
-      }
+      if (!res.ok || !json.success) throw new Error(json.error);
 
       toast.success(editingChallenge ? 'Challenge updated' : 'Challenge created');
       setDialogOpen(false);
       fetchChallenges();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save challenge');
+    } catch {
+      toast.error('Failed to save challenge');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this challenge?')) {
-      return;
-    }
-
+    if (!confirm('Are you sure you want to delete this challenge?')) return;
     try {
-      const res = await fetch(`/api/admin/challenges/${id}`, {
-        method: 'DELETE',
-      });
-
+      const res = await fetch(`/api/admin/challenges/${id}`, { method: 'DELETE' });
       const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || 'Failed to delete challenge');
-      }
-
+      if (!res.ok || !json.success) throw new Error();
       toast.success('Challenge deleted');
       fetchChallenges();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete challenge');
+    } catch {
+      toast.error('Failed to delete challenge');
     }
   };
 
+  /* ---------------- Render ---------------- */
+
   return (
-    <div className="flex-1 flex flex-col gap-4 lg:gap-6 p-4 lg:p-6">
-      <div className="flex items-center justify-between">
+    <div className="flex-1 p-6 space-y-6">
+      {/* Header */}
+      <div className="flex justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Pre-configured Challenges
-          </h1>
+          <h1 className="text-2xl font-bold">Pre-configured Challenges</h1>
           <p className="text-muted-foreground">
             Manage challenge templates that leagues can activate
           </p>
         </div>
         <Button onClick={() => handleOpenDialog()}>
-          <Plus className="mr-2 size-4" />
-          Add Challenge
+          <Plus className="mr-2 size-4" /> Add Challenge
         </Button>
       </div>
 
-      {loading && <p className="text-muted-foreground">Loading...</p>}
-
-      {!loading && challenges.length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <FileText className="mx-auto mb-3 text-muted-foreground size-12" />
-            <p className="text-muted-foreground">No preset challenges yet.</p>
-            <Button className="mt-4" onClick={() => handleOpenDialog()}>
-              <Plus className="mr-2 size-4" />
-              Add First Challenge
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {!loading && challenges.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Available Challenges</CardTitle>
+      {/* Pricing */}
+      <Card>
+        <CardHeader className="flex-row justify-between items-center">
+          <div>
+            <CardTitle>Challenge Pricing</CardTitle>
             <CardDescription>
-              {challenges.length} challenge{challenges.length !== 1 ? 's' : ''} available
+              Default per-day rate and tax applied to challenges
             </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Rules</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {challenges.map((challenge) => (
-                  <TableRow key={challenge.challenge_id}>
-                    <TableCell className="font-medium">{challenge.name}</TableCell>
-                    <TableCell className="max-w-xs truncate">
-                      {challenge.description || '-'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {challenge.challenge_type.replace('_', ' ')}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {challenge.doc_url ? (
-                        <a
-                          href={challenge.doc_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline text-sm flex items-center gap-1"
-                        >
-                          <FileText className="size-3" />
-                          View
-                        </a>
-                      ) : (
-                        '-'
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(challenge.created_date).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenDialog(challenge)}
-                        >
-                          <Pencil className="size-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(challenge.challenge_id)}
-                        >
-                          <Trash2 className="size-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+          {!pricingEditMode && (
+            <Button size="sm" variant="secondary" onClick={() => setPricingEditMode(true)}>
+              Edit pricing
+            </Button>
+          )}
+        </CardHeader>
 
-      {/* Create/Edit Dialog */}
+        {pricingEditMode ? (
+          <CardContent className="space-y-4">
+            <div className="grid md:grid-cols-3 gap-4">
+              {['per_day_rate', 'tax', 'admin_markup'].map((key) => (
+                <div key={key} className="space-y-3">
+                  <Label className="text-sm font-medium">
+                    {key.replace('_', ' ')}
+                  </Label>
+                  <Input
+                    type="number"
+                    value={(pricing as any)?.[key] ?? ''}
+                    onChange={(e) =>
+                      setPricing((p) => ({
+                        ...(p as ChallengePricing),
+                        [key]: e.target.value === '' ? null : Number(e.target.value),
+                      }))
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                disabled={savingPricing}
+                onClick={async () => {
+                  try {
+                    setSavingPricing(true);
+                    const res = await fetch('/api/admin/challenge-pricing', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(pricing),
+                    });
+                    const json = await res.json();
+                    if (!res.ok || !json.success) throw new Error();
+                    toast.success('Pricing saved');
+                    fetchPricing();
+                  } catch {
+                    toast.error('Failed to save pricing');
+                  } finally {
+                    setSavingPricing(false);
+                  }
+                }}
+              >
+                Save pricing
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  fetchPricing();
+                  setPricingEditMode(false);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        ) : (
+          <CardContent className="grid md:grid-cols-3 gap-6 mt-2">
+            <div className="rounded-lg border p-4 space-y-2">
+              <p className="text-xs text-muted-foreground uppercase">Per-day rate</p>
+              <p className="text-lg font-semibold">
+                ₹{Number(pricing?.per_day_rate ?? 0).toFixed(2)}
+              </p>
+            </div>
+            <div className="rounded-lg border p-4 space-y-2">
+              <p className="text-xs text-muted-foreground uppercase">Tax</p>
+              <p className="text-lg font-semibold">
+                {Number(pricing?.tax ?? 0).toFixed(2)}%
+              </p>
+            </div>
+            <div className="rounded-lg border p-4 space-y-2">
+              <p className="text-xs text-muted-foreground uppercase">Admin markup</p>
+              <p className="text-lg font-semibold">
+                {Number(pricing?.admin_markup ?? 0).toFixed(2)}%
+              </p>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Challenges Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Available Challenges</CardTitle>
+          <CardDescription>{challenges.length} challenges available</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Rules</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {challenges.map((c) => (
+                <TableRow key={c.challenge_id}>
+                  <TableCell className="font-medium">{c.name}</TableCell>
+                  <TableCell className="max-w-xs truncate">{c.description || '-'}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {c.challenge_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {c.doc_url ? (
+                      <a href={c.doc_url} target="_blank" className="flex items-center gap-2 text-blue-500 hover:text-blue-600 font-medium">
+                        <FileText className="size-3" /> View
+                      </a>
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
+                  <TableCell>{new Date(c.created_date).toLocaleDateString()}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button size="icon" variant="ghost" onClick={() => handleOpenDialog(c)}>
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => handleDelete(c.challenge_id)}>
+                        <Trash2 className="size-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {editingChallenge ? 'Edit Challenge' : 'Add New Challenge'}
-            </DialogTitle>
+            <DialogTitle>{editingChallenge ? 'Edit Challenge' : 'Add New Challenge'}</DialogTitle>
             <DialogDescription>
               {editingChallenge
                 ? 'Update the challenge template'
-                : 'Create a new pre-configured challenge that leagues can activate'}
+                : 'Create a new pre-configured challenge'}
             </DialogDescription>
           </DialogHeader>
+
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData((p) => ({ ...p, name: e.target.value }))
-                }
-                required
-              />
+            <div>
+              <Label>Name</Label>
+              <Input required value={formData.name} onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))} />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                rows={3}
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData((p) => ({ ...p, description: e.target.value }))
-                }
-              />
+
+            <div>
+              <Label>Description</Label>
+              <Textarea value={formData.description} onChange={(e) => setFormData(p => ({ ...p, description: e.target.value }))} />
             </div>
-            <div className="space-y-2">
+
+            <div>
               <Label>Challenge Type</Label>
-              <Select
-                value={formData.challenge_type}
-                onValueChange={(val) =>
-                  setFormData((p) => ({
-                    ...p,
-                    challenge_type: val as 'individual' | 'team' | 'sub_team',
-                  }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={formData.challenge_type} onValueChange={(v) => setFormData(p => ({ ...p, challenge_type: v as any }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="individual">Individual</SelectItem>
                   <SelectItem value="team">Team</SelectItem>
@@ -341,45 +387,15 @@ export default function AdminChallengesPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="doc-upload">Challenge Rules Document (Optional)</Label>
-              <Input
-                id="doc-upload"
-                type="file"
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    setSelectedFile(file);
-                  }
-                }}
-              />
-              <p className="text-xs text-muted-foreground">
-                Upload rules as PDF, Word document, or image (max 10MB)
-              </p>
-              {editingChallenge?.doc_url && !selectedFile && (
-                <a
-                  href={editingChallenge.doc_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-600 hover:underline flex items-center gap-1"
-                >
-                  <FileText className="size-3" />
-                  Current document
-                </a>
-              )}
+
+            <div>
+              <Label>Rules document (optional)</Label>
+              <Input type="file" onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)} />
             </div>
+
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit">
-                {editingChallenge ? 'Update' : 'Create'}
-              </Button>
+              <Button variant="outline" type="button" onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <Button type="submit">{editingChallenge ? 'Update' : 'Create'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
