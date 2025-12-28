@@ -134,7 +134,7 @@ export async function POST(
     // Check challenge status - only allow edits while challenge is upcoming (not activated)
     const { data: challenge, error: challengeError } = await supabase
       .from('leagueschallenges')
-      .select('id, status')
+      .select('id, status, start_date, end_date')
       .eq('id', challengeId)
       .single();
 
@@ -142,7 +142,43 @@ export async function POST(
       return buildError('Challenge not found', 404);
     }
 
-    if (!['draft', 'scheduled', 'upcoming'].includes(challenge.status)) {
+    const parseYmd = (ymd?: string | null): Date | null => {
+      if (!ymd) return null;
+      const dtIso = new Date(String(ymd));
+      if (!isNaN(dtIso.getTime())) {
+        return new Date(dtIso.getFullYear(), dtIso.getMonth(), dtIso.getDate());
+      }
+      const m = /^\d{4}-\d{2}-\d{2}$/.exec(String(ymd));
+      if (!m) return null;
+      const [y, mo, d] = String(ymd).split('-').map((p) => Number(p));
+      if (!y || !mo || !d) return null;
+      const dt = new Date(y, mo - 1, d);
+      dt.setHours(0, 0, 0, 0);
+      return isNaN(dt.getTime()) ? null : dt;
+    };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const startDt = parseYmd(String((challenge as any).start_date || null));
+    const endDt = parseYmd(String((challenge as any).end_date || null));
+
+    let effectiveStatus = String(challenge.status || 'draft');
+    if (effectiveStatus !== 'draft') {
+      if (startDt && endDt) {
+        if (today.getTime() >= startDt.getTime() && today.getTime() <= endDt.getTime()) {
+          effectiveStatus = 'active';
+        } else if (today.getTime() < startDt.getTime()) {
+          effectiveStatus = 'scheduled';
+        } else {
+          effectiveStatus = 'submission_closed';
+        }
+      } else if (endDt && today.getTime() > endDt.getTime()) {
+        effectiveStatus = 'submission_closed';
+      }
+    }
+
+    if (!['draft', 'scheduled', 'upcoming'].includes(effectiveStatus)) {
       return buildError('Sub-teams can only be edited before the challenge is activated', 403);
     }
 
