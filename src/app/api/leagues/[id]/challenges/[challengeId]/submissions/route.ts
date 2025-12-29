@@ -58,7 +58,7 @@ async function ensureChallengeInLeague(leagueId: string, challengeId: string) {
   const supabase = getSupabaseServiceRole();
   const { data, error } = await supabase
     .from('leagueschallenges')
-    .select('id, league_id, status, challenge_type')
+    .select('id, league_id, status, challenge_type, start_date, end_date')
     .eq('id', challengeId)
     .maybeSingle();
 
@@ -175,7 +175,45 @@ export async function POST(
       return buildError('Challenge not found in this league', 404);
     }
 
-    if (['draft', 'scheduled', 'submission_closed', 'closed', 'upcoming'].includes(String(challenge.status))) {
+    // Derive a UI-friendly status based on dates so submission checks are accurate
+    const parseYmd = (ymd?: string | null): Date | null => {
+      if (!ymd) return null;
+      const dtIso = new Date(String(ymd));
+      if (!isNaN(dtIso.getTime())) {
+        return new Date(dtIso.getFullYear(), dtIso.getMonth(), dtIso.getDate());
+      }
+      const m = /^\d{4}-\d{2}-\d{2}$/.exec(String(ymd));
+      if (!m) return null;
+      const [y, mo, d] = String(ymd).split('-').map((p) => Number(p));
+      if (!y || !mo || !d) return null;
+      const dt = new Date(y, mo - 1, d);
+      dt.setHours(0, 0, 0, 0);
+      return isNaN(dt.getTime()) ? null : dt;
+    };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const startDt = parseYmd(String((challenge as any).start_date || null));
+    const endDt = parseYmd(String((challenge as any).end_date || null));
+    const normalizedStored = String(challenge.status || 'draft');
+
+    let effectiveStatus = normalizedStored;
+    if (normalizedStored !== 'draft') {
+      if (startDt && endDt) {
+        if (today.getTime() >= startDt.getTime() && today.getTime() <= endDt.getTime()) {
+          effectiveStatus = 'active';
+        } else if (today.getTime() < startDt.getTime()) {
+          effectiveStatus = 'scheduled';
+        } else {
+          effectiveStatus = (isHostOrGovernor(membership.role) ? 'submission_closed' : 'closed');
+        }
+      } else if (endDt && today.getTime() > endDt.getTime()) {
+        effectiveStatus = (isHostOrGovernor(membership.role) ? 'submission_closed' : 'closed');
+      }
+    }
+
+    if (['draft', 'scheduled', 'submission_closed', 'closed', 'upcoming'].includes(String(effectiveStatus))) {
       return buildError('Challenge is not accepting submissions', 400);
     }
 

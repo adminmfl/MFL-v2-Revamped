@@ -174,9 +174,61 @@ export async function GET(
       }
     }
 
+    const parseYmd = (ymd?: string | null): Date | null => {
+      if (!ymd) return null;
+      // Try general ISO parse first
+      const dtIso = new Date(String(ymd));
+      if (!isNaN(dtIso.getTime())) {
+        // normalize to local midnight
+        return new Date(dtIso.getFullYear(), dtIso.getMonth(), dtIso.getDate());
+      }
+
+      // Fallback for strict YYYY-MM-DD format
+      const m = /^\d{4}-\d{2}-\d{2}$/.exec(String(ymd));
+      if (!m) return null;
+      const [y, mo, d] = String(ymd).split('-').map((p) => Number(p));
+      if (!y || !mo || !d) return null;
+      const dt = new Date(y, mo - 1, d);
+      dt.setHours(0, 0, 0, 0);
+      return isNaN(dt.getTime()) ? null : dt;
+    };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const isPrivileged = isHostOrGovernor(membership.role);
+
+    const deriveStatus = (rawStatus: any, startDate?: string | null, endDate?: string | null) => {
+      const normalized = normalizeStatus(rawStatus);
+      if (normalized === 'draft') return 'draft' as const;
+
+      const startDt = parseYmd(startDate || null);
+      const endDt = parseYmd(endDate || null);
+
+      if (startDt && endDt) {
+        if (today.getTime() >= startDt.getTime() && today.getTime() <= endDt.getTime()) {
+          return 'active' as const;
+        }
+        if (today.getTime() < startDt.getTime()) {
+          return 'scheduled' as const;
+        }
+        // today > endDt
+        return (isPrivileged ? 'submission_closed' : 'closed') as const;
+      }
+
+      if (endDt && today.getTime() > endDt.getTime()) {
+        return (isPrivileged ? 'submission_closed' : 'closed') as const;
+      }
+
+      // fallback to stored/normalized value
+      return normalized;
+    };
+
     const activePayload = (challenges || []).map((c) => {
       const template = (c as any).specialchallenges;
       const challengeId = String(c.id);
+      const derived = deriveStatus(c.status, c.start_date, c.end_date);
+
       return {
         id: challengeId,
         league_id: c.league_id,
@@ -190,7 +242,7 @@ export async function GET(
         doc_url: c.doc_url || template?.doc_url || null,
         start_date: c.start_date,
         end_date: c.end_date,
-        status: normalizeStatus(c.status),
+        status: derived,
         template_id: c.challenge_id,
         my_submission: mySubmissions[challengeId] || null,
         stats: statsByChallenge[challengeId] || null,
