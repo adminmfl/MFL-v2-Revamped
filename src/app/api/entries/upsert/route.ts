@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
       proof_url,
       notes,
       reupload_of,
+      timezone_offset, // Expected in minutes (e.g., -330 for IST which is UTC+5:30)
     } = body;
 
     // Validate required fields
@@ -69,9 +70,22 @@ export async function POST(req: NextRequest) {
       const normalizedDate = normalizeDateOnly(date);
 
     // Allow submissions only for today unless this is an explicit reupload of a rejected entry
-    // Use UTC to avoid timezone mismatches between client and server
-    const today = new Date();
-    const todayYmd = `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, '0')}-${String(today.getUTCDate()).padStart(2, '0')}`;
+    // Use user's timezone to calculate "today" correctly
+    const now = new Date();
+    let userToday: Date;
+    
+    if (typeof timezone_offset === 'number') {
+      // timezone_offset is in minutes (e.g., -330 for IST = UTC+5:30)
+      // Convert to user's local time
+      const utcTime = now.getTime();
+      const userTime = new Date(utcTime + (timezone_offset * 60 * 1000));
+      userToday = userTime;
+    } else {
+      // Fallback to UTC if timezone not provided
+      userToday = now;
+    }
+    
+    const todayYmd = `${userToday.getUTCFullYear()}-${String(userToday.getUTCMonth() + 1).padStart(2, '0')}-${String(userToday.getUTCDate()).padStart(2, '0')}`;
     if (!reupload_of && normalizedDate !== todayYmd) {
       return NextResponse.json(
         { error: 'You can only submit for today. Use the resubmit flow for rejected entries.' },
