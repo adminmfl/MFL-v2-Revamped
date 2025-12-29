@@ -14,6 +14,7 @@ export interface LeagueInput {
   start_date: string; // YYYY-MM-DD
   end_date: string;   // YYYY-MM-DD
   tier_id?: string; // references league_tiers
+  tier_snapshot?: Record<string, any>; // Frozen tier config at creation time
   num_teams?: number;
   max_participants?: number;
   rest_days?: number;
@@ -83,7 +84,7 @@ export async function createLeague(userId: string, data: LeagueInput): Promise<L
         start_date: data.start_date,
         end_date: data.end_date,
         tier_id: data.tier_id || null,
-        tier_snapshot: null, // Will be set by the caller (payment verify)
+        tier_snapshot: data.tier_snapshot || {},
         num_teams: data.num_teams || 4,
         rest_days: data.rest_days || 1,
         auto_rest_day_enabled: data.auto_rest_day_enabled ?? false,
@@ -186,7 +187,57 @@ export async function getLeagueById(leagueId: string): Promise<League | null> {
       league_capacity: leagueCapacity,
     };
     
-    return mapDbLeagueToLeague(leagueWithCapacity);
+    // Derive a user-facing status from the stored status and scheduled dates.
+    // Rules:
+    // - If the league is a draft, keep as 'draft'.
+    // - If the stored status indicates scheduled/launched/payment_pending,
+    //   derive 'active' when today's local date is between start_date and end_date.
+    // - If today's local date is after the end_date, present 'completed'.
+    // - Otherwise, preserve the stored status when it doesn't map to the simplified UI statuses.
+    const parseYmd = (ymd?: string | null): Date | null => {
+      if (!ymd) return null;
+      const m = /^\d{4}-\d{2}-\d{2}$/.exec(ymd);
+      if (!m) return null;
+      const [y, mo, d] = String(ymd).split('-').map((p) => Number(p));
+      if (!y || !mo || !d) return null;
+      const dt = new Date(y, mo - 1, d);
+      dt.setHours(0, 0, 0, 0);
+      return isNaN(dt.getTime()) ? null : dt;
+    };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const startDt = parseYmd(leagueWithCapacity.start_date);
+    const endDt = parseYmd(leagueWithCapacity.end_date);
+
+    let derivedStatus = String(leagueWithCapacity.status || '').toLowerCase();
+
+    // If the league has explicit draft, keep it.
+    if (derivedStatus === 'draft') {
+      // noop
+    } else if (startDt && endDt) {
+      if (today.getTime() > endDt.getTime()) {
+        derivedStatus = 'completed';
+      } else if (today.getTime() >= startDt.getTime() && today.getTime() <= endDt.getTime()) {
+        derivedStatus = 'active';
+      } else if (today.getTime() < startDt.getTime()) {
+        // Keep scheduled/launched mapping: prefer 'launched' for UI consistency
+        if (derivedStatus === 'scheduled' || derivedStatus === 'payment_pending') derivedStatus = 'launched';
+      }
+    } else if (endDt && today.getTime() > endDt.getTime()) {
+      derivedStatus = 'completed';
+    }
+
+    // Normalize to UI-friendly values (draft, launched, active, completed)
+    if (!['draft', 'launched', 'active', 'completed'].includes(derivedStatus)) {
+      // fallback mapping
+      if (derivedStatus === 'ended' || derivedStatus === 'ended' || derivedStatus === 'ended') derivedStatus = 'completed';
+      else if (derivedStatus === 'scheduled') derivedStatus = 'launched';
+    }
+
+    // Return league with possibly overridden status for UI consumers.
+    return mapDbLeagueToLeague({ ...leagueWithCapacity, status: derivedStatus });
   } catch (err) {
     console.error('Error fetching league:', err);
     return null;

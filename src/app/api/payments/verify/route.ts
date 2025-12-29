@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
         start_date: leagueData.start_date,
         end_date: leagueData.end_date,
         tier_id: leagueData.tier_id,
+        tier_snapshot: leagueData.tier_snapshot,
         num_teams: leagueData.num_teams,
         max_participants: leagueData.max_participants,
         rest_days: leagueData.rest_days,
@@ -79,24 +80,6 @@ export async function POST(req: NextRequest) {
         .from('payments')
         .update({ league_id: leagueId })
         .eq('payment_id', paymentRecord.payment_id);
-
-      // Determine initial league status based on start date
-      const startDate = new Date(leagueData.start_date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      startDate.setHours(0, 0, 0, 0);
-
-      const initialStatus = startDate > today ? 'scheduled' : 'active';
-
-      // Update league with tier snapshot and status
-      await supabase
-        .from('leagues')
-        .update({
-          tier_snapshot: leagueData.tier_snapshot,
-          status: initialStatus,
-          modified_date: new Date().toISOString(),
-        })
-        .eq('league_id', leagueId);
     }
 
     // Update payment status to completed

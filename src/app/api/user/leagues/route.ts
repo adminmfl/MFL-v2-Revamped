@@ -146,11 +146,50 @@ export async function GET() {
       // Get league_capacity from tier map
       const leagueCapacity = league?.tier_id ? (tierCapacityMap.get(league.tier_id) || 20) : 20;
 
+      // Derive a UI-friendly status based on start/end dates and stored status
+      const parseYmd = (ymd?: string | null): Date | null => {
+        if (!ymd) return null;
+        const m = /^\d{4}-\d{2}-\d{2}$/.exec(String(ymd));
+        if (!m) return null;
+        const [y, mo, d] = String(ymd).split('-').map((p) => Number(p));
+        if (!y || !mo || !d) return null;
+        const dt = new Date(y, mo - 1, d);
+        dt.setHours(0, 0, 0, 0);
+        return isNaN(dt.getTime()) ? null : dt;
+      };
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const startDt = parseYmd(league?.start_date || null);
+      const endDt = parseYmd(league?.end_date || null);
+
+      let derivedStatus = String(league?.status || 'draft').toLowerCase();
+      if (derivedStatus !== 'draft') {
+        if (startDt && endDt) {
+          if (today.getTime() > endDt.getTime()) {
+            derivedStatus = 'completed';
+          } else if (today.getTime() >= startDt.getTime() && today.getTime() <= endDt.getTime()) {
+            derivedStatus = 'active';
+          } else if (today.getTime() < startDt.getTime()) {
+            if (derivedStatus === 'scheduled' || derivedStatus === 'payment_pending') derivedStatus = 'launched';
+          }
+        } else if (endDt && today.getTime() > endDt.getTime()) {
+          derivedStatus = 'completed';
+        }
+      }
+
+      // Normalize to UI set
+      if (!['draft', 'launched', 'active', 'completed'].includes(derivedStatus)) {
+        if (derivedStatus === 'scheduled') derivedStatus = 'launched';
+        else if (derivedStatus === 'ended') derivedStatus = 'completed';
+      }
+
       return {
         league_id: leagueId,
         name: league?.league_name || 'Unknown League',
         description: league?.description || null,
-        status: league?.status || 'draft',
+        status: derivedStatus,
         start_date: league?.start_date || null,
         end_date: league?.end_date || null,
         num_teams: league?.num_teams || 4,
