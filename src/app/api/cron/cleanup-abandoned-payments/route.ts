@@ -1,6 +1,6 @@
 /**
  * Cron job to cleanup abandoned payment attempts
- * Deletes payment records that are older than 48 hours and still in pending status
+ * Deletes payment records that are older than 72 hours and still in pending status
  * This prevents database pollution from users who abandoned checkout
  */
 
@@ -17,17 +17,17 @@ export async function GET(req: NextRequest) {
 
     const supabase = getSupabaseServiceRole();
 
-    // Calculate cutoff time (48 hours ago)
+    // Calculate cutoff time (72 hours ago)
     const cutoffDate = new Date();
-    cutoffDate.setHours(cutoffDate.getHours() - 48);
+    cutoffDate.setHours(cutoffDate.getHours() - 72);
 
-    // Delete pending payments older than 48 hours where no league was created
+    // Delete pending payments older than 72 hours where no league was created
     const { data: deletedPayments, error } = await supabase
       .from('payments')
       .delete()
       .is('league_id', null)
       .eq('status', 'pending')
-      .lt('created_date', cutoffDate.toISOString())
+      .lt('created_at', cutoffDate.toISOString())
       .select();
 
     if (error) {
