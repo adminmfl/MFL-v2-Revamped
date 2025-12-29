@@ -14,6 +14,7 @@ export interface LeagueInput {
   start_date: string; // YYYY-MM-DD
   end_date: string;   // YYYY-MM-DD
   tier_id?: string; // references league_tiers
+  tier_snapshot?: Record<string, any>; // Frozen tier config at creation time
   num_teams?: number;
   max_participants?: number;
   rest_days?: number;
@@ -83,7 +84,7 @@ export async function createLeague(userId: string, data: LeagueInput): Promise<L
         start_date: data.start_date,
         end_date: data.end_date,
         tier_id: data.tier_id || null,
-        tier_snapshot: null, // Will be set by the caller (payment verify)
+        tier_snapshot: data.tier_snapshot || {},
         num_teams: data.num_teams || 4,
         rest_days: data.rest_days || 1,
         auto_rest_day_enabled: data.auto_rest_day_enabled ?? false,
