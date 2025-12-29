@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServiceRole } from "@/lib/supabase/client";
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/config';
+import { getUserLocalDateYMD } from '@/lib/utils/timezone';
 
 // ============================================================================
 // Types
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
       reupload_of,
       timezone_offset, // Legacy: sign-inverted offset (e.g., +330 for IST = UTC+5:30)
       tzOffsetMinutes, // Preferred: same value as `new Date().getTimezoneOffset()` (e.g., -330 for IST)
+      ianaTimezone, // Preferred IANA tz (e.g., 'America/Los_Angeles')
     } = body;
 
     // Validate required fields
@@ -71,33 +73,15 @@ export async function POST(req: NextRequest) {
       const normalizedDate = normalizeDateOnly(date);
 
     // Allow submissions only for today unless this is an explicit reupload of a rejected entry
-    // Use user's timezone to calculate "today" correctly. We accept either `tzOffsetMinutes` (preferred,
-    // same as `new Date().getTimezoneOffset()`) or the legacy `timezone_offset` (which had inverted sign).
-    const now = new Date();
-    let userToday: Date;
+    // Use user's timezone to calculate "today" correctly. We prefer friendly IANA tz strings but
+    // keep backwards-compatible fallbacks to tzOffsetMinutes and legacy timezone_offset.
+    const todayYmd = getUserLocalDateYMD({
+      now: new Date(),
+      ianaTimezone: typeof ianaTimezone === 'string' ? ianaTimezone : null,
+      tzOffsetMinutes: typeof tzOffsetMinutes === 'number' && Number.isFinite(tzOffsetMinutes) ? tzOffsetMinutes : null,
+      legacyTimezoneOffset: typeof timezone_offset === 'number' && Number.isFinite(timezone_offset) ? timezone_offset : null,
+    });
 
-    // Determine tz offset in minutes in the `getTimezoneOffset()` format
-    let tzMinutes: number | null = null;
-    if (typeof tzOffsetMinutes === 'number' && Number.isFinite(tzOffsetMinutes)) {
-      tzMinutes = tzOffsetMinutes;
-    } else if (typeof timezone_offset === 'number' && Number.isFinite(timezone_offset)) {
-      // Convert legacy +offset to getTimezoneOffset() format by negating
-      tzMinutes = -timezone_offset;
-    }
-
-    if (typeof tzMinutes === 'number') {
-      // Convert to user's local time by subtracting the tz offset (getTimezoneOffset semantics)
-      // local = UTC - tzMinutes
-      const utcTime = now.getTime();
-      const userTime = new Date(utcTime - (tzMinutes * 60 * 1000));
-      userToday = userTime;
-    } else {
-      // Fallback to server time when no timezone info provided
-      userToday = now;
-    }
-
-    // Build YYYY-MM-DD using UTC getters on the adjusted instant so the date matches user's local date
-    const todayYmd = `${userToday.getUTCFullYear()}-${String(userToday.getUTCMonth() + 1).padStart(2, '0')}-${String(userToday.getUTCDate()).padStart(2, '0')}`;
     if (!reupload_of && normalizedDate !== todayYmd) {
       return NextResponse.json(
         { error: 'You can only submit for today. Use the resubmit flow for rejected entries.' },

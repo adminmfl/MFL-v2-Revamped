@@ -476,8 +476,10 @@ export default function LeagueDashboardPage({
         
         try {
           const tzOffsetMinutes = new Date().getTimezoneOffset();
+          const ianaTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+          const query = `full=true&tzOffsetMinutes=${encodeURIComponent(String(tzOffsetMinutes))}&ianaTimezone=${encodeURIComponent(ianaTimezone)}`;
           const lbRes = await fetch(
-            `/api/leagues/${id}/leaderboard?full=true&tzOffsetMinutes=${encodeURIComponent(String(tzOffsetMinutes))}`,
+            `/api/leagues/${id}/leaderboard?${query}`,
             { credentials: 'include' }
           );
           

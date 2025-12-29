@@ -456,6 +456,7 @@ export default function SubmitActivityPage({
         workout_type: formData.activity_type,
         proof_url: proofUrl,
         tzOffsetMinutes: new Date().getTimezoneOffset(), // Send user's timezone offset (same as new Date().getTimezoneOffset())
+        ianaTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
       };
 
       // Add relevant metrics based on activity type
@@ -520,6 +521,7 @@ export default function SubmitActivityPage({
         date: format(activityDate, 'yyyy-MM-dd'),
         type: 'rest',
         tzOffsetMinutes: new Date().getTimezoneOffset(), // Send user's timezone offset (same as new Date().getTimezoneOffset())
+        ianaTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
         // Add notes - if exemption, prefix with marker
         notes: needsExemption
           ? `[EXEMPTION_REQUEST] ${restDayReason || 'Rest day exemption requested'}`
