@@ -69,8 +69,9 @@ export async function POST(req: NextRequest) {
       const normalizedDate = normalizeDateOnly(date);
 
     // Allow submissions only for today unless this is an explicit reupload of a rejected entry
+    // Use UTC to avoid timezone mismatches between client and server
     const today = new Date();
-    const todayYmd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const todayYmd = `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, '0')}-${String(today.getUTCDate()).padStart(2, '0')}`;
     if (!reupload_of && normalizedDate !== todayYmd) {
       return NextResponse.json(
         { error: 'You can only submit for today. Use the resubmit flow for rejected entries.' },
