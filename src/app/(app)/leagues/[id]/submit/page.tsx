@@ -455,7 +455,7 @@ export default function SubmitActivityPage({
         type: 'workout',
         workout_type: formData.activity_type,
         proof_url: proofUrl,
-        timezone_offset: -new Date().getTimezoneOffset(), // Send user's timezone offset in minutes
+        tzOffsetMinutes: new Date().getTimezoneOffset(), // Send user's timezone offset (same as new Date().getTimezoneOffset())
       };
 
       // Add relevant metrics based on activity type
@@ -519,7 +519,7 @@ export default function SubmitActivityPage({
         league_id: leagueId,
         date: format(activityDate, 'yyyy-MM-dd'),
         type: 'rest',
-        timezone_offset: -new Date().getTimezoneOffset(), // Send user's timezone offset in minutes
+        tzOffsetMinutes: new Date().getTimezoneOffset(), // Send user's timezone offset (same as new Date().getTimezoneOffset())
         // Add notes - if exemption, prefix with marker
         notes: needsExemption
           ? `[EXEMPTION_REQUEST] ${restDayReason || 'Rest day exemption requested'}`

@@ -57,7 +57,8 @@ export async function POST(req: NextRequest) {
       proof_url,
       notes,
       reupload_of,
-      timezone_offset, // Expected in minutes (e.g., -330 for IST which is UTC+5:30)
+      timezone_offset, // Legacy: sign-inverted offset (e.g., +330 for IST = UTC+5:30)
+      tzOffsetMinutes, // Preferred: same value as `new Date().getTimezoneOffset()` (e.g., -330 for IST)
     } = body;
 
     // Validate required fields
@@ -70,21 +71,32 @@ export async function POST(req: NextRequest) {
       const normalizedDate = normalizeDateOnly(date);
 
     // Allow submissions only for today unless this is an explicit reupload of a rejected entry
-    // Use user's timezone to calculate "today" correctly
+    // Use user's timezone to calculate "today" correctly. We accept either `tzOffsetMinutes` (preferred,
+    // same as `new Date().getTimezoneOffset()`) or the legacy `timezone_offset` (which had inverted sign).
     const now = new Date();
     let userToday: Date;
-    
-    if (typeof timezone_offset === 'number') {
-      // timezone_offset is in minutes (e.g., -330 for IST = UTC+5:30)
-      // Convert to user's local time
+
+    // Determine tz offset in minutes in the `getTimezoneOffset()` format
+    let tzMinutes: number | null = null;
+    if (typeof tzOffsetMinutes === 'number' && Number.isFinite(tzOffsetMinutes)) {
+      tzMinutes = tzOffsetMinutes;
+    } else if (typeof timezone_offset === 'number' && Number.isFinite(timezone_offset)) {
+      // Convert legacy +offset to getTimezoneOffset() format by negating
+      tzMinutes = -timezone_offset;
+    }
+
+    if (typeof tzMinutes === 'number') {
+      // Convert to user's local time by subtracting the tz offset (getTimezoneOffset semantics)
+      // local = UTC - tzMinutes
       const utcTime = now.getTime();
-      const userTime = new Date(utcTime + (timezone_offset * 60 * 1000));
+      const userTime = new Date(utcTime - (tzMinutes * 60 * 1000));
       userToday = userTime;
     } else {
-      // Fallback to UTC if timezone not provided
+      // Fallback to server time when no timezone info provided
       userToday = now;
     }
-    
+
+    // Build YYYY-MM-DD using UTC getters on the adjusted instant so the date matches user's local date
     const todayYmd = `${userToday.getUTCFullYear()}-${String(userToday.getUTCMonth() + 1).padStart(2, '0')}-${String(userToday.getUTCDate()).padStart(2, '0')}`;
     if (!reupload_of && normalizedDate !== todayYmd) {
       return NextResponse.json(
