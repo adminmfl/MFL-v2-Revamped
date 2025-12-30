@@ -51,42 +51,31 @@ import { cn } from '@/lib/utils';
 import type { IndividualRanking } from '@/hooks/use-league-leaderboard';
 
 // ============================================================================
-// Types
-// ============================================================================
-
-interface LeagueIndividualsTableProps {
-  individuals: IndividualRanking[];
-  showAvgRR?: boolean;
-}
-
-// ============================================================================
-// Rank Badge Component
+// Rank Badge
 // ============================================================================
 
 function RankBadge({ rank }: { rank: number }) {
-  if (rank === 1) {
+  if (rank === 1)
     return (
-      <div className="flex items-center justify-center size-8 rounded-full bg-yellow-100 dark:bg-yellow-900/30">
+      <div className="flex size-8 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900/30">
         <Trophy className="size-4 text-yellow-600" />
       </div>
     );
-  }
-  if (rank === 2) {
+  if (rank === 2)
     return (
-      <div className="flex items-center justify-center size-8 rounded-full bg-gray-100 dark:bg-gray-800">
+      <div className="flex size-8 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
         <Medal className="size-4 text-gray-500" />
       </div>
     );
-  }
-  if (rank === 3) {
+  if (rank === 3)
     return (
-      <div className="flex items-center justify-center size-8 rounded-full bg-orange-100 dark:bg-orange-900/30">
+      <div className="flex size-8 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/30">
         <Medal className="size-4 text-orange-600" />
       </div>
     );
-  }
+
   return (
-    <div className="flex items-center justify-center size-8 rounded-full bg-muted">
+    <div className="flex size-8 items-center justify-center rounded-full bg-muted">
       <span className="text-sm font-medium text-muted-foreground">{rank}</span>
     </div>
   );
@@ -96,16 +85,21 @@ function RankBadge({ rank }: { rank: number }) {
 // Main Component
 // ============================================================================
 
-export function LeagueIndividualsTable({ individuals, showAvgRR = false }: LeagueIndividualsTableProps) {
+export function LeagueIndividualsTable({
+  individuals,
+  showAvgRR = false,
+}: {
+  individuals: IndividualRanking[];
+  showAvgRR?: boolean;
+}) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState('');
-  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 });
+  const [pagination, setPagination] = React.useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
-  // ============================================================================
-  // Table Columns
-  // ============================================================================
-
-  const columns: ColumnDef<IndividualRanking>[] = React.useMemo(() => [
+  const columns = React.useMemo<ColumnDef<IndividualRanking>[]>(() => [
     {
       accessorKey: 'rank',
       header: 'Rank',
@@ -135,37 +129,35 @@ export function LeagueIndividualsTable({ individuals, showAvgRR = false }: Leagu
       accessorKey: 'points',
       header: 'Points',
       cell: ({ row }) => (
-        <p className="text-lg font-bold text-primary">
+        <span className="text-lg font-bold text-primary">
           {row.original.points}
-        </p>
+        </span>
       ),
     },
     ...(showAvgRR
-      ? [{
-          accessorKey: 'avg_rr' as const,
-          header: 'Avg RR',
-          cell: ({ row }: { row: any }) => (
-            <div className="flex items-center gap-1.5">
-              <Star className="size-4 text-yellow-500" />
-              <span className="font-medium">{row.original.avg_rr.toFixed(2)}</span>
-            </div>
-          ),
-        }]
+      ? [
+          {
+            accessorKey: 'avg_rr',
+            header: 'Avg RR',
+            cell: ({ row }) => (
+              <div className="flex items-center gap-1.5">
+                <Star className="size-4 text-yellow-500" />
+                <span className="font-medium">
+                  {row.original.avg_rr.toFixed(2)}
+                </span>
+              </div>
+            ),
+          },
+        ]
       : []),
     {
       accessorKey: 'submission_count',
       header: 'Submissions',
       cell: ({ row }) => (
-        <Badge variant="secondary">
-          {row.original.submission_count}
-        </Badge>
+        <Badge variant="secondary">{row.original.submission_count}</Badge>
       ),
     },
   ], [showAvgRR]);
-
-  // ============================================================================
-  // Table Instance
-  // ============================================================================
 
   const table = useReactTable({
     data: individuals,
@@ -180,9 +172,8 @@ export function LeagueIndividualsTable({ individuals, showAvgRR = false }: Leagu
     getSortedRowModel: getSortedRowModel(),
   });
 
-  // ============================================================================
-  // Render
-  // ============================================================================
+  const totalRows = table.getFilteredRowModel().rows.length;
+  const pageCount = table.getPageCount() || 1;
 
   return (
     <div className="space-y-4">
@@ -201,26 +192,23 @@ export function LeagueIndividualsTable({ individuals, showAvgRR = false }: Leagu
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} style={{ width: header.getSize() }}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
+            {table.getHeaderGroups().map((hg) => (
+              <TableRow key={hg.id}>
+                {hg.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
             ))}
           </TableHeader>
+
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className={cn(
-                    row.original.rank <= 3 && 'bg-muted/30'
-                  )}
+                  className={cn(row.original.rank <= 3 && 'bg-muted/30')}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
@@ -232,90 +220,98 @@ export function LeagueIndividualsTable({ individuals, showAvgRR = false }: Leagu
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <User className="size-8 text-muted-foreground" />
-                    <p className="text-muted-foreground">No players found</p>
-                  </div>
+                  No players found
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
-      </div>
 
-      {/* Pagination */}
-      {individuals.length > 0 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            {table.getFilteredRowModel().rows.length} player(s)
+        {/* Pagination */}
+        {totalRows > 0 && (
+          <div className="border-t px-4 py-4 space-y-3">
+
+            {/* Top count (centered) */}
+            <div className="text-center text-sm text-muted-foreground">
+              {totalRows} submission{totalRows === 1 ? '' : 's'}
+            </div>
+
+            {/* Controls row */}
+            <div className="flex items-center justify-center gap-6 flex-wrap">
+
+              {/* Rows per page */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Rows</span>
+                <Select
+                  value={String(pagination.pageSize)}
+                  onValueChange={(value) =>
+                    setPagination({ pageIndex: 0, pageSize: Number(value) })
+                  }
+                >
+                  <SelectTrigger className="h-9 w-[72px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[10, 20, 50].map((size) => (
+                      <SelectItem key={size} value={String(size)}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Page info */}
+              <div className="text-sm font-medium">
+                Page {pagination.pageIndex + 1} / {pageCount}
+              </div>
+
+              {/* Navigation */}
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 rounded-full"
+                  onClick={() => table.setPageIndex(0)}
+                  disabled={!table.getCanPreviousPage()}
+                >
+                  <ChevronsLeft className="size-4" />
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 rounded-full"
+                  onClick={() => table.previousPage()}
+                  disabled={!table.getCanPreviousPage()}
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 rounded-full"
+                  onClick={() => table.nextPage()}
+                  disabled={!table.getCanNextPage()}
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 rounded-full"
+                  onClick={() => table.setPageIndex(pageCount - 1)}
+                  disabled={!table.getCanNextPage()}
+                >
+                  <ChevronsRight className="size-4" />
+                </Button>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="rows-per-page" className="text-sm">
-                Rows per page
-              </Label>
-              <Select
-                value={`${pagination.pageSize}`}
-                onValueChange={(value) =>
-                  setPagination({ ...pagination, pageSize: Number(value) })
-                }
-              >
-                <SelectTrigger className="w-16" id="rows-per-page">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[10, 20, 50].map((size) => (
-                    <SelectItem key={size} value={`${size}`}>
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="text-sm">
-              Page {pagination.pageIndex + 1} of {table.getPageCount() || 1}
-            </div>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-8"
-                onClick={() => table.setPageIndex(0)}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <ChevronsLeft className="size-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-8"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <ChevronLeft className="size-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-8"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-              >
-                <ChevronRight className="size-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-8"
-                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                disabled={!table.getCanNextPage()}
-              >
-                <ChevronsRight className="size-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
