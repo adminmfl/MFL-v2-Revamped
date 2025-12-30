@@ -758,9 +758,13 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-3 items-end">
-                <div className="flex-1 space-y-2">
-                  <Label htmlFor="preset-select">Challenge</Label>
+              <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-end sm:gap-3">
+                {/* Select */}
+                <div className="flex-1 min-w-0 space-y-2">
+                  <Label htmlFor="preset-select" className="text-sm font-medium">
+                    Challenge
+                  </Label>
+
                   <Select value={selectedPresetId} onValueChange={setSelectedPresetId}>
                     <SelectTrigger id="preset-select">
                       <SelectValue placeholder="Choose a challenge..." />
@@ -774,7 +778,10 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Button */}
                 <Button
+                  className="w-full sm:w-auto shrink-0 whitespace-nowrap"
                   onClick={handleActivatePreset}
                   disabled={!selectedPresetId}
                 >
@@ -782,6 +789,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                 </Button>
               </div>
             </CardContent>
+
           </Card>
         )}
 

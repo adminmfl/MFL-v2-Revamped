@@ -364,13 +364,7 @@ export function MySubmissionsTable({
                 Re-submitted
               </Badge>
             )}
-            {/* If an original has already been reuploaded, mark it as such and hide Re-submit button */}
-            {row.original.reupload_of === null && originalsWithReupload.has(row.original.id) && (
-              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800">
-                <RefreshCw className="size-2.5 mr-1" />
-                Re-submitted
-              </Badge>
-            )}
+
             {/* Version badge removed per UX: no vX display */}
           </div>
           {/* Show rejection reason below status */}

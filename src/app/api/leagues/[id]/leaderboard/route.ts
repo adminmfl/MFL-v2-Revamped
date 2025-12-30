@@ -140,10 +140,14 @@ export async function GET(
     // the server's timezone (often UTC in production).
     const tzOffsetMinutesParam = searchParams.get('tzOffsetMinutes');
     const tzOffsetMinutes = tzOffsetMinutesParam !== null ? Number(tzOffsetMinutesParam) : null;
-    const nowLocal =
-      typeof tzOffsetMinutes === 'number' && Number.isFinite(tzOffsetMinutes)
-        ? new Date(Date.now() - tzOffsetMinutes * 60_000)
-        : new Date();
+    const ianaTimezone = searchParams.get('ianaTimezone') || null;
+
+    // Compute today's date string in user's timezone (preferred: IANA timezone)
+    const todayYmd = getUserLocalDateYMD({
+      now: new Date(),
+      ianaTimezone: typeof ianaTimezone === 'string' ? ianaTimezone : null,
+      tzOffsetMinutes: typeof tzOffsetMinutes === 'number' && Number.isFinite(tzOffsetMinutes) ? tzOffsetMinutes : null,
+    });
 
     // Verify league exists and get its date range
     const { data: league, error: leagueError } = await supabase
@@ -165,18 +169,17 @@ export async function GET(
     // Apply a 2-day delay before scores appear on the leaderboard.
     // Example: a submission dated today will not count today or tomorrow,
     // and will start counting on the 3rd day.
+    // Cutoff: effective end date is today's date in user's timezone minus 2 days
     const cutoff = (() => {
-      const d = new Date(nowLocal);
-      d.setDate(d.getDate() - 2);
-      return formatDateYYYYMMDD(d);
+      const [y, m, d] = todayYmd.split('-').map((p) => Number(p));
+      const dt = new Date(y, m - 1, d);
+      dt.setDate(dt.getDate() - 2);
+      return formatDateYYYYMMDD(dt);
     })();
     const effectiveEndDate = minDateString(String(filterEndDate), cutoff);
 
-    // Compute the 2-day "pending" window (today/yesterday by default).
-    // These dates are NOT included in the main leaderboard due to the 2-day delay.
-    // When a new day begins, the older pending day automatically becomes <= cutoff
-    // and rolls into the main leaderboard via `effectiveEndDate`.
-    const todayYYYYMMDD = formatDateYYYYMMDD(nowLocal);
+    // Compute pending window using today's date in user's timezone
+    const todayYYYYMMDD = todayYmd;
     const pendingWindowEnd = minDateString(String(filterEndDate), todayYYYYMMDD);
     const pendingWindowStart = addDaysYYYYMMDD(pendingWindowEnd, -1);
     const pendingWindowDates = uniqueStringsPreserveOrder([

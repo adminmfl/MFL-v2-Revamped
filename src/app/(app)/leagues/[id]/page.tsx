@@ -140,6 +140,8 @@ export default function LeagueDashboardPage({
   const [rejectedCount, setRejectedCount] = React.useState<number>(0);
   const [recentDays, setRecentDays] = React.useState<RecentDayRow[] | null>(null);
   const [weekOffset, setWeekOffset] = React.useState(0);
+  const [mySummaryLoading, setMySummaryLoading] = React.useState(true);
+
 
   const { user } = useAuth();
 
@@ -338,6 +340,8 @@ export default function LeagueDashboardPage({
   React.useEffect(() => {
     if (!league) return;
 
+    setMySummaryLoading(true);
+
     const localYmd = (d: Date) => {
       const y = d.getFullYear();
       const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -465,20 +469,27 @@ export default function LeagueDashboardPage({
           }
         }
 
-        // Team Avg RR from leaderboard (best-effort, uses official leaderboard calculations).
+        // Fetch leaderboard data (for both team and individual stats) - single call with full=true
         let leaderboardData: any = null;
-        if (teamId) {
-          try {
-            const tzOffsetMinutes = new Date().getTimezoneOffset();
-            const lbRes = await fetch(
-              `/api/leagues/${id}/leaderboard?tzOffsetMinutes=${encodeURIComponent(String(tzOffsetMinutes))}`,
-              { credentials: 'include' }
-            );
-            if (lbRes.ok) {
-              const lb = await lbRes.json();
-              leaderboardData = lb;
+        let totalPoints = points;
+        let challengePoints = 0;
+        
+        try {
+          const tzOffsetMinutes = new Date().getTimezoneOffset();
+          const ianaTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+          const query = `full=true&tzOffsetMinutes=${encodeURIComponent(String(tzOffsetMinutes))}&ianaTimezone=${encodeURIComponent(ianaTimezone)}`;
+          const lbRes = await fetch(
+            `/api/leagues/${id}/leaderboard?${query}`,
+            { credentials: 'include' }
+          );
+          
+          if (lbRes.ok) {
+            leaderboardData = await lbRes.json();
+            
+            // Extract team stats if teamId exists
+            if (teamId) {
               const teams: Array<{ team_id: string; avg_rr: number; points?: number; total_points?: number }> =
-                lb?.data?.teams || lb?.data?.teamRankings || [];
+                leaderboardData?.data?.teams || leaderboardData?.data?.teamRankings || [];
               const mine = teams.find((t) => String(t.team_id) === String(teamId));
               const v = mine && typeof mine.avg_rr === 'number' ? mine.avg_rr : null;
               teamAvgRR = typeof v === 'number' && Number.isFinite(v) ? Math.round(v * 100) / 100 : null;
@@ -491,26 +502,10 @@ export default function LeagueDashboardPage({
                     : null;
               teamPoints = typeof p === 'number' && Number.isFinite(p) ? Math.max(0, p) : null;
             }
-          } catch {
-            // ignore
-          }
-        }
-
-          // Also fetch leaderboard to find user's total points (includes challenge bonuses)
-          try {
-            const tzOffsetMinutes = new Date().getTimezoneOffset();
-            // If we already fetched leaderboard for the team, reuse it.
-            const lbRes = leaderboardData
-              ? null
-              : await fetch(
-                  `/api/leagues/${id}/leaderboard?full=true&tzOffsetMinutes=${encodeURIComponent(String(tzOffsetMinutes))}`,
-                  { credentials: 'include' }
-                );
-
-            const lbJson = lbRes ? (await lbRes.json()) : leaderboardData;
-            const individuals: Array<{ user_id?: string; points?: number }> = lbJson?.data?.individuals || lbJson?.data?.individualRankings || [];
-            let totalPoints = points;
-            let challengePoints = 0;
+            
+            // Extract individual stats for user's total points (includes challenge bonuses)
+            const individuals: Array<{ user_id?: string; points?: number }> = 
+              leaderboardData?.data?.individuals || leaderboardData?.data?.individualRankings || [];
             if (user && Array.isArray(individuals) && individuals.length > 0) {
               const mine = individuals.find((it) => String(it.user_id) === String(user.id));
               if (mine && typeof mine.points === 'number' && Number.isFinite(mine.points)) {
@@ -518,21 +513,24 @@ export default function LeagueDashboardPage({
                 challengePoints = Math.max(0, totalPoints - points);
               }
             }
-
-            // set totals with fallback to workout points
-            setMySummary({ points, totalPoints, challengePoints, avgRR, restUsed, restUnused, missedDays, teamAvgRR, teamPoints });
-          } catch (err) {
-            // Fallback: no leaderboard available, use workout-only points
-            setMySummary({ points, totalPoints: points, challengePoints: 0, avgRR, restUsed, restUnused, missedDays, teamAvgRR, teamPoints });
           }
-          console.log('[MySummary] Final values:', { points, avgRR, restUsed, restUnused, missedDays, teamAvgRR, teamPoints });
+        } catch (err) {
+          // Fallback: no leaderboard available, use workout-only points
+          console.warn('[MySummary] Leaderboard fetch failed, using workout-only points:', err);
+        }
+
+        // Set summary with all calculated values
+        setMySummary({ points, totalPoints, challengePoints, avgRR, restUsed, restUnused, missedDays, teamAvgRR, teamPoints });
+        console.log('[MySummary] Final values:', { points, totalPoints, challengePoints, avgRR, restUsed, restUnused, missedDays, teamAvgRR, teamPoints });
       } catch {
         setMySummary(null);
+      } finally {
+        setMySummaryLoading(false);
       }
     };
 
     run();
-  }, [id, league]);
+  }, [id, league, user]);
 
   if (loading) {
     return <LeagueDashboardSkeleton />;
@@ -687,7 +685,53 @@ export default function LeagueDashboardPage({
         </div>
       </div>
 
-      {mySummaryStats ? (
+      {mySummaryLoading || !mySummaryStats ? (
+        <>
+          <div className="px-4 lg:px-6 mt-2">
+            <h2 className="text-lg font-semibold">My Summary</h2>
+            <p className="text-sm text-muted-foreground">Your approved performance in this league.</p>
+          </div>
+          <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-5">
+            {[1, 2, 3, 4, 5].map((index) => (
+              <Card key={index} className="@container/card">
+                <CardHeader>
+                  <CardDescription className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-4" />
+                    <Skeleton className="h-4 w-20" />
+                  </CardDescription>
+                  <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                    <Skeleton className="h-8 w-16" />
+                  </CardTitle>
+                  <CardAction>
+                    <Skeleton className="h-5 w-5 rounded-full" />
+                  </CardAction>
+                </CardHeader>
+                <CardFooter className="flex-col items-start gap-1.5 text-sm">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3 w-32" />
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+          {mySummaryLoading && (
+            <div className="px-4 lg:px-6">
+              <Card>
+                <CardHeader className="flex flex-row items-start justify-between gap-4">
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-4 w-32" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-3 w-full rounded-full mb-3" />
+                  <div className="flex flex-wrap items-center gap-6 mt-3">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </>
+      ) : (
         <>
           <div className="px-4 lg:px-6 mt-2">
             <h2 className="text-lg font-semibold">My Summary</h2>
@@ -795,6 +839,9 @@ export default function LeagueDashboardPage({
                           <span className="text-foreground tabular-nums">
                             {typeof you === 'number' ? you.toFixed(2) : '—'}
                           </span>
+                          {youPoints !== null ? (
+                            <span className="tabular-nums">({youPoints.toLocaleString()} pt)</span>
+                          ) : null}
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-primary inline-block" />
@@ -802,6 +849,9 @@ export default function LeagueDashboardPage({
                           <span className="text-foreground tabular-nums">
                             {typeof team === 'number' ? team.toFixed(2) : '—'}
                           </span>
+                          {teamPoints !== null ? (
+                            <span className="tabular-nums">({teamPoints.toLocaleString()} pt)</span>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -811,7 +861,7 @@ export default function LeagueDashboardPage({
             </Card>
           </div>
         </>
-      ) : null}
+      )}
 
       {/* Progress Bar (for launched/active leagues) */}
       {(league.status === 'active' || league.status === 'launched') && (
