@@ -107,6 +107,9 @@ importers:
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
+      date-fns-tz:
+        specifier: ^2.0.0
+        version: 2.0.0(date-fns@4.1.0)
       googleapis:
         specifier: ^168.0.0
         version: 168.0.0
