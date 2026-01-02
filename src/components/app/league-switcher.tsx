@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 // ============================================================================
 // LeagueSwitcher Component
@@ -65,9 +66,15 @@ export function LeagueSwitcher() {
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <div className={`flex size-8 items-center justify-center rounded-lg ${roleDisplay?.color || 'bg-primary text-primary-foreground'}`}>
-                <RoleIcon className="size-4" />
-              </div>
+              <Avatar className="size-8 rounded-lg">
+                {activeLeague?.logo_url ? (
+                  <AvatarImage src={activeLeague.logo_url} alt={activeLeague.name} />
+                ) : (
+                  <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-semibold">
+                    {activeLeague?.name?.slice(0, 2).toUpperCase() || 'LG'}
+                  </AvatarFallback>
+                )}
+              </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">
                   {activeLeague?.name || 'Select League'}
@@ -130,9 +137,15 @@ export function LeagueSwitcher() {
                   onClick={() => setActiveLeague(league)}
                   className="gap-2 p-2 cursor-pointer"
                 >
-                  <div className="flex size-6 items-center justify-center rounded-sm border bg-background">
-                    <Trophy className="size-3.5" />
-                  </div>
+                  <Avatar className="size-8 rounded-md">
+                    {league.logo_url ? (
+                      <AvatarImage src={league.logo_url} alt={league.name} />
+                    ) : (
+                      <AvatarFallback className="rounded-md text-xs bg-primary/10 text-primary font-semibold">
+                        {league.name?.slice(0, 2).toUpperCase() || 'LG'}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="truncate font-medium">{league.name}</div>
                     <div className="flex items-center gap-1 mt-0.5">

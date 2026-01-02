@@ -55,6 +55,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 // ============================================================================
 // Types
@@ -401,9 +402,15 @@ function LeaguesTable({
                     onClick={() => onSelect(league)}
                     className="flex items-center gap-3 hover:underline"
                   >
-                    <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <Trophy className="size-5 text-primary" />
-                    </div>
+                    <Avatar className="size-10 rounded-lg shrink-0">
+                      {league.logo_url ? (
+                        <AvatarImage src={league.logo_url} alt={league.name} />
+                      ) : (
+                        <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-semibold">
+                          {league.name.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
                     <div className="min-w-0">
                       <div className="font-medium truncate">{league.name}</div>
                       <div className="text-xs text-muted-foreground truncate max-w-[200px]">

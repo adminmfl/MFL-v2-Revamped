@@ -12,6 +12,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -177,6 +178,28 @@ export function AppHeader() {
 
         {/* Right Side Actions */}
         <div className="ml-auto flex items-center gap-2">
+          {activeLeague && (
+            <Button variant="ghost" size="sm" asChild className="hidden sm:flex gap-2">
+              <Link href={`/leagues/${activeLeague.league_id}`}>
+                <Avatar className="size-8 rounded-md">
+                  {activeLeague.logo_url ? (
+                    <AvatarImage src={activeLeague.logo_url} alt={activeLeague.name} />
+                  ) : (
+                    <AvatarFallback className="rounded-md bg-primary/10 text-primary font-semibold">
+                      {activeLeague.name.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <div className="flex flex-col items-start leading-tight">
+                  <span className="text-sm font-semibold truncate max-w-[140px]">{activeLeague.name}</span>
+                  {activeRole && (
+                    <span className="text-xs text-muted-foreground">Viewing as {activeRole}</span>
+                  )}
+                </div>
+              </Link>
+            </Button>
+          )}
+
           {/* Role Switcher (only shows when multi-role) */}
           <RoleSwitcher />
 

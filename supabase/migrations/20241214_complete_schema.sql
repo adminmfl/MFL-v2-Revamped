@@ -170,6 +170,7 @@ CREATE TABLE IF NOT EXISTS public.leagues (
   league_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   league_name varchar NOT NULL UNIQUE CHECK (char_length(league_name) >= 3),
   description text,
+  logo_url text,
   start_date date NOT NULL,
   end_date date NOT NULL,
   status varchar DEFAULT 'scheduled' CHECK (status IN ('scheduled','active','ended','completed','cancelled','abandoned')),
@@ -304,6 +305,7 @@ CREATE TABLE IF NOT EXISTS public.teamleagues (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   team_id uuid NOT NULL REFERENCES public.teams(team_id) ON DELETE CASCADE,
   league_id uuid NOT NULL REFERENCES public.leagues(league_id) ON DELETE CASCADE,
+  logo_url text,
   created_at timestamptz DEFAULT CURRENT_TIMESTAMP,
   created_by uuid REFERENCES public.users(user_id) ON DELETE SET NULL
 );
@@ -696,6 +698,93 @@ CREATE TRIGGER trigger_update_participant_count_insert
 CREATE TRIGGER trigger_update_participant_count_delete
   AFTER DELETE ON public.leaguemembers
   FOR EACH ROW EXECUTE FUNCTION update_league_participant_count();
+
+
+-- =====================================================================================
+-- LOGO STORAGE BUCKETS & POLICIES
+-- =====================================================================================
+
+-- Buckets for league and team logos
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('league-logos', 'league-logos', true)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('team-logos', 'team-logos', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- League logo policies
+CREATE POLICY "league-logos_public_read"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'league-logos');
+
+CREATE POLICY "league-logos_host_insert"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'league-logos'
+  AND public.is_host(auth.uid(), split_part(split_part(name, '/', 1), '.', 1)::uuid)
+);
+
+CREATE POLICY "league-logos_host_update"
+ON storage.objects FOR UPDATE
+USING (
+  bucket_id = 'league-logos'
+  AND public.is_host(auth.uid(), split_part(split_part(name, '/', 1), '.', 1)::uuid)
+);
+
+CREATE POLICY "league-logos_host_delete"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'league-logos'
+  AND public.is_host(auth.uid(), split_part(split_part(name, '/', 1), '.', 1)::uuid)
+);
+
+-- Team logo policies
+CREATE POLICY "team-logos_public_read"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'team-logos');
+
+CREATE POLICY "team-logos_captain_or_host_insert"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'team-logos'
+  AND (
+    public.is_host(auth.uid(), split_part(name, '/', 1)::uuid)
+    OR public.is_captain_of_team(auth.uid(), split_part(split_part(name, '/', 2), '.', 1)::uuid)
+  )
+);
+
+CREATE POLICY "team-logos_captain_or_host_update"
+ON storage.objects FOR UPDATE
+USING (
+  bucket_id = 'team-logos'
+  AND (
+    public.is_host(auth.uid(), split_part(name, '/', 1)::uuid)
+    OR public.is_captain_of_team(auth.uid(), split_part(split_part(name, '/', 2), '.', 1)::uuid)
+  )
+);
+
+CREATE POLICY "team-logos_captain_or_host_delete"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'team-logos'
+  AND (
+    public.is_host(auth.uid(), split_part(name, '/', 1)::uuid)
+    OR public.is_captain_of_team(auth.uid(), split_part(split_part(name, '/', 2), '.', 1)::uuid)
+  )
+);
+
+-- TeamLeagues update policy for logo changes
+CREATE POLICY teamleagues_update_host_or_captain ON public.teamleagues
+  FOR UPDATE
+  USING (
+    public.is_host(auth.uid(), league_id)
+    OR public.is_captain_of_team(auth.uid(), team_id)
+  )
+  WITH CHECK (
+    public.is_host(auth.uid(), league_id)
+    OR public.is_captain_of_team(auth.uid(), team_id)
+  );
 
 
 -- =====================================================================================

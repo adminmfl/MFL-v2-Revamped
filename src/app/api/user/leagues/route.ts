@@ -56,7 +56,7 @@ export async function GET() {
     const { data: leaguesData, error: leaguesError } = await supabase
       .from('leagues')
       .select(
-        'league_id, league_name, description, status, start_date, end_date, num_teams, tier_id, is_public, is_exclusive, invite_code, created_by'
+        'league_id, league_name, description, status, start_date, end_date, num_teams, tier_id, is_public, is_exclusive, invite_code, created_by, logo_url'
       )
       .in('league_id', leagueIds);
 
@@ -189,6 +189,7 @@ export async function GET() {
         league_id: leagueId,
         name: league?.league_name || 'Unknown League',
         description: league?.description || null,
+        logo_url: league?.logo_url || null,
         status: derivedStatus,
         start_date: league?.start_date || null,
         end_date: league?.end_date || null,

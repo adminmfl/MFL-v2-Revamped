@@ -1,6 +1,6 @@
 'use client';
 
-import React, { use, useEffect, useState } from 'react';
+import React, { use, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Settings,
@@ -72,6 +72,10 @@ export default function LeagueSettingsPage({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoDeleting, setLogoDeleting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -89,6 +93,60 @@ export default function LeagueSettingsPage({
   });
 
   const canEditStructure = formData.status === 'draft';
+
+  const handleLogoUpload = async (file: File) => {
+    setLogoUploading(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+
+      const res = await fetch(`/api/leagues/${id}/logo`, {
+        method: 'POST',
+        body: form,
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || 'Upload failed');
+      }
+
+      setLogoUrl(json.data?.url || null);
+      toast.success('League logo updated');
+      await refetch();
+    } catch (error) {
+      console.error('[League Settings] logo upload', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload logo');
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
+  const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await handleLogoUpload(file);
+      e.target.value = '';
+    }
+  };
+
+  const handleLogoDelete = async () => {
+    setLogoDeleting(true);
+    try {
+      const res = await fetch(`/api/leagues/${id}/logo`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || 'Delete failed');
+      }
+      setLogoUrl(null);
+      toast.success('League logo removed');
+      await refetch();
+    } catch (error) {
+      console.error('[League Settings] logo delete', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to delete logo');
+    } finally {
+      setLogoDeleting(false);
+    }
+  };
 
   useEffect(() => {
     const loadLeague = async () => {
@@ -117,6 +175,7 @@ export default function LeagueSettingsPage({
           status: league.status,
           normalize_points_by_team_size: !!league.normalize_points_by_team_size,
         });
+        setLogoUrl(league.logo_url || null);
       } catch (err) {
         setLoadError(err instanceof Error ? err.message : 'Failed to load league');
       } finally {
@@ -388,6 +447,81 @@ export default function LeagueSettingsPage({
                 </div>
               </CardContent>
             </Card>
+
+              {/* Branding / Logo */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Shield className="size-5 text-primary" />
+                    League Branding
+                  </CardTitle>
+                  <CardDescription>
+                    Upload a square logo (PNG/JPEG/WebP, max 2MB)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="h-16 w-16 rounded-xl border bg-muted overflow-hidden flex items-center justify-center">
+                      {logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={logoUrl} alt="League logo" className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="text-sm text-muted-foreground">No logo</span>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        Recommended: 512×512px. Transparent PNG or WebP looks best.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={logoUploading}
+                        >
+                          {logoUploading ? (
+                            <>
+                              <Loader2 className="mr-2 size-4 animate-spin" />
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="mr-2 size-4" />
+                              Upload Logo
+                            </>
+                          )}
+                        </Button>
+                        {logoUrl && (
+                          <Button
+                            variant="secondary"
+                            onClick={handleLogoDelete}
+                            disabled={logoDeleting}
+                          >
+                            {logoDeleting ? (
+                              <>
+                                <Loader2 className="mr-2 size-4 animate-spin" />
+                                Removing...
+                              </>
+                            ) : (
+                              <>
+                                <Trash2 className="mr-2 size-4" />
+                                Remove Logo
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        className="hidden"
+                        accept="image/png,image/jpeg,image/webp"
+                        onChange={handleLogoFileChange}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
             {/* Team Configuration Card */}
             <Card>

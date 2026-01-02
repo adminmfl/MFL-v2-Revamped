@@ -43,6 +43,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 // ============================================================================
 // Leagues Page
@@ -307,6 +308,17 @@ function LeagueCard({
             <Badge className={statusColors[league.status]} variant="secondary">
               {league.status}
             </Badge>
+          </div>
+          <div className="absolute top-3 left-3">
+            <Avatar className="size-10 border-2 border-white/70 shadow-sm">
+              {league.logo_url ? (
+                <AvatarImage src={league.logo_url} alt={league.name} />
+              ) : (
+                <AvatarFallback className="bg-white/20 text-white font-semibold uppercase">
+                  {league.name?.slice(0, 2) || 'LG'}
+                </AvatarFallback>
+              )}
+            </Avatar>
           </div>
           <div className="absolute bottom-3 left-4 right-4 text-white">
             <h3 className="font-semibold truncate group-hover:underline">
