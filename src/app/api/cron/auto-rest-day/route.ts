@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
       .select('league_id, rest_days, status')
       .eq('auto_rest_day_enabled', true)
       .eq('is_active', true)
-      .in('status', ['launched', 'active']);
+      .in('status', ['active']);
 
     if (leaguesError) {
       console.error('Error fetching leagues with auto rest enabled:', leaguesError);
@@ -193,8 +193,7 @@ export async function POST(req: NextRequest) {
       const { data: members, error: membersError } = await supabase
         .from('leaguemembers')
         .select('league_member_id, user_id')
-        .eq('league_id', league.league_id)
-        .eq('is_active', true);
+        .eq('league_id', league.league_id);
 
       if (membersError) {
         console.error(`Error fetching members for league ${league.league_id}:`, membersError);
