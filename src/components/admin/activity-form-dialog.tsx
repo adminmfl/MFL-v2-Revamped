@@ -26,6 +26,8 @@ interface ActivityFormData {
   activity_name: string;
   description: string;
   category_id: string | "";
+  measurement_type: 'duration' | 'distance' | 'hole' | 'steps';
+  admin_info?: string;
 }
 
 interface ActivityFormDialogProps {
@@ -59,6 +61,8 @@ export function ActivityFormDialog({
     activity_name: "",
     description: "",
     category_id: "",
+    measurement_type: 'duration',
+    admin_info: "",
   });
 
   React.useEffect(() => {
@@ -67,12 +71,16 @@ export function ActivityFormDialog({
         activity_name: activity.activity_name,
         description: activity.description || "",
         category_id: activity.category_id || "",
+        measurement_type: activity.measurement_type || 'duration',
+        admin_info: activity.admin_info || "",
       });
     } else if (open && !activity) {
       setFormData({
         activity_name: "",
         description: "",
         category_id: "",
+        measurement_type: 'duration',
+        admin_info: "",
       });
     }
   }, [activity, open]);
@@ -139,6 +147,35 @@ export function ActivityFormDialog({
                 placeholder="Describe the activity..."
                 rows={4}
               />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="measurement_type">Measurement Type *</Label>
+                <select
+                  id="measurement_type"
+                  required
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  value={formData.measurement_type}
+                  onChange={(e) => setFormData({ ...formData, measurement_type: e.target.value as any })}
+                >
+                  <option value="duration">Duration</option>
+                  <option value="distance">Distance</option>
+                  <option value="hole">Hole</option>
+                  <option value="steps">Steps</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="admin_info">Admin Info (visible to users before upload)</Label>
+                <Textarea
+                  id="admin_info"
+                  value={formData.admin_info}
+                  onChange={(e) => setFormData({ ...formData, admin_info: e.target.value })}
+                  placeholder="Optional guidance users will see before uploading for this activity..."
+                  rows={3}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">

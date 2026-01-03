@@ -2,7 +2,8 @@
 -- Migration: Complete Database Schema for MyFitnessLeague V2
 -- Description: Creates all core tables, enums, indexes, and triggers
 -- Author: MFL Engineering Team
--- Created: 2024-12-14
+-- Created: 2025-12-14
+-- Updated: 2026-01-03
 -- =====================================================================================
 
 -- Enable UUID extension for primary key generation
@@ -17,6 +18,7 @@ CREATE TYPE platform_role AS ENUM ('admin', 'user');
 CREATE TYPE payment_status AS ENUM ('pending', 'completed', 'failed', 'refunded');
 CREATE TYPE payment_purpose AS ENUM ('league_creation', 'subscription', 'other', 'challenge_creation');
 CREATE TYPE challenge_status AS ENUM ('active', 'upcoming', 'closed');
+CREATE TYPE activity_measurement_type AS ENUM ('duration', 'distance', 'hole', 'steps');
 
 -- =====================================================================================
 -- CORE USER MANAGEMENT
@@ -237,6 +239,8 @@ CREATE TABLE IF NOT EXISTS public.activities (
   activity_name varchar NOT NULL UNIQUE,
   description text,
   category_id uuid REFERENCES public.activity_categories(category_id) ON DELETE SET NULL,
+  measurement_type activity_measurement_type DEFAULT 'duration' NOT NULL,
+  admin_info text DEFAULT NULL,
   created_by uuid REFERENCES public.users(user_id) ON DELETE SET NULL,
   created_date timestamptz DEFAULT CURRENT_TIMESTAMP,
   modified_by uuid REFERENCES public.users(user_id) ON DELETE SET NULL,
@@ -247,6 +251,8 @@ CREATE INDEX IF NOT EXISTS idx_activities_name ON public.activities(activity_nam
 CREATE INDEX IF NOT EXISTS idx_activities_category ON public.activities(category_id);
 
 COMMENT ON TABLE public.activities IS 'Master list of available workout/activity types';
+COMMENT ON COLUMN public.activities.measurement_type IS 'Measurement type required for activity (duration, distance, hole, steps)';
+COMMENT ON COLUMN public.activities.admin_info IS 'Admin guidance shown to users before uploading for this activity';
 
 -- =====================================================================================
 
