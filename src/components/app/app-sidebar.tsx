@@ -105,6 +105,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
             key={section.title}
             section={section}
             pathname={pathname}
+            leagueId={activeLeague?.league_id || null}
           />
         ))}
       </SidebarContent>
@@ -194,18 +195,21 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
 function NavSectionGroup({
   section,
   pathname,
+  leagueId,
 }: {
   section: NavSection;
   pathname: string | null;
+  leagueId: string | null;
 }) {
   return (
     <SidebarGroup>
       <SidebarGroupLabel>{section.title}</SidebarGroupLabel>
       <SidebarMenu>
         {section.items.map((item) => {
+          const isLeagueRoot = leagueId ? item.url === `/leagues/${leagueId}` : false;
           const isActive =
             pathname === item.url ||
-            (item.url !== '/dashboard' && pathname?.startsWith(item.url));
+            (!isLeagueRoot && item.url !== '/dashboard' && pathname?.startsWith(item.url));
 
           return (
             <SidebarMenuItem key={item.url}>

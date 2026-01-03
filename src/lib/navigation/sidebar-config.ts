@@ -203,6 +203,11 @@ export function getSidebarNavItems(
           url: leagueUrl('/submissions'),
           icon: ClipboardCheck,
         },
+        {
+          title: 'Manual Workout Entry',
+          url: leagueUrl('/manual-entry'),
+          icon: UserCheck,
+        },
       ],
     });
   }

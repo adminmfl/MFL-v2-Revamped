@@ -1,8 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronsUpDown, Trophy, Plus, Search, Crown, Shield, Target, Dumbbell, Check } from 'lucide-react';
+import { ChevronsUpDown, Plus, Search, Check } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 
 import { useLeague, LeagueWithRoles, LeagueRole } from '@/contexts/league-context';
 import { useRole } from '@/contexts/role-context';
@@ -37,6 +38,8 @@ export function LeagueSwitcher() {
   const { activeLeague, userLeagues, setActiveLeague, isLoading } = useLeague();
   const { activeRole, availableRoles, setActiveRole } = useRole();
   const { isMobile } = useSidebar();
+  const router = useRouter();
+  const pathname = usePathname();
 
   if (isLoading) {
     return (
@@ -53,9 +56,16 @@ export function LeagueSwitcher() {
       </SidebarMenu>
     );
   }
+  const handleLeagueSelect = (league: LeagueWithRoles) => {
+    setActiveLeague(league);
 
-  const roleDisplay = activeRole ? getRoleDisplay(activeRole) : null;
-  const RoleIcon = roleDisplay?.icon || Trophy;
+    const nextPath = pathname?.startsWith('/leagues/')
+      ? pathname.replace(/^\/leagues\/[^/]+/, `/leagues/${league.league_id}`)
+      : `/leagues/${league.league_id}`;
+
+    router.push(nextPath);
+    router.refresh();
+  };
 
   return (
     <SidebarMenu>
@@ -134,7 +144,7 @@ export function LeagueSwitcher() {
               userLeagues.map((league) => (
                 <DropdownMenuItem
                   key={league.league_id}
-                  onClick={() => setActiveLeague(league)}
+                  onClick={() => handleLeagueSelect(league)}
                   className="gap-2 p-2 cursor-pointer"
                 >
                   <Avatar className="size-8 rounded-md">
