@@ -68,6 +68,14 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     if (body.activity_name !== undefined) input.activity_name = body.activity_name;
     if (body.description !== undefined) input.description = body.description;
     if (body.category_id !== undefined) input.category_id = body.category_id;
+    if (body.measurement_type !== undefined) {
+      const allowed = ['duration', 'distance', 'hole', 'steps'];
+      if (!allowed.includes(body.measurement_type)) {
+        return NextResponse.json({ error: 'Invalid measurement_type' }, { status: 400 });
+      }
+      input.measurement_type = body.measurement_type;
+    }
+    if (body.admin_info !== undefined) input.admin_info = body.admin_info;
 
     const adminUserId = (session.user as any)?.id;
     const activity = await updateActivity(activityId, input, adminUserId);

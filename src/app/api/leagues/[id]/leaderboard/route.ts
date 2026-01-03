@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/config';
 import { getSupabaseServiceRole } from '@/lib/supabase/client';
+import { getUserLocalDateYMD } from '@/lib/utils/timezone';
 
 function formatDateYYYYMMDD(date: Date): string {
   const y = date.getFullYear();

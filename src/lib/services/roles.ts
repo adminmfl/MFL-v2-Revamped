@@ -182,16 +182,36 @@ export async function userHasAnyRole(
     }
 
     // Check assignedrolesforleague for other roles
-    const userRoles = await supabase
+    const { data: userRoles, error: rolesError } = await supabase
       .from('assignedrolesforleague')
-      .select('roles(role_name)')
+      .select('role_id, roles(role_name)')
       .eq('user_id', userId)
       .eq('league_id', leagueId);
 
-    if (userRoles.error) return false;
+    if (rolesError) return false;
 
-    const assignedRoleNames = (userRoles.data || []).map((row: any) => row.roles?.role_name);
-    return roleNames.some((roleName) => assignedRoleNames.includes(roleName));
+    const roleNamesFromJoin = (userRoles || [])
+      .map((row: any) => (row.roles?.role_name || '').toString().toLowerCase())
+      .filter(Boolean);
+
+    const missingIds = (userRoles || [])
+      .map((row: any) => row.role_id as string | null)
+      .filter((id): id is string => !!id);
+
+    let roleNamesFromLookup: string[] = [];
+    if (missingIds.length > 0) {
+      const { data: rolesLookup } = await supabase
+        .from('roles')
+        .select('role_id, role_name')
+        .in('role_id', missingIds);
+      roleNamesFromLookup = (rolesLookup || [])
+        .map((r: any) => (r.role_name || '').toString().toLowerCase())
+        .filter(Boolean);
+    }
+
+    const assignedRoleNames = [...roleNamesFromJoin, ...roleNamesFromLookup];
+    const desired = roleNames.map((r) => r.toLowerCase());
+    return desired.some((roleName) => assignedRoleNames.includes(roleName));
   } catch (err) {
     console.error('Error checking user roles:', err);
     return false;

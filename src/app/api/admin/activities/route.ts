@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { activity_name, description, category_id } = body;
+    const { activity_name, description, category_id, measurement_type, admin_info } = body;
 
     if (!activity_name) {
       return NextResponse.json(
@@ -72,10 +72,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const allowedMeasurements = ['duration', 'distance', 'hole', 'steps'];
+    if (!measurement_type || !allowedMeasurements.includes(measurement_type)) {
+      return NextResponse.json({ error: 'measurement_type is required and must be one of duration|distance|hole|steps' }, { status: 400 });
+    }
+
     const input: AdminActivityCreateInput = {
       activity_name,
       description: description || null,
       category_id,
+      measurement_type,
+      admin_info: admin_info || null,
     };
 
     const adminUserId = (session.user as any)?.id;

@@ -16,6 +16,7 @@ export interface TeamWithDetails {
     user_id: string;
     username: string;
   } | null;
+  logo_url?: string | null;
   created_by: string | null;
   created_date: string;
 }
@@ -61,6 +62,7 @@ export interface LeagueTeamsData {
     league_capacity: number;
     status: string;
     host_user_id: string;
+    logo_url?: string | null;
   };
   meta: {
     current_team_count: number;

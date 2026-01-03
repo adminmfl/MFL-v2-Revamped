@@ -20,9 +20,11 @@ export interface TeamRanking {
   avg_rr: number;
   member_count: number;
   submission_count: number;
+  // Optional team logo
+  logo_url?: string | null;
   // Optional normalized points (computed client-side when normalization is active)
   normalized_points?: number;
-}
+} 
 
 export interface IndividualRanking {
   rank: number;
@@ -182,8 +184,18 @@ export function useLeagueLeaderboard(
         );
         const variance = teamsJson?.data?.teamSizeVariance as { hasVariance: boolean; avgSize: number; minSize: number; maxSize: number } | undefined;
         const teamMemberMap: Record<string, number> = {};
-        const apiTeams: Array<{ team_id: string; member_count?: number }> = teamsJson?.data?.teams || [];
+        const apiTeams: Array<{ team_id: string; member_count?: number; logo_url?: string | null }> = teamsJson?.data?.teams || [];
         apiTeams.forEach(t => { teamMemberMap[t.team_id] = Number(t.member_count ?? 0); });
+
+        // Merge logo_url into leaderboard team objects so UI can render team logos
+        const logoByTeamId: Record<string, string | null> = {};
+        apiTeams.forEach(t => { logoByTeamId[t.team_id] = (t as any).logo_url || null; });
+        if (Array.isArray(data?.teams)) {
+          data.teams = data.teams.map((t) => ({
+            ...t,
+            logo_url: logoByTeamId[t.team_id] || null,
+          }));
+        }
 
         // Compute normalized points when active and variance exists
         if (normalizeActive && variance?.hasVariance && variance.maxSize > 0 && Array.isArray(data?.teams)) {

@@ -29,6 +29,7 @@ export interface League extends LeagueInput {
   status: 'draft' | 'payment_pending' | 'scheduled' | 'active' | 'ended' | 'completed' | 'cancelled' | 'abandoned';
   is_active: boolean;
   invite_code: string | null;
+  logo_url?: string | null;
   created_by: string;
   created_date: string;
   modified_by: string;
@@ -241,6 +242,36 @@ export async function getLeagueById(leagueId: string): Promise<League | null> {
   } catch (err) {
     console.error('Error fetching league:', err);
     return null;
+  }
+}
+
+/**
+ * Update league logo URL (host only)
+ */
+export async function updateLeagueLogoUrl(
+  leagueId: string,
+  userId: string,
+  logoUrl: string | null
+): Promise<boolean> {
+  try {
+    const role = await getUserRoleInLeague(userId, leagueId);
+    if (role !== 'host') {
+      return false;
+    }
+
+    const { error } = await getSupabaseServiceRole()
+      .from('leagues')
+      .update({
+        logo_url: logoUrl,
+        modified_by: userId,
+        modified_date: new Date().toISOString(),
+      })
+      .eq('league_id', leagueId);
+
+    return !error;
+  } catch (err) {
+    console.error('Error updating league logo:', err);
+    return false;
   }
 }
 

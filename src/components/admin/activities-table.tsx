@@ -215,6 +215,8 @@ export function ActivitiesTable() {
     activity_name: string;
     description?: string;
     category_id?: string | "";
+    measurement_type?: 'duration' | 'distance' | 'hole' | 'steps';
+    admin_info?: string | null;
   }) => {
     if (editingActivity) {
       // Edit existing activity
@@ -222,6 +224,8 @@ export function ActivitiesTable() {
         activity_name: activityData.activity_name,
         description: activityData.description || null,
         category_id: activityData.category_id ? activityData.category_id : null,
+        measurement_type: activityData.measurement_type,
+        admin_info: activityData.admin_info ?? null,
       });
 
       if (result) {
@@ -236,6 +240,8 @@ export function ActivitiesTable() {
         activity_name: activityData.activity_name,
         description: activityData.description,
         category_id: activityData.category_id ? activityData.category_id : null,
+        measurement_type: activityData.measurement_type as any,
+        admin_info: activityData.admin_info ?? null,
       });
 
       if (result) {
@@ -285,6 +291,24 @@ export function ActivitiesTable() {
         }
         return <Badge variant="outline">{category.display_name || category.category_name}</Badge>;
       },
+    },
+    {
+      accessorKey: "measurement_type",
+      header: "Measurement",
+      cell: ({ row }) => (
+        <span className="text-sm text-muted-foreground">
+          {row.original.measurement_type}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "admin_info",
+      header: "Admin Info",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground line-clamp-1 max-w-[220px]">
+          {row.original.admin_info || "-"}
+        </span>
+      ),
     },
     {
       accessorKey: "created_date",

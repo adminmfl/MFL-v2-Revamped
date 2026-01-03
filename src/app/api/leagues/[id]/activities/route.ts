@@ -92,6 +92,8 @@ export async function GET(
           activity_name, 
           description,
           category_id,
+          measurement_type,
+          admin_info,
           activity_categories(category_id, category_name, display_name)
         )
       `)
@@ -117,6 +119,8 @@ export async function GET(
           category_id: activity.category_id,
           category: activity.activity_categories,
           value: activity.activity_name,
+          measurement_type: activity.measurement_type,
+          admin_info: activity.admin_info,
         };
       });
 
@@ -130,6 +134,8 @@ export async function GET(
           activity_name, 
           description,
           category_id,
+          measurement_type,
+          admin_info,
           activity_categories(category_id, category_name, display_name)
         `)
         .order('activity_name');
@@ -142,6 +148,8 @@ export async function GET(
           category_id: a.category_id,
           category: a.activity_categories,
           value: a.activity_name,
+          measurement_type: a.measurement_type,
+          admin_info: a.admin_info,
         }));
       }
     }

@@ -1,4 +1,4 @@
-import { getUserLocalDateYMD } from '@/lib/utils/timezone';
+import { getNowInZone, getUserLocalDateYMD } from '@/lib/utils/timezone';
 
 describe('getUserLocalDateYMD', () => {
   it('uses IANA timezone to compute local date (America/Los_Angeles) when date-fns-tz is available', () => {
@@ -38,5 +38,44 @@ describe('getUserLocalDateYMD', () => {
     const now = new Date('2025-12-30T12:00:00Z');
     const ymd = getUserLocalDateYMD({ now });
     expect(ymd).toBe('2025-12-30');
+  });
+});
+
+describe('getNowInZone', () => {
+  it('returns midnight for a valid IANA timezone', () => {
+    const now = new Date('2025-12-30T05:00:00Z'); // 21:00 PST on 12/29
+    const date = getNowInZone({ now, ianaTimezone: 'America/Los_Angeles' });
+
+    expect(date).toBeInstanceOf(Date);
+    expect(date.getFullYear()).toBe(2025);
+    expect(date.getMonth()).toBe(11); // December is 11
+    expect(date.getDate()).toBe(29);
+  });
+
+  it('falls back to tzOffsetMinutes when IANA invalid', () => {
+    const now = new Date('2025-12-30T00:30:00Z');
+    const date = getNowInZone({ now, ianaTimezone: 'Invalid/Zone', tzOffsetMinutes: -330 });
+
+    expect(date.getFullYear()).toBe(2025);
+    expect(date.getMonth()).toBe(11);
+    expect(date.getDate()).toBe(30);
+  });
+
+  it('supports legacy timezone_offset by inverting sign', () => {
+    const now = new Date('2025-12-30T00:30:00Z');
+    const date = getNowInZone({ now, legacyTimezoneOffset: 330 });
+
+    expect(date.getFullYear()).toBe(2025);
+    expect(date.getMonth()).toBe(11);
+    expect(date.getDate()).toBe(30);
+  });
+
+  it('falls back to server-local midnight when nothing provided', () => {
+    const now = new Date('2025-12-30T12:00:00Z');
+    const date = getNowInZone({ now });
+
+    expect(date.getFullYear()).toBe(2025);
+    expect(date.getMonth()).toBe(11);
+    expect(date.getDate()).toBe(30);
   });
 });
