@@ -104,6 +104,7 @@ export async function GET(
           status: league.status,
           host_user_id: league.created_by,
           normalize_points_by_capacity: league.normalize_points_by_capacity,
+          logo_url: (league as any).logo_url || null,
         },
         teamSizeVariance: {
           hasVariance: teamSizeStats.hasVariance,

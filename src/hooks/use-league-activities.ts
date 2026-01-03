@@ -21,6 +21,8 @@ export interface LeagueActivity {
     display_name: string;
   } | null;
   value: string; // Normalized name for workout_type
+  measurement_type?: 'duration' | 'distance' | 'hole' | 'steps';
+  admin_info?: string | null;
 }
 
 export interface LeagueActivitiesData {

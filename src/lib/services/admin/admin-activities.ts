@@ -124,6 +124,8 @@ export async function createActivity(
         activity_name: input.activity_name,
         description: input.description || null,
         category_id: input.category_id || null,
+        measurement_type: input.measurement_type,
+        admin_info: input.admin_info || null,
         created_by: createdBy || null,
       })
       .select()

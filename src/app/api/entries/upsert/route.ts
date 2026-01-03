@@ -82,6 +82,25 @@ export async function POST(req: NextRequest) {
       legacyTimezoneOffset: typeof timezone_offset === 'number' && Number.isFinite(timezone_offset) ? timezone_offset : null,
     });
 
+    // Block submissions entirely if the league has completed
+    const { data: leagueRow, error: leagueRowError } = await supabase
+      .from('leagues')
+      .select('league_id, end_date, status')
+      .eq('league_id', league_id)
+      .single();
+
+    if (leagueRowError || !leagueRow) {
+      console.error('League lookup error:', leagueRowError);
+      return NextResponse.json({ error: 'League not found' }, { status: 404 });
+    }
+
+    const leagueEnd = (leagueRow as any).end_date || null;
+    const leagueStatus = (leagueRow as any).status || null;
+
+    if (leagueStatus === 'completed' || (leagueEnd && normalizeDateOnly(leagueEnd) && normalizeDateOnly(leagueEnd) < todayYmd)) {
+      return NextResponse.json({ error: 'League has completed. Submissions are closed.' }, { status: 400 });
+    }
+
     if (!reupload_of && normalizedDate !== todayYmd) {
       return NextResponse.json(
         { error: 'You can only submit for today. Use the resubmit flow for rejected entries.' },

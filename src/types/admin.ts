@@ -185,12 +185,16 @@ export interface ActivityCategoryUpdateInput {
   display_order?: number;
 }
 
+export type ActivityMeasurementType = 'duration' | 'distance' | 'hole' | 'steps';
+
 export interface AdminActivity {
   activity_id: string;
   activity_name: string;
   description?: string | null;
   category_id?: string | null;
   category?: ActivityCategory | null;
+  measurement_type: ActivityMeasurementType;
+  admin_info?: string | null;
   created_by?: string | null;
   created_date: string;
   modified_by?: string | null;
@@ -201,12 +205,16 @@ export interface AdminActivityCreateInput {
   activity_name: string;
   description?: string | null;
   category_id?: string | null;
+  measurement_type: ActivityMeasurementType;
+  admin_info?: string | null;
 }
 
 export interface AdminActivityUpdateInput {
   activity_name?: string;
   description?: string | null;
   category_id?: string | null;
+  measurement_type?: ActivityMeasurementType;
+  admin_info?: string | null;
 }
 
 // ============================================================================

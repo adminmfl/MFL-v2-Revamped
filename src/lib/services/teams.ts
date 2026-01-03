@@ -14,6 +14,7 @@ export interface Team {
   team_id: string;
   team_name: string;
   invite_code: string | null;
+  logo_url?: string | null;
   created_by: string | null;
   created_date: string;
   modified_by: string | null;
@@ -27,6 +28,7 @@ export interface TeamWithLeague extends Team {
     user_id: string;
     username: string;
   } | null;
+  logo_url?: string | null;
 }
 
 export interface TeamMember {
@@ -66,7 +68,7 @@ export async function getTeamsForLeague(leagueId: string): Promise<TeamWithLeagu
     // Get team IDs linked to this league
     const { data: teamLinks, error: linkError } = await supabase
       .from('teamleagues')
-      .select('team_id')
+      .select('team_id, logo_url')
       .eq('league_id', leagueId);
 
     if (linkError || !teamLinks || teamLinks.length === 0) {
@@ -74,6 +76,9 @@ export async function getTeamsForLeague(leagueId: string): Promise<TeamWithLeagu
     }
 
     const teamIds = teamLinks.map((tl) => tl.team_id);
+    const logoByTeamId = new Map<string, string | null>(
+      teamLinks.map((tl) => [tl.team_id, (tl as any).logo_url || null])
+    );
 
     // Get teams
     const { data: teams, error: teamsError } = await supabase
@@ -132,6 +137,7 @@ export async function getTeamsForLeague(leagueId: string): Promise<TeamWithLeagu
           league_id: leagueId,
           member_count: count || 0,
           captain,
+          logo_url: logoByTeamId.get(team.team_id) || team.logo_url || null,
         } as TeamWithLeague;
       })
     );
@@ -227,10 +233,52 @@ export async function createTeamForLeague(
       league_id: leagueId,
       member_count: 0,
       captain: null,
+      logo_url: null,
     };
   } catch (err) {
     console.error('Error in createTeamForLeague:', err);
     return null;
+  }
+}
+
+/**
+ * Update a team's logo URL (host or that team's captain)
+ */
+export async function updateTeamLogoUrl(
+  leagueId: string,
+  teamId: string,
+  userId: string,
+  logoUrl: string | null
+): Promise<boolean> {
+  try {
+    const supabase = getSupabaseServiceRole();
+
+    // Verify the team belongs to the league
+    const { data: link, error: linkError } = await supabase
+      .from('teamleagues')
+      .select('team_id')
+      .eq('team_id', teamId)
+      .eq('league_id', leagueId)
+      .maybeSingle();
+
+    if (linkError || !link) {
+      return false;
+    }
+
+    const { error } = await supabase
+      .from('teamleagues')
+      .update({
+        logo_url: logoUrl,
+        modified_by: userId,
+        modified_date: new Date().toISOString(),
+      })
+      .eq('team_id', teamId)
+      .eq('league_id', leagueId);
+
+    return !error;
+  } catch (err) {
+    console.error('Error updating team logo:', err);
+    return false;
   }
 }
 

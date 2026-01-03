@@ -22,6 +22,7 @@ export interface LeagueWithRoles {
   is_public: boolean;
   is_exclusive: boolean;
   invite_code: string | null;
+  logo_url?: string | null;
   roles: LeagueRole[];
   team_id: string | null;
   team_name: string | null;

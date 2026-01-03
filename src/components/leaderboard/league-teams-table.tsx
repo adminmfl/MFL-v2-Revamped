@@ -16,6 +16,7 @@ import {
 import { Trophy, Users, Star, Medal } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   Table,
   TableBody,
@@ -93,9 +94,15 @@ export function LeagueTeamsTable({ teams, showAvgRR = false }: LeagueTeamsTableP
       header: 'Team',
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
-            <Users className="size-5 text-primary" />
-          </div>
+          <Avatar className="size-10 rounded-lg">
+            {row.original.logo_url ? (
+              <AvatarImage src={row.original.logo_url} alt={row.original.team_name} />
+            ) : (
+              <AvatarFallback className="rounded-lg text-xs uppercase">
+                {row.original.team_name.slice(0, 2)}
+              </AvatarFallback>
+            )}
+          </Avatar>
           <div>
             <p className="font-semibold">{row.original.team_name}</p>
             <p className="text-xs text-muted-foreground">

@@ -17,6 +17,7 @@ import {
   Shield,
   Loader2,
   Share2,
+  Save,
 } from "lucide-react";
 import {
   flexRender,
@@ -67,7 +68,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 import { CreateTeamDialog } from "./create-team-dialog";
 import { AddMembersDialog } from "./add-members-dialog";
@@ -146,8 +147,12 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
   const [pointsMap, setPointsMap] = React.useState<Map<string, number> | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [loadingTeamMembers, setLoadingTeamMembers] = React.useState(false);
+  const [logoUploadTeamId, setLogoUploadTeamId] = React.useState<string | null>(null);
+  const [logoRemovingTeamId, setLogoRemovingTeamId] = React.useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   const canManageTeams = isHost || isGovernor;
+  const canManageLogos = isHost;
 
   // Fetch teams data
   const {
@@ -320,6 +325,62 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
     return success;
   };
 
+  const uploadTeamLogo = async (teamId: string, file: File) => {
+    setLogoUploadTeamId(teamId);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+
+      const res = await fetch(`/api/leagues/${leagueId}/teams/${teamId}/logo`, {
+        method: 'POST',
+        body: form,
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || 'Upload failed');
+      }
+
+      toast.success('Team logo updated');
+      await refetch();
+    } catch (err) {
+      console.error('[TeamsTable] logo upload', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to upload logo');
+    } finally {
+      setLogoUploadTeamId(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleTeamLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !logoUploadTeamId) {
+      setLogoUploadTeamId(null);
+      return;
+    }
+    await uploadTeamLogo(logoUploadTeamId, file);
+  };
+
+  const removeTeamLogo = async (teamId: string) => {
+    setLogoRemovingTeamId(teamId);
+    try {
+      const res = await fetch(`/api/leagues/${leagueId}/teams/${teamId}/logo`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || 'Failed to remove logo');
+      }
+      toast.success('Team logo removed');
+      await refetch();
+    } catch (err) {
+      console.error('[TeamsTable] logo remove', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to remove logo');
+    } finally {
+      setLogoRemovingTeamId(null);
+    }
+  };
+
   // ============================================================================
   // Table Columns
   // ============================================================================
@@ -330,9 +391,15 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
       header: "Team",
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
-            <Users className="size-5 text-primary" />
-          </div>
+          <Avatar className="size-10 rounded-lg">
+            {row.original.logo_url ? (
+              <AvatarImage src={row.original.logo_url} alt={row.original.team_name} />
+            ) : (
+              <AvatarFallback className="rounded-lg text-xs uppercase">
+                {row.original.team_name.slice(0, 2)}
+              </AvatarFallback>
+            )}
+          </Avatar>
           <div>
             <div className="font-medium">{row.original.team_name}</div>
             <div className="text-sm text-muted-foreground">
@@ -399,6 +466,27 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
+              {canManageLogos && (
+                <>
+                  <DropdownMenuItem onClick={() => {
+                    setLogoUploadTeamId(row.original.team_id);
+                    fileInputRef.current?.click();
+                  }}>
+                    <Pencil className="mr-2 size-4" />
+                    Upload Logo
+                  </DropdownMenuItem>
+                  {row.original.logo_url ? (
+                    <DropdownMenuItem
+                      onClick={() => removeTeamLogo(row.original.team_id)}
+                      disabled={logoRemovingTeamId === row.original.team_id}
+                    >
+                      <Trash2 className="mr-2 size-4" />
+                      {logoRemovingTeamId === row.original.team_id ? 'Removing...' : 'Remove Logo'}
+                    </DropdownMenuItem>
+                  ) : null}
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <DropdownMenuItem onClick={() => handleViewTeamMembersClick(row.original)}>
                 <Users className="mr-2 size-4" />
                 View Members
@@ -684,6 +772,14 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
           </div>
         </div>
       )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept="image/png,image/jpeg,image/webp"
+        onChange={handleTeamLogoFileChange}
+      />
 
 
       {/* Dialogs */}

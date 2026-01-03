@@ -83,7 +83,14 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
             <div className="bg-primary text-primary-foreground flex size-10 items-center justify-center rounded-md shadow-sm">
               <Dumbbell className="size-6" />
             </div>
-            <span className="text-lg leading-none">My Fitness League</span>
+            <div className="flex flex-col leading-tight min-w-0">
+              <span className="text-lg truncate">My Fitness League</span>
+              {activeLeague && (
+                <span className="text-xs text-muted-foreground truncate">
+                  {activeRole ? `Viewing ${activeLeague.name} as ${activeRole}` : activeLeague.name}
+                </span>
+              )}
+            </div>
           </Link>
         </div>
         <div className="mt-2">
@@ -98,6 +105,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
             key={section.title}
             section={section}
             pathname={pathname}
+            leagueId={activeLeague?.league_id || null}
           />
         ))}
       </SidebarContent>
@@ -187,18 +195,21 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
 function NavSectionGroup({
   section,
   pathname,
+  leagueId,
 }: {
   section: NavSection;
   pathname: string | null;
+  leagueId: string | null;
 }) {
   return (
     <SidebarGroup>
       <SidebarGroupLabel>{section.title}</SidebarGroupLabel>
       <SidebarMenu>
         {section.items.map((item) => {
+          const isLeagueRoot = leagueId ? item.url === `/leagues/${leagueId}` : false;
           const isActive =
             pathname === item.url ||
-            (item.url !== '/dashboard' && pathname?.startsWith(item.url));
+            (!isLeagueRoot && item.url !== '/dashboard' && pathname?.startsWith(item.url));
 
           return (
             <SidebarMenuItem key={item.url}>

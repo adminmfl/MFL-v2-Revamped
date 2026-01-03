@@ -31,7 +31,7 @@ import { toast } from 'sonner';
 
 import { useLeague } from '@/contexts/league-context';
 import { useRole } from '@/contexts/role-context';
-import { useLeagueActivities } from '@/hooks/use-league-activities';
+import { useLeagueActivities, LeagueActivity } from '@/hooks/use-league-activities';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -142,6 +142,22 @@ export default function SubmitActivityPage({
 
   // Submission type tab state
   const [submissionType, setSubmissionType] = React.useState<'workout' | 'rest'>('workout');
+
+  // Whether the active league has completed
+  const isLeagueCompleted = React.useMemo(() => {
+    if (!activeLeague) return false;
+    if (activeLeague.status === 'completed') return true;
+    if (activeLeague.end_date) {
+      try {
+        const end = new Date(activeLeague.end_date);
+        const now = new Date();
+        return end < now;
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  }, [activeLeague]);
 
   // Rest day stats
   const [restDayStats, setRestDayStats] = React.useState<RestDayStats | null>(null);
@@ -258,14 +274,15 @@ export default function SubmitActivityPage({
     }
   }, [submitted]);
 
-  const selectedActivity = activityTypes.find(
-    (a) => a.value === formData.activity_type
-  );
+  const selectedActivity = React.useMemo<LeagueActivity | null>(() => {
+    if (!activitiesData?.activities || !formData.activity_type) return null;
+    return activitiesData.activities.find((a: any) => a.value === formData.activity_type) || null;
+  }, [activitiesData?.activities, formData.activity_type]);
 
   // Estimated RR calculation (simplified - actual calculation done on backend)
   const estimatedRR = React.useMemo(() => {
     if (!selectedActivity) return 0;
-    const activityValue = formData.activity_type;
+    const activityValue = selectedActivity?.value || formData.activity_type;
 
     // Simplified estimates based on backend RR calculation logic
     if (activityValue === 'steps' && formData.steps) {
@@ -274,7 +291,7 @@ export default function SubmitActivityPage({
       return Math.min(1 + (steps - 10000) / 10000, 2.0);
     }
 
-    if (activityValue === 'golf' && formData.holes) {
+    if ((activityValue === 'golf' || selectedActivity?.measurement_type === 'hole') && formData.holes) {
       const holes = parseInt(formData.holes);
       return Math.min(holes / 9, 2.0);
     }
@@ -380,8 +397,22 @@ export default function SubmitActivityPage({
       return;
     }
 
-    if (!formData.duration && formData.activity_type !== 'steps' && formData.activity_type !== 'golf') {
+    const requiredMetric = selectedActivity?.measurement_type || 'duration';
+
+    if (requiredMetric === 'duration' && !formData.duration) {
       toast.error('Please enter duration');
+      return;
+    }
+    if (requiredMetric === 'distance' && !formData.distance) {
+      toast.error('Please enter distance');
+      return;
+    }
+    if (requiredMetric === 'steps' && !formData.steps) {
+      toast.error('Please enter steps');
+      return;
+    }
+    if (requiredMetric === 'hole' && !formData.holes) {
+      toast.error('Please enter holes');
       return;
     }
 
@@ -497,7 +528,11 @@ export default function SubmitActivityPage({
 
       setSubmittedData(result.data);
       setSubmitted(true);
-      toast.success('Activity submitted successfully!');
+      if (isLeagueCompleted) {
+        toast.success('League completed — you did great! Your submission has been recorded.');
+      } else {
+        toast.success('Activity submitted successfully!');
+      }
     } catch (error) {
       console.error('Submit error:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to submit activity');
@@ -550,7 +585,11 @@ export default function SubmitActivityPage({
       if (needsExemption) {
         toast.success('Rest day exemption request submitted! Awaiting approval.');
       } else {
-        toast.success('Rest day logged successfully!');
+        if (isLeagueCompleted) {
+          toast.success('League completed — you did great! Your rest day has been recorded.');
+        } else {
+          toast.success('Rest day logged successfully!');
+        }
       }
 
       // Refresh rest day stats
@@ -578,12 +617,49 @@ export default function SubmitActivityPage({
     );
   }
 
+  // If the league is completed, show a friendly, non-blocking note to the user
+  // We still allow submissions but show a congratulatory banner.
+  const CompletedBanner = () => (
+    isLeagueCompleted ? (
+      <div className="mb-4">
+        <Alert>
+          <Info className="size-4" />
+          <AlertTitle>League Completed</AlertTitle>
+          <AlertDescription>
+            This league has completed — congrats on making it this far! You can still submit activities and we'll record them. Keep up the great work.
+          </AlertDescription>
+        </Alert>
+      </div>
+    ) : null
+  );
+
   // Loading state for activities
   if (activitiesLoading) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 p-4 lg:gap-6 lg:p-6">
         <Loader2 className="size-8 animate-spin text-primary" />
         <p className="text-muted-foreground">Loading activities...</p>
+      </div>
+    );
+  }
+
+  // If the league is completed, block submissions and show a message
+  if (isLeagueCompleted) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-4 lg:gap-6 lg:p-6">
+        <Alert>
+          <Info className="size-4" />
+          <AlertTitle>League Completed</AlertTitle>
+          <AlertDescription>
+            This league has finished — thanks for participating! Submissions are now closed.
+            You can still view standings and past activity entries.
+          </AlertDescription>
+        </Alert>
+        <div>
+          <Button variant="outline" asChild>
+            <Link href={`/leagues/${leagueId}`}>Back to League</Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -648,7 +724,6 @@ export default function SubmitActivityPage({
         </Button>
       </div>
 
-      {/* Submission Type Tabs */}
       <Tabs value={submissionType} onValueChange={(v) => setSubmissionType(v as 'workout' | 'rest')} className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="workout" className="flex items-center gap-2">
@@ -711,9 +786,28 @@ export default function SubmitActivityPage({
                 <h2 className="font-semibold">Activity Details</h2>
               </div>
               <div className="p-4 space-y-4">
+                {selectedActivity?.admin_info && (
+                  <div className="p-3 rounded-md border-l-4 border-primary bg-primary/5 flex items-start gap-3">
+                    <Info className="size-5 text-primary mt-1" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Note</span>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button type="button" className="ml-2 text-xs text-muted-foreground underline">Read</button>
+                          </PopoverTrigger>
+                          <PopoverContent className="max-w-sm">
+                            <p className="text-sm whitespace-pre-wrap">{selectedActivity.admin_info}</p>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      <div className="text-sm text-muted-foreground mt-1 line-clamp-2">{selectedActivity.admin_info}</div>
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Duration - for most activities */}
-                  {formData.activity_type !== 'steps' && formData.activity_type !== 'golf' && (
+                  {/* Duration - for activities configured with 'duration' */}
+                  {selectedActivity?.measurement_type === 'duration' && (
                     <div className="space-y-2">
                       <Label htmlFor="duration">Duration (minutes) *</Label>
                       <Input
@@ -729,15 +823,15 @@ export default function SubmitActivityPage({
                             duration: e.target.value,
                           }))
                         }
-                        required={formData.activity_type !== 'steps' && formData.activity_type !== 'golf'}
+                        required={selectedActivity?.measurement_type === 'duration'}
                       />
                     </div>
                   )}
 
-                  {/* Distance - for cardio/run/cycling */}
-                  {['cardio', 'run', 'cycling', 'swimming'].includes(formData.activity_type) && (
+                  {/* Distance - for activities configured with 'distance' */}
+                  {selectedActivity?.measurement_type === 'distance' && (
                     <div className="space-y-2">
-                      <Label htmlFor="distance">Distance (km)</Label>
+                      <Label htmlFor="distance">Distance (km) *</Label>
                       <Input
                         id="distance"
                         type="number"
@@ -751,12 +845,13 @@ export default function SubmitActivityPage({
                             distance: e.target.value,
                           }))
                         }
+                        required={selectedActivity?.measurement_type === 'distance'}
                       />
                     </div>
                   )}
 
-                  {/* Steps - for steps activity */}
-                  {formData.activity_type === 'steps' && (
+                  {/* Steps - for activities configured with 'steps' */}
+                  {selectedActivity?.measurement_type === 'steps' && (
                     <div className="space-y-2">
                       <Label htmlFor="steps">Step Count *</Label>
                       <Input
@@ -771,13 +866,13 @@ export default function SubmitActivityPage({
                             steps: e.target.value,
                           }))
                         }
-                        required={formData.activity_type === 'steps'}
+                        required={selectedActivity?.measurement_type === 'steps'}
                       />
                     </div>
                   )}
 
-                  {/* Holes - for golf */}
-                  {formData.activity_type === 'golf' && (
+                  {/* Holes - for activities configured with 'hole' */}
+                  {selectedActivity?.measurement_type === 'hole' && (
                     <div className="space-y-2">
                       <Label htmlFor="holes">Holes Played *</Label>
                       <Input
@@ -793,7 +888,7 @@ export default function SubmitActivityPage({
                             holes: e.target.value,
                           }))
                         }
-                        required={formData.activity_type === 'golf'}
+                        required={selectedActivity?.measurement_type === 'hole'}
                       />
                     </div>
                   )}
@@ -918,13 +1013,14 @@ export default function SubmitActivityPage({
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Activity</span>
                     <span className="font-medium">
-                      {selectedActivity?.label || '—'}
+                      {selectedActivity?.activity_name || '—'}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">
-                      {formData.activity_type === 'steps' ? 'Steps' :
-                      formData.activity_type === 'golf' ? 'Holes' : 'Duration'}
+                      {selectedActivity?.measurement_type === 'steps' ? 'Steps' :
+                      selectedActivity?.measurement_type === 'hole' ? 'Holes' :
+                      selectedActivity?.measurement_type === 'distance' ? 'Distance' : 'Duration'}
                     </span>
                     <span className="font-medium">
                       {formData.activity_type === 'steps' && formData.steps ? `${formData.steps} steps` :
