@@ -1,5 +1,5 @@
 /**
- * POST /api/cron/auto-rest-day - Auto-assign rest days for missing submissions
+ * GET /api/cron/auto-rest-day - Auto-assign rest days for missing submissions
  * 
  * This cron job runs ONCE PER DAY at 11:00 UTC and processes leagues with auto_rest_day_enabled=true.
  * For each league member with rest days remaining:
@@ -134,10 +134,10 @@ async function hasEntryForDate(leagueMemberId: string, dateStr: string): Promise
 }
 
 // ============================================================================
-// POST Handler
+// GET Handler
 // ============================================================================
 
-export async function POST(req: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
     const startTs = new Date().toISOString();
     logCron('START', { at: startTs });
@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
 
     // Step 1: Get all active leagues with auto_rest_day_enabled = true
     // Note: Leagues table currently doesn't have timezone field, so we use UTC for now
-    // TODO: Add timezone column to leagues table for per-league timezone support
+    // TODO: (future-proofing)Add timezone column to leagues table for per-league timezone support
     const { data: enabledLeagues, error: leaguesError } = await supabase
       .from('leagues')
       .select('league_id, rest_days, status')
@@ -289,18 +289,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-// Also support GET for manual testing (development only)
-export async function GET(req: NextRequest) {
-  // In production, only allow POST from Vercel cron
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json(
-      { error: 'Use POST for cron execution' },
-      { status: 405 }
-    );
-  }
-
-  // In development, allow GET for testing
-  return POST(req);
 }
