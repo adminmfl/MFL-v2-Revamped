@@ -16,10 +16,10 @@ import { getSupabaseServiceRole } from '@/lib/supabase/client';
 const AUTO_APPROVE_HOURS = 48;
 
 // ============================================================================
-// POST Handler (Vercel Cron uses POST for cron jobs)
+// GET Handler (Vercel Cron natively uses GET)
 // ============================================================================
 
-export async function POST(req: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
     // Verify cron secret for security
     const authHeader = req.headers.get('authorization');
@@ -99,18 +99,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-// Also support GET for manual testing (development only)
-export async function GET(req: NextRequest) {
-  // In production, only allow POST from Vercel cron
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json(
-      { error: 'Use POST for cron execution' },
-      { status: 405 }
-    );
-  }
-
-  // In development, allow GET for testing
-  return POST(req);
 }
