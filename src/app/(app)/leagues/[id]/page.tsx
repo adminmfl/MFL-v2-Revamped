@@ -473,7 +473,7 @@ export default function LeagueDashboardPage({
         let leaderboardData: any = null;
         let totalPoints = points;
         let challengePoints = 0;
-        
+
         try {
           const tzOffsetMinutes = new Date().getTimezoneOffset();
           const ianaTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
@@ -482,10 +482,10 @@ export default function LeagueDashboardPage({
             `/api/leagues/${id}/leaderboard?${query}`,
             { credentials: 'include' }
           );
-          
+
           if (lbRes.ok) {
             leaderboardData = await lbRes.json();
-            
+
             // Extract team stats if teamId exists
             if (teamId) {
               const teams: Array<{ team_id: string; avg_rr: number; points?: number; total_points?: number }> =
@@ -502,9 +502,9 @@ export default function LeagueDashboardPage({
                     : null;
               teamPoints = typeof p === 'number' && Number.isFinite(p) ? Math.max(0, p) : null;
             }
-            
+
             // Extract individual stats for user's total points (includes challenge bonuses)
-            const individuals: Array<{ user_id?: string; points?: number }> = 
+            const individuals: Array<{ user_id?: string; points?: number }> =
               leaderboardData?.data?.individuals || leaderboardData?.data?.individualRankings || [];
             if (user && Array.isArray(individuals) && individuals.length > 0) {
               const mine = individuals.find((it) => String(it.user_id) === String(user.id));
@@ -584,42 +584,42 @@ export default function LeagueDashboardPage({
 
   const mySummaryStats = mySummary
     ? [
-        {
-          title: 'Points',
-          value: mySummary.totalPoints.toLocaleString(),
-          changeLabel: 'Your score',
-          description: `${mySummary.points.toLocaleString()} + ${mySummary.challengePoints.toLocaleString()} (workouts + challenges)`,
-          icon: Zap,
-        },
-        {
-          title: 'Avg RR',
-          value: mySummary.avgRR !== null ? mySummary.avgRR.toFixed(2) : '—',
-          changeLabel: 'Performance',
-          description: 'Average RR (approved)',
-          icon: TrendingUp,
-        },
-        {
-          title: 'Rest Days Used',
-          value: mySummary.restUsed.toLocaleString(),
-          changeLabel: 'So far',
-          description: 'Approved rest days',
-          icon: Timer,
-        },
-        {
-          title: 'Rest Days Unused',
-          value: mySummary.restUnused !== null ? mySummary.restUnused.toLocaleString() : '—',
-          changeLabel: 'Remaining',
-          description: 'From league allowance',
-          icon: Shield,
-        },
-        {
-          title: 'Days Missed',
-          value: mySummary.missedDays.toLocaleString(),
-          changeLabel: 'Since start',
-          description: 'No submission',
-          icon: Flame,
-        },
-      ]
+      {
+        title: 'Points',
+        value: mySummary.totalPoints.toLocaleString(),
+        changeLabel: 'Your score',
+        description: `${mySummary.points.toLocaleString()} + ${mySummary.challengePoints.toLocaleString()} (workouts + challenges)`,
+        icon: Zap,
+      },
+      {
+        title: 'Avg RR',
+        value: mySummary.avgRR !== null ? mySummary.avgRR.toFixed(2) : '—',
+        changeLabel: 'Performance',
+        description: 'Average RR (approved)',
+        icon: TrendingUp,
+      },
+      {
+        title: 'Rest Days Used',
+        value: mySummary.restUsed.toLocaleString(),
+        changeLabel: 'So far',
+        description: 'Approved rest days',
+        icon: Timer,
+      },
+      {
+        title: 'Rest Days Unused',
+        value: mySummary.restUnused !== null ? mySummary.restUnused.toLocaleString() : '—',
+        changeLabel: 'Remaining',
+        description: 'From league allowance',
+        icon: Shield,
+      },
+      {
+        title: 'Days Missed',
+        value: mySummary.missedDays.toLocaleString(),
+        changeLabel: 'Since start',
+        description: 'No submission',
+        icon: Flame,
+      },
+    ]
     : null;
 
   return (
@@ -691,24 +691,21 @@ export default function LeagueDashboardPage({
             <h2 className="text-lg font-semibold">My Summary</h2>
             <p className="text-sm text-muted-foreground">Your approved performance in this league.</p>
           </div>
-          <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-5">
+          <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-2 gap-3 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-5">
             {[1, 2, 3, 4, 5].map((index) => (
-              <Card key={index} className="@container/card">
-                <CardHeader>
-                  <CardDescription className="flex items-center gap-2">
+              <Card key={index} className="@container/card p-3 sm:p-6">
+                <CardHeader className="p-0 sm:p-6 sm:pb-2">
+                  <CardDescription className="flex items-center gap-2 text-xs sm:text-sm">
                     <Skeleton className="h-4 w-4" />
                     <Skeleton className="h-4 w-20" />
                   </CardDescription>
-                  <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                    <Skeleton className="h-8 w-16" />
+                  <CardTitle className="text-xl sm:text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                    <Skeleton className="h-6 sm:h-8 w-12 sm:w-16" />
                   </CardTitle>
-                  <CardAction>
-                    <Skeleton className="h-5 w-5 rounded-full" />
-                  </CardAction>
                 </CardHeader>
-                <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-3 w-32" />
+                <CardFooter className="flex-col items-start gap-1 p-0 pt-2 sm:p-6 sm:pt-0">
+                  <Skeleton className="h-3 sm:h-4 w-20 sm:w-24" />
+                  <Skeleton className="h-2 sm:h-3 w-24 sm:w-32" />
                 </CardFooter>
               </Card>
             ))}
@@ -737,28 +734,23 @@ export default function LeagueDashboardPage({
             <h2 className="text-lg font-semibold">My Summary</h2>
             <p className="text-sm text-muted-foreground">Your approved performance in this league.</p>
           </div>
-          <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-5">
+          <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-2 gap-3 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-5">
             {mySummaryStats.map((stat, index) => {
               const StatIcon = stat.icon;
               return (
-                <Card key={index} className="@container/card">
-                  <CardHeader>
-                    <CardDescription className="flex items-center gap-2">
-                      <StatIcon className="size-4" />
+                <Card key={index} className="@container/card p-3 sm:p-6">
+                  <CardHeader className="p-0 sm:p-6 sm:pb-2">
+                    <CardDescription className="flex items-center gap-2 text-xs sm:text-sm">
+                      <StatIcon className="size-3 sm:size-4" />
                       {stat.title}
                     </CardDescription>
-                    <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                    <CardTitle className="text-xl sm:text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
                       {stat.value}
                     </CardTitle>
-                    <CardAction>
-                      <Badge variant="outline" className="text-muted-foreground">
-                        <StatIcon className="size-3" />
-                      </Badge>
-                    </CardAction>
                   </CardHeader>
-                  <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                    <div className="line-clamp-1 flex gap-2 font-medium">{stat.changeLabel}</div>
-                    <div className="text-muted-foreground">{stat.description}</div>
+                  <CardFooter className="flex-col items-start gap-1 p-0 pt-2 sm:p-6 sm:pt-0">
+                    <div className="line-clamp-1 flex gap-2 font-medium text-xs sm:text-sm">{stat.changeLabel}</div>
+                    <div className="text-muted-foreground text-[10px] sm:text-sm line-clamp-1 w-full">{stat.description}</div>
                   </CardFooter>
                 </Card>
               );

@@ -136,6 +136,40 @@ export function getSidebarNavItems(
   });
 
   // ========================================
+  // PLAYER Section
+  // - Always shown for Captain (captain is always a player per PRD)
+  // - Shown for Host/Governor only if isAlsoPlayer is true
+  // - Always shown for Player role
+  // ========================================
+  const showPlayerSection =
+    role === 'player' ||
+    role === 'captain' || // Captain is always a player
+    ((role === 'host' || role === 'governor') && isAlsoPlayer);
+
+  if (showPlayerSection) {
+    sections.push({
+      title: 'Player',
+      items: [
+        {
+          title: 'My Submissions',
+          url: leagueUrl('/my-submissions'),
+          icon: ClipboardCheck,
+        },
+        {
+          title: 'Submit Activity',
+          url: leagueUrl('/submit'),
+          icon: Dumbbell,
+        },
+        {
+          title: 'My Team',
+          url: leagueUrl('/my-team-view'),
+          icon: Eye,
+        },
+      ],
+    });
+  }
+
+  // ========================================
   // LEAGUE Section (Role-specific items)
   // ========================================
   const leagueItems: NavItem[] = [
@@ -229,40 +263,6 @@ export function getSidebarNavItems(
           title: 'Team Submissions',
           url: leagueUrl('/my-team/submissions'),
           icon: ClipboardCheck,
-        },
-      ],
-    });
-  }
-
-  // ========================================
-  // PLAYER Section
-  // - Always shown for Captain (captain is always a player per PRD)
-  // - Shown for Host/Governor only if isAlsoPlayer is true
-  // - Always shown for Player role
-  // ========================================
-  const showPlayerSection =
-    role === 'player' ||
-    role === 'captain' || // Captain is always a player
-    ((role === 'host' || role === 'governor') && isAlsoPlayer);
-
-  if (showPlayerSection) {
-    sections.push({
-      title: 'Player',
-      items: [
-        {
-          title: 'My Submissions',
-          url: leagueUrl('/my-submissions'),
-          icon: ClipboardCheck,
-        },
-        {
-          title: 'Submit Activity',
-          url: leagueUrl('/submit'),
-          icon: Dumbbell,
-        },
-        {
-          title: 'My Team',
-          url: leagueUrl('/my-team-view'),
-          icon: Eye,
         },
       ],
     });

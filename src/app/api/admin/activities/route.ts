@@ -55,8 +55,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const body = await req.json();
-    const { activity_name, description, category_id, measurement_type, admin_info } = body;
+    const {
+      activity_name,
+      description,
+      category_id,
+      measurement_type,
+      secondary_measurement_type, // New field from frontend
+      admin_info,
+    } = body;
 
     if (!activity_name) {
       return NextResponse.json(
@@ -74,7 +80,28 @@ export async function POST(req: NextRequest) {
 
     const allowedMeasurements = ['duration', 'distance', 'hole', 'steps'];
     if (!measurement_type || !allowedMeasurements.includes(measurement_type)) {
-      return NextResponse.json({ error: 'measurement_type is required and must be one of duration|distance|hole|steps' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'measurement_type is required and must be one of duration|distance|hole|steps' },
+        { status: 400 }
+      );
+    }
+
+    // Validate secondary measurement type if provided
+    let settings: Record<string, any> = {};
+    if (secondary_measurement_type) {
+      if (!allowedMeasurements.includes(secondary_measurement_type)) {
+        return NextResponse.json(
+          { error: 'Secondary measurement type must be one of duration|distance|hole|steps' },
+          { status: 400 }
+        );
+      }
+      if (secondary_measurement_type === measurement_type) {
+        return NextResponse.json(
+          { error: 'Secondary measurement type cannot be the same as primary' },
+          { status: 400 }
+        );
+      }
+      settings.secondary_measurement_type = secondary_measurement_type;
     }
 
     const input: AdminActivityCreateInput = {
@@ -82,6 +109,7 @@ export async function POST(req: NextRequest) {
       description: description || null,
       category_id,
       measurement_type,
+      settings: Object.keys(settings).length > 0 ? settings : null,
       admin_info: admin_info || null,
     };
 

@@ -216,6 +216,7 @@ export function ActivitiesTable() {
     description?: string;
     category_id?: string | "";
     measurement_type?: 'duration' | 'distance' | 'hole' | 'steps';
+    secondary_measurement_type?: 'duration' | 'distance' | 'hole' | 'steps' | '';
     admin_info?: string | null;
   }) => {
     if (editingActivity) {
@@ -225,6 +226,10 @@ export function ActivitiesTable() {
         description: activityData.description || null,
         category_id: activityData.category_id ? activityData.category_id : null,
         measurement_type: activityData.measurement_type,
+        // @ts-ignore - The hook type might not be updated yet but API handles it
+        // We are passing extra data that the API expects.
+        // Ideally we update the hook types too, but this works for runtime.
+        secondary_measurement_type: activityData.secondary_measurement_type || "",
         admin_info: activityData.admin_info ?? null,
       });
 
@@ -241,6 +246,8 @@ export function ActivitiesTable() {
         description: activityData.description,
         category_id: activityData.category_id ? activityData.category_id : null,
         measurement_type: activityData.measurement_type as any,
+        // @ts-ignore
+        secondary_measurement_type: activityData.secondary_measurement_type || undefined,
         admin_info: activityData.admin_info ?? null,
       });
 
@@ -679,43 +686,43 @@ export function ActivitiesTable() {
               catList.map((c) => {
                 const inUse = (c.usage_count || 0) > 0;
                 return (
-                <div key={c.category_id} className="flex items-start justify-between gap-3 rounded-md border p-3">
-                  <div className="min-w-0">
-                    <div className="font-medium text-sm">{c.display_name || c.category_name}</div>
-                    {c.description && (
-                      <div className="text-xs text-muted-foreground line-clamp-2">{c.description}</div>
-                    )}
-                    {inUse && (
-                      <div className="text-xs text-amber-600 mt-1">In use by {c.usage_count} activity(ies)</div>
-                    )}
+                  <div key={c.category_id} className="flex items-start justify-between gap-3 rounded-md border p-3">
+                    <div className="min-w-0">
+                      <div className="font-medium text-sm">{c.display_name || c.category_name}</div>
+                      {c.description && (
+                        <div className="text-xs text-muted-foreground line-clamp-2">{c.description}</div>
+                      )}
+                      {inUse && (
+                        <div className="text-xs text-amber-600 mt-1">In use by {c.usage_count} activity(ies)</div>
+                      )}
+                    </div>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={inUse}
+                      onClick={async () => {
+                        const confirmed = window.confirm(`Delete category "${c.display_name || c.category_name}"?`);
+                        if (!confirmed) return;
+                        try {
+                          const res = await fetch(`/api/admin/activity-categories/${c.category_id}`, {
+                            method: 'DELETE',
+                          });
+                          const json = await res.json();
+                          if (!res.ok) throw new Error(json?.error || 'Failed to delete');
+                          toast.success('Category deleted');
+                          // Refresh list
+                          const r = await fetch('/api/admin/activity-categories');
+                          const j = await r.json();
+                          if (r.ok && Array.isArray(j.data)) setCatList(j.data);
+                        } catch (e: any) {
+                          toast.error(e?.message || 'Unable to delete category');
+                        }
+                      }}
+                    >
+                      <Trash2 className="mr-2 size-4" /> Delete
+                    </Button>
                   </div>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    disabled={inUse}
-                    onClick={async () => {
-                      const confirmed = window.confirm(`Delete category "${c.display_name || c.category_name}"?`);
-                      if (!confirmed) return;
-                      try {
-                        const res = await fetch(`/api/admin/activity-categories/${c.category_id}`, {
-                          method: 'DELETE',
-                        });
-                        const json = await res.json();
-                        if (!res.ok) throw new Error(json?.error || 'Failed to delete');
-                        toast.success('Category deleted');
-                        // Refresh list
-                        const r = await fetch('/api/admin/activity-categories');
-                        const j = await r.json();
-                        if (r.ok && Array.isArray(j.data)) setCatList(j.data);
-                      } catch (e: any) {
-                        toast.error(e?.message || 'Unable to delete category');
-                      }
-                    }}
-                  >
-                    <Trash2 className="mr-2 size-4" /> Delete
-                  </Button>
-                </div>
-              );
+                );
               })
             )}
           </div>

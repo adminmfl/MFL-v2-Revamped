@@ -21,7 +21,11 @@ export interface LeagueActivity {
     display_name: string;
   } | null;
   value: string; // Normalized name for workout_type
-  measurement_type?: 'duration' | 'distance' | 'hole' | 'steps';
+  measurement_type: 'duration' | 'distance' | 'hole' | 'steps';
+  settings?: {
+    secondary_measurement_type?: 'duration' | 'distance' | 'hole' | 'steps';
+    [key: string]: any;
+  } | null;
   admin_info?: string | null;
 }
 

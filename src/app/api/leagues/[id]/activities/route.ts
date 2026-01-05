@@ -25,6 +25,12 @@ export interface LeagueActivity {
     display_name: string;
   } | null;
   value: string; // Normalized name for workout_type (e.g., "run", "cycling")
+  measurement_type?: 'duration' | 'distance' | 'hole' | 'steps';
+  settings?: {
+    secondary_measurement_type?: 'duration' | 'distance' | 'hole' | 'steps';
+    [key: string]: any;
+  } | null;
+  admin_info?: string | null;
 }
 
 // ============================================================================
@@ -93,6 +99,7 @@ export async function GET(
           description,
           category_id,
           measurement_type,
+          settings,
           admin_info,
           activity_categories(category_id, category_name, display_name)
         )
@@ -120,6 +127,7 @@ export async function GET(
           category: activity.activity_categories,
           value: activity.activity_name,
           measurement_type: activity.measurement_type,
+          settings: activity.settings,
           admin_info: activity.admin_info,
         };
       });
@@ -135,6 +143,7 @@ export async function GET(
           description,
           category_id,
           measurement_type,
+          settings,
           admin_info,
           activity_categories(category_id, category_name, display_name)
         `)
@@ -149,6 +158,7 @@ export async function GET(
           category: a.activity_categories,
           value: a.activity_name,
           measurement_type: a.measurement_type,
+          settings: a.settings,
           admin_info: a.admin_info,
         }));
       }
