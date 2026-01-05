@@ -62,7 +62,7 @@ export async function getActivityById(activityId: string): Promise<AdminActivity
     const supabase = getSupabaseServiceRole();
     const { data, error } = await supabase
       .from('activities')
-      .select(`*, activity_categories(category_id, category_name, display_name, description, display_order)`) 
+      .select(`*, activity_categories(category_id, category_name, display_name, description, display_order)`)
       .eq('activity_id', activityId)
       .single();
 
@@ -73,9 +73,9 @@ export async function getActivityById(activityId: string): Promise<AdminActivity
 
     return data
       ? ({
-          ...data,
-          category: (data as any).activity_categories || null,
-        } as AdminActivity)
+        ...data,
+        category: (data as any).activity_categories || null,
+      } as AdminActivity)
       : null;
   } catch (err) {
     console.error('Error in getActivityById:', err);
@@ -94,7 +94,7 @@ export async function createActivity(
 ): Promise<AdminActivity | null> {
   try {
     const supabase = getSupabaseServiceRole();
-    
+
     // Verify admin access if token provided
     if (accessToken) {
       const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
@@ -113,7 +113,7 @@ export async function createActivity(
         console.error('Forbidden: Admin access required');
         return null;
       }
-      
+
       if (!createdBy) {
         createdBy = user.id;
       }
@@ -125,6 +125,7 @@ export async function createActivity(
         description: input.description || null,
         category_id: input.category_id || null,
         measurement_type: input.measurement_type,
+        settings: input.settings || {},
         admin_info: input.admin_info || null,
         created_by: createdBy || null,
       })
@@ -155,7 +156,7 @@ export async function updateActivity(
 ): Promise<AdminActivity | null> {
   try {
     const supabase = getSupabaseServiceRole();
-    
+
     // Verify admin access if token provided
     if (accessToken) {
       const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
@@ -174,7 +175,7 @@ export async function updateActivity(
         console.error('Forbidden: Admin access required');
         return null;
       }
-      
+
       if (!modifiedBy) {
         modifiedBy = user.id;
       }
@@ -184,6 +185,7 @@ export async function updateActivity(
       .update({
         ...input,
         category_id: input.category_id ?? null,
+        settings: input.settings,
         modified_by: modifiedBy || null,
         modified_date: new Date().toISOString(),
       })
@@ -211,7 +213,7 @@ export async function updateActivity(
 export async function deleteActivity(activityId: string, accessToken?: string): Promise<boolean> {
   try {
     const supabase = getSupabaseServiceRole();
-    
+
     // Verify admin access if token provided
     if (accessToken) {
       const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
