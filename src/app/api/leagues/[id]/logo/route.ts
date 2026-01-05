@@ -6,7 +6,7 @@ import { userHasAnyRole } from '@/lib/services/roles'
 import { getLeagueById, updateLeagueLogoUrl } from '@/lib/services/leagues'
 import { Buffer } from 'node:buffer'
 
-const BUCKET = 'league-logos'
+const BUCKET = process.env.NEXT_PUBLIC_LEAGUE_LOGOS_BUCKET || 'league-logos'
 const MAX_SIZE_BYTES = 2 * 1024 * 1024 // 2MB
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 

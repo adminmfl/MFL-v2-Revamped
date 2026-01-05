@@ -5,7 +5,7 @@ import { getSupabaseServiceRole } from '@/lib/supabase/client'
 import { userHasAnyRole } from '@/lib/services/roles'
 import { Buffer } from 'node:buffer'
 
-const BUCKET = 'team-logos'
+const BUCKET = process.env.NEXT_PUBLIC_TEAM_LOGOS_BUCKET || 'team-logos'
 const MAX_SIZE_BYTES = 2 * 1024 * 1024 // 2MB
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 
@@ -76,10 +76,10 @@ export async function DELETE(
     }
 
     const { error: updateError } = await supabase
-        .from('teamleagues')
-        .update({
-          logo_url: null,
-        })
+      .from('teamleagues')
+      .update({
+        logo_url: null,
+      })
       .eq('team_id', teamId)
       .eq('league_id', leagueId)
 
@@ -139,10 +139,10 @@ export async function POST(
     const logoUrl = publicData.publicUrl
 
     const { error: updateError } = await supabase
-        .from('teamleagues')
-        .update({
-          logo_url: logoUrl,
-        })
+      .from('teamleagues')
+      .update({
+        logo_url: logoUrl,
+      })
       .eq('team_id', teamId)
       .eq('league_id', leagueId)
 
