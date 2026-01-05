@@ -194,6 +194,10 @@ export interface AdminActivity {
   category_id?: string | null;
   category?: ActivityCategory | null;
   measurement_type: ActivityMeasurementType;
+  settings?: {
+    secondary_measurement_type?: ActivityMeasurementType;
+    [key: string]: any;
+  } | null;
   admin_info?: string | null;
   created_by?: string | null;
   created_date: string;
@@ -206,6 +210,10 @@ export interface AdminActivityCreateInput {
   description?: string | null;
   category_id?: string | null;
   measurement_type: ActivityMeasurementType;
+  settings?: {
+    secondary_measurement_type?: ActivityMeasurementType;
+    [key: string]: any;
+  } | null;
   admin_info?: string | null;
 }
 
@@ -214,6 +222,10 @@ export interface AdminActivityUpdateInput {
   description?: string | null;
   category_id?: string | null;
   measurement_type?: ActivityMeasurementType;
+  settings?: {
+    secondary_measurement_type?: ActivityMeasurementType;
+    [key: string]: any;
+  } | null;
   admin_info?: string | null;
 }
 

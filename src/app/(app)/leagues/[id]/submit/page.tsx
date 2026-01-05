@@ -284,24 +284,54 @@ export default function SubmitActivityPage({
     if (!selectedActivity) return 0;
     const activityValue = selectedActivity?.value || formData.activity_type;
 
-    // Simplified estimates based on backend RR calculation logic
-    if (activityValue === 'steps' && formData.steps) {
-      const steps = parseInt(formData.steps);
-      if (steps < 10000) return 0;
-      return Math.min(1 + (steps - 10000) / 10000, 2.0);
+    let maxRR = 0;
+
+    // Distance
+    if (formData.distance) {
+      const val = parseFloat(formData.distance);
+      if (!isNaN(val) && val > 0) {
+        // Generic approximation (4km = 1.0 RR)
+        maxRR = Math.max(maxRR, Math.min(val / 4.0, 2.0));
+      }
     }
 
-    if ((activityValue === 'golf' || selectedActivity?.measurement_type === 'hole') && formData.holes) {
-      const holes = parseInt(formData.holes);
-      return Math.min(holes / 9, 2.0);
+    // Steps
+    if (formData.steps) {
+      const val = parseInt(formData.steps);
+      if (!isNaN(val) && val >= 10000) {
+        maxRR = Math.max(maxRR, Math.min(1 + (val - 10000) / 10000, 2.0));
+      }
     }
 
+    // Holes
+    if (formData.holes) {
+      const val = parseInt(formData.holes);
+      if (!isNaN(val) && val > 0) {
+        maxRR = Math.max(maxRR, Math.min(val / 9, 2.0));
+      }
+    }
+
+    // Duration
     if (formData.duration) {
-      const duration = parseInt(formData.duration);
-      return Math.min(duration / 45, 2.0);
+      const val = parseInt(formData.duration);
+      if (!isNaN(val) && val > 0) {
+        maxRR = Math.max(maxRR, Math.min(val / 45, 2.0));
+      }
     }
 
-    return 1.0;
+    // If no metrics provided but activity selected, explicitly show 0 until input
+    if (maxRR === 0 && (formData.duration || formData.distance || formData.steps || formData.holes)) {
+      return 0;
+    }
+
+    // Default to 1.0 only if nothing entered yet? No, better to show 0.
+    // Actually existing logic returned 1.0 at end, maybe for 'rest' or just default?
+    // Let's return maxRR (which is 0 if empty) 
+    // BUT we want to avoid showing 0.0 RR if the user hasn't typed anything yet?
+    // The previous logic returned 1.0 at the end. Let's keep that behavior if nothing is entered to be safe?
+    // No, accurate is better.
+
+    return maxRR > 0 ? maxRR : 1.0;
   }, [selectedActivity, formData]);
 
   // Parse workout time from OCR text
@@ -397,33 +427,47 @@ export default function SubmitActivityPage({
       return;
     }
 
-    const requiredMetric = selectedActivity?.measurement_type || 'duration';
+    // Determine which metric is being used
+    const primaryMetric = selectedActivity?.measurement_type || 'duration';
+    const secondaryMetric = selectedActivity?.settings?.secondary_measurement_type;
 
-    if (requiredMetric === 'duration' && !formData.duration) {
-      toast.error('Please enter duration');
-      return;
-    }
-    if (requiredMetric === 'distance' && !formData.distance) {
-      toast.error('Please enter distance');
-      return;
-    }
-    if (requiredMetric === 'steps' && !formData.steps) {
-      toast.error('Please enter steps');
-      return;
-    }
-    if (requiredMetric === 'hole' && !formData.holes) {
-      toast.error('Please enter holes');
-      return;
+    // Check which fields have values
+    const hasPrimary = !!formData[primaryMetric as keyof typeof formData];
+    const hasSecondary = secondaryMetric ? !!formData[secondaryMetric as keyof typeof formData] : false;
+
+    // Validation: Exactly one must be provided
+    if (secondaryMetric) {
+      if (!hasPrimary && !hasSecondary) {
+        toast.error(`Please enter either ${primaryMetric} or ${secondaryMetric}`);
+        return;
+      }
+      if (hasPrimary && hasSecondary) {
+        toast.error(`Please enter ONLY ${primaryMetric} OR ${secondaryMetric}, not both`);
+        return;
+      }
+    } else {
+      // Single metric case
+      if (!hasPrimary) {
+        toast.error(`Please enter ${primaryMetric}`);
+        return;
+      }
     }
 
-    // Enforce RR eligibility: RR must be between 1 and 2.
-    // We use a backend preview so age-based thresholds match server logic.
+    // Determine effective metric for RR validation and submission
+    // If we have secondary, use that. If primary, use that.
+    // NOTE: The backend likely expects the specific field (duration/distance/etc) to be populated.
+    // We just need to make sure we don't send both if user somehow bypassed client check,
+    // though the payload construction below naturally handles what is in formData.
+
+    // Existing RR Validation Logic remains... but we need to ensure we validate based on the entered value.
     try {
       const previewPayload: Record<string, any> = {
         league_id: leagueId,
         type: 'workout',
         workout_type: formData.activity_type,
       };
+
+      // Only include the fields that have values (and clear 0s/empty)
       if (formData.duration) previewPayload.duration = parseInt(formData.duration);
       if (formData.distance) previewPayload.distance = parseFloat(formData.distance);
       if (formData.steps) previewPayload.steps = parseInt(formData.steps);
@@ -440,7 +484,7 @@ export default function SubmitActivityPage({
       }
       const canSubmit = Boolean(previewJson?.data?.canSubmit);
       if (!canSubmit) {
-        toast.error('Workout RR must be at least 1.0 to submit. Please increase duration/distance/steps.');
+        toast.error('Workout RR must be at least 1.0 to submit. Please increase your effort.');
         return;
       }
     } catch (err) {
@@ -486,29 +530,22 @@ export default function SubmitActivityPage({
         type: 'workout',
         workout_type: formData.activity_type,
         proof_url: proofUrl,
-        tzOffsetMinutes: new Date().getTimezoneOffset(), // Send user's timezone offset (same as new Date().getTimezoneOffset())
+        tzOffsetMinutes: new Date().getTimezoneOffset(), // Send user's timezone offset
         ianaTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
       };
 
-      // Add relevant metrics based on activity type
-      if (formData.duration) {
-        payload.duration = parseInt(formData.duration);
-      }
-      if (formData.distance) {
-        payload.distance = parseFloat(formData.distance);
-      }
-      if (formData.steps) {
-        payload.steps = parseInt(formData.steps);
-      }
-      if (formData.holes) {
-        payload.holes = parseInt(formData.holes);
-      }
-      
+      // Add relevant metrics based on what was entered
+      if (formData.duration) payload.duration = parseInt(formData.duration);
+      if (formData.distance) payload.distance = parseFloat(formData.distance);
+      if (formData.steps) payload.steps = parseInt(formData.steps);
+      if (formData.holes) payload.holes = parseInt(formData.holes);
+
+
       // Add notes if provided
       if (formData.notes) {
         payload.notes = formData.notes;
       }
-      
+
       // Add reupload_of if this is a resubmission
       if (resubmitId) {
         payload.reupload_of = resubmitId;
@@ -739,356 +776,401 @@ export default function SubmitActivityPage({
         {/* Workout Tab Content */}
         <TabsContent value="workout" className="mt-6">
           <form onSubmit={handleSubmit}>
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Main Form */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Activity Type */}
-            <div className="rounded-lg border">
-              <div className="border-b bg-muted/50 px-4 py-3">
-                <h2 className="font-semibold">Activity Type</h2>
-              </div>
-              <div className="p-4">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {activityTypes.map((type) => (
-                    <button
-                      key={type.value}
-                      type="button"
-                      onClick={() =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          activity_type: type.value,
-                        }))
-                      }
-                      className={cn(
-                        'p-3 rounded-lg border text-center transition-all hover:border-primary/50',
-                        formData.activity_type === type.value
-                          ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                          : 'border-border bg-background'
-                      )}
-                    >
-                      <span className="text-sm font-medium block">
-                        {type.label}
-                      </span>
-                      {type.description && (
-                        <span className="text-xs text-muted-foreground line-clamp-1">
-                          {type.description}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Activity Details */}
-            <div className="rounded-lg border">
-              <div className="border-b bg-muted/50 px-4 py-3">
-                <h2 className="font-semibold">Activity Details</h2>
-              </div>
-              <div className="p-4 space-y-4">
-                {selectedActivity?.admin_info && (
-                  <div className="p-3 rounded-md border-l-4 border-primary bg-primary/5 flex items-start gap-3">
-                    <Info className="size-5 text-primary mt-1" />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">Note</span>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button type="button" className="ml-2 text-xs text-muted-foreground underline">Read</button>
-                          </PopoverTrigger>
-                          <PopoverContent className="max-w-sm">
-                            <p className="text-sm whitespace-pre-wrap">{selectedActivity.admin_info}</p>
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      <div className="text-sm text-muted-foreground mt-1 line-clamp-2">{selectedActivity.admin_info}</div>
-                    </div>
+            <div className="grid gap-6 lg:grid-cols-3">
+              {/* Main Form */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Activity Type */}
+                <div className="rounded-lg border">
+                  <div className="border-b bg-muted/50 px-4 py-3">
+                    <h2 className="font-semibold">Activity Type</h2>
                   </div>
-                )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Duration - for activities configured with 'duration' */}
-                  {selectedActivity?.measurement_type === 'duration' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="duration">Duration (minutes) *</Label>
-                      <Input
-                        id="duration"
-                        type="number"
-                        min="1"
-                        max="300"
-                        placeholder="e.g., 45"
-                        value={formData.duration}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            duration: e.target.value,
-                          }))
-                        }
-                        required={selectedActivity?.measurement_type === 'duration'}
-                      />
-                    </div>
-                  )}
-
-                  {/* Distance - for activities configured with 'distance' */}
-                  {selectedActivity?.measurement_type === 'distance' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="distance">Distance (km) *</Label>
-                      <Input
-                        id="distance"
-                        type="number"
-                        min="0"
-                        step="0.1"
-                        placeholder="e.g., 5.5"
-                        value={formData.distance}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            distance: e.target.value,
-                          }))
-                        }
-                        required={selectedActivity?.measurement_type === 'distance'}
-                      />
-                    </div>
-                  )}
-
-                  {/* Steps - for activities configured with 'steps' */}
-                  {selectedActivity?.measurement_type === 'steps' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="steps">Step Count *</Label>
-                      <Input
-                        id="steps"
-                        type="number"
-                        min="1"
-                        placeholder="e.g., 10000"
-                        value={formData.steps}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            steps: e.target.value,
-                          }))
-                        }
-                        required={selectedActivity?.measurement_type === 'steps'}
-                      />
-                    </div>
-                  )}
-
-                  {/* Holes - for activities configured with 'hole' */}
-                  {selectedActivity?.measurement_type === 'hole' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="holes">Holes Played *</Label>
-                      <Input
-                        id="holes"
-                        type="number"
-                        min="1"
-                        max="36"
-                        placeholder="e.g., 18"
-                        value={formData.holes}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            holes: e.target.value,
-                          }))
-                        }
-                        required={selectedActivity?.measurement_type === 'hole'}
-                      />
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <Label>Activity Date</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal"
+                  <div className="p-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {activityTypes.map((type) => (
+                        <button
+                          key={type.value}
+                          type="button"
+                          onClick={() =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              activity_type: type.value,
+                            }))
+                          }
+                          className={cn(
+                            'p-3 rounded-lg border text-center transition-all hover:border-primary/50',
+                            formData.activity_type === type.value
+                              ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                              : 'border-border bg-background'
+                          )}
                         >
-                          <CalendarIcon className="mr-2 size-4" />
-                          {format(activityDate, 'PPP')}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={activityDate}
-                          onSelect={(date) => date && setActivityDate(date)}
-                          disabled={(date) => date > new Date()}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
+                          <span className="text-sm font-medium block">
+                            {type.label}
+                          </span>
+                          {type.description && (
+                            <span className="text-xs text-muted-foreground line-clamp-1">
+                              {type.description}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes (Optional)</Label>
-                  <Textarea
-                    id="notes"
-                    placeholder="Any details about your workout..."
-                    value={formData.notes}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, notes: e.target.value }))
-                    }
-                    rows={3}
-                  />
-                </div>
-              </div>
-            </div>
 
-            {/* Photo Upload */}
-            <div className="rounded-lg border">
-              <div className="border-b bg-muted/50 px-4 py-3">
-                <h2 className="font-semibold">Upload Proof Screenshot *</h2>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Upload a screenshot from your fitness app. We'll try to auto-extract duration.
-                </p>
-              </div>
-              <div className="p-4">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-
-                {imagePreview ? (
-                  <div className="relative">
-                    <img
-                      src={imagePreview}
-                      alt="Selected workout"
-                      className="w-full h-48 object-contain rounded-lg border bg-muted"
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-2 right-2"
-                      onClick={removeImage}
-                    >
-                      <X className="size-4" />
-                    </Button>
-                    <Badge className="absolute bottom-2 left-2 bg-amber-600">
-                      <CheckCircle2 className="size-3 mr-1" />
-                      Ready to upload
-                    </Badge>
+                {/* Activity Details */}
+                <div className="rounded-lg border">
+                  <div className="border-b bg-muted/50 px-4 py-3">
+                    <h2 className="font-semibold">Activity Details</h2>
                   </div>
-                ) : (
-                  <div
-                    onClick={handleUploadClick}
-                    className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary/50 transition-colors cursor-pointer"
-                  >
-                    {uploadingImage || ocrProcessing ? (
-                      <>
-                        <Loader2 className="size-8 mx-auto text-primary mb-2 animate-spin" />
-                        <p className="text-sm font-medium mb-1">
-                          {uploadingImage ? 'Uploading...' : 'Processing image...'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {ocrProcessing ? 'Extracting workout data' : 'Please wait'}
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <ImageIcon className="size-8 mx-auto text-muted-foreground mb-2" />
-                        <p className="text-sm font-medium mb-1">
-                          Upload workout screenshot
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          PNG, JPG, GIF, WebP - Max 10MB
-                        </p>
-                      </>
+                  <div className="p-4 space-y-4">
+                    {selectedActivity?.admin_info && (
+                      <div className="p-3 rounded-md border-l-4 border-primary bg-primary/5 flex items-start gap-3">
+                        <Info className="size-5 text-primary mt-1" />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Note</span>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button type="button" className="ml-2 text-xs text-muted-foreground underline">Read</button>
+                              </PopoverTrigger>
+                              <PopoverContent className="max-w-sm">
+                                <p className="text-sm whitespace-pre-wrap">{selectedActivity.admin_info}</p>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                          <div className="text-sm text-muted-foreground mt-1 line-clamp-2">{selectedActivity.admin_info}</div>
+                        </div>
+                      </div>
                     )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+                    {/* Activity Data Inputs */}
+                    <div className="rounded-lg border">
+                      <div className="border-b bg-muted/50 px-4 py-3">
+                        <h2 className="font-semibold">Workout Data</h2>
+                      </div>
+                      <div className="p-4 space-y-4">
+                        {(() => {
+                          const primary = selectedActivity?.measurement_type || 'duration';
+                          const secondary = selectedActivity?.settings?.secondary_measurement_type;
 
-          {/* Sidebar */}
-          <div>
-            <div className="rounded-lg border sticky top-6">
-              <div className="border-b bg-muted/50 px-4 py-3">
-                <h2 className="font-semibold">Summary</h2>
-              </div>
-              <div className="p-4 space-y-4">
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Activity</span>
-                    <span className="font-medium">
-                      {selectedActivity?.activity_name || '—'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">
-                      {selectedActivity?.measurement_type === 'steps' ? 'Steps' :
-                      selectedActivity?.measurement_type === 'hole' ? 'Holes' :
-                      selectedActivity?.measurement_type === 'distance' ? 'Distance' : 'Duration'}
-                    </span>
-                    <span className="font-medium">
-                      {formData.activity_type === 'steps' && formData.steps ? `${formData.steps} steps` :
-                      formData.activity_type === 'golf' && formData.holes ? `${formData.holes} holes` :
-                      formData.duration ? `${formData.duration} min` : '—'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Date</span>
-                    <span className="font-medium">
-                      {format(activityDate, 'MMM d, yyyy')}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Proof</span>
-                    <span className="font-medium">
-                      {selectedFile ? (
-                        <span className="text-amber-600">Selected</span>
+                          const renderInput = (type: string, isSecondary: boolean = false) => {
+                            let label = '';
+                            let placeholder = '';
+                            let unit = '';
+                            // Map 'hole' measurement type to 'holes' form field
+                            const formKey = type === 'hole' ? 'holes' : type;
+
+                            switch (type) {
+                              case 'duration':
+                                label = 'Duration';
+                                placeholder = '45';
+                                unit = 'minutes';
+                                break;
+                              case 'distance':
+                                label = 'Distance';
+                                placeholder = '5.2';
+                                unit = 'km';
+                                break;
+                              case 'steps':
+                                label = 'Steps';
+                                placeholder = '5000';
+                                unit = 'steps';
+                                break;
+                              case 'hole':
+                                label = 'Holes';
+                                placeholder = '9';
+                                unit = 'holes';
+                                break;
+                            }
+
+                            return (
+                              <div key={type} className="space-y-2">
+                                <Label htmlFor={type}>{label}</Label>
+                                <div className="relative group">
+                                  <Input
+                                    id={type}
+                                    type="number"
+                                    min="0"
+                                    step={type === 'distance' ? '0.01' : '1'}
+                                    placeholder={placeholder}
+                                    value={formData[formKey as keyof typeof formData]}
+                                    onChange={(e) =>
+                                      setFormData((prev) => ({ ...prev, [formKey]: e.target.value }))
+                                    }
+                                    className="pr-16" // Add padding to prevent text overlap with unit
+                                  />
+                                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 border-l bg-muted/50 text-muted-foreground rounded-r-md px-3 text-sm">
+                                    {unit}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          };
+
+                          return (
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="text-sm text-muted-foreground flex items-center gap-1">
+                                  {secondary ? 'Choose one metric to submit' : 'Enter workout details'}
+                                  {secondary && (
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <button type="button" className="inline-flex items-center justify-center p-1 hover:bg-muted rounded-full transition-colors">
+                                          <Info className="size-4 text-muted-foreground" />
+                                          <span className="sr-only">Info</span>
+                                        </button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="max-w-xs text-sm" align="start">
+                                        You can submit your workout using either <strong>{primary}</strong> or <strong>{secondary}</strong>. Please maximize one metric and leave the other blank.
+                                      </PopoverContent>
+                                    </Popover>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col md:flex-row gap-4 items-start">
+                                <div className="flex-1 w-full">
+                                  {renderInput(primary)}
+                                </div>
+
+                                {secondary && (
+                                  <>
+                                    <div className="flex items-center justify-center md:h-[68px] md:pt-6">
+                                      <div className="bg-muted text-muted-foreground text-xs font-semibold px-2 py-1 rounded-full">
+                                        OR
+                                      </div>
+                                    </div>
+                                    <div className="flex-1 w-full">
+                                      {renderInput(secondary, true)}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        <div className="space-y-2">
+                          <Label htmlFor="notes">Notes (Optional)</Label>
+                          <Textarea
+                            id="notes"
+                            placeholder="How did it feel?"
+                            rows={2}
+                            value={formData.notes}
+                            onChange={(e) =>
+                              setFormData((prev) => ({ ...prev, notes: e.target.value }))
+                            }
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Activity Date</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="w-full justify-start text-left font-normal"
+                              >
+                                <CalendarIcon className="mr-2 size-4" />
+                                {format(activityDate, 'PPP')}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={activityDate}
+                                onSelect={(date) => date && setActivityDate(date)}
+                                disabled={(date) => date > new Date()}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      </div>
+                    </div>      </div>
+
+                  {/* Photo Upload */}
+                  <div className="rounded-lg border">
+                    <div className="border-b bg-muted/50 px-4 py-3">
+                      <h2 className="font-semibold">Upload Proof Screenshot *</h2>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Upload a screenshot from your fitness app. We'll try to auto-extract duration.
+                      </p>
+                    </div>
+                    <div className="p-4">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+
+                      {imagePreview ? (
+                        <div className="relative">
+                          <img
+                            src={imagePreview}
+                            alt="Selected workout"
+                            className="w-full h-48 object-contain rounded-lg border bg-muted"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-2 right-2"
+                            onClick={removeImage}
+                          >
+                            <X className="size-4" />
+                          </Button>
+                          <Badge className="absolute bottom-2 left-2 bg-amber-600">
+                            <CheckCircle2 className="size-3 mr-1" />
+                            Ready to upload
+                          </Badge>
+                        </div>
                       ) : (
-                        <span className="text-muted-foreground">None</span>
+                        <div
+                          onClick={handleUploadClick}
+                          className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                        >
+                          {uploadingImage || ocrProcessing ? (
+                            <>
+                              <Loader2 className="size-8 mx-auto text-primary mb-2 animate-spin" />
+                              <p className="text-sm font-medium mb-1">
+                                {uploadingImage ? 'Uploading...' : 'Processing image...'}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {ocrProcessing ? 'Extracting workout data' : 'Please wait'}
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <ImageIcon className="size-8 mx-auto text-muted-foreground mb-2" />
+                              <p className="text-sm font-medium mb-1">
+                                Upload workout screenshot
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                PNG, JPG, GIF, WebP - Max 10MB
+                              </p>
+                            </>
+                          )}
+                        </div>
                       )}
-                    </span>
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                <Separator />
-
-                {/* RR Estimate */}
-                <div className="p-3 rounded-lg bg-muted/50">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      Estimated RR
-                    </span>
-                    <span className="text-xl font-bold text-primary">
-                      ~{estimatedRR.toFixed(1)} RR
-                    </span>
+              {/* Sidebar */}
+              <div>
+                <div className="rounded-lg border sticky top-6">
+                  <div className="border-b bg-muted/50 px-4 py-3">
+                    <h2 className="font-semibold">Summary</h2>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Final RR calculated on submission
-                  </p>
+                  <div className="p-4 space-y-4">
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Activity</span>
+                        <span className="font-medium">
+                          {selectedActivity?.activity_name || '—'}
+                        </span>
+                      </div>
+                      {/* Dynamic Summary Rows */}
+                      {formData.distance && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Distance</span>
+                          <span className="font-medium">{formData.distance} km</span>
+                        </div>
+                      )}
+                      {formData.duration && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Duration</span>
+                          <span className="font-medium">{formData.duration} min</span>
+                        </div>
+                      )}
+                      {formData.steps && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Steps</span>
+                          <span className="font-medium">{formData.steps} steps</span>
+                        </div>
+                      )}
+                      {formData.holes && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Holes</span>
+                          <span className="font-medium">{formData.holes} holes</span>
+                        </div>
+                      )}
+
+                      {/* Fallback if nothing entered */}
+                      {!formData.distance && !formData.duration && !formData.steps && !formData.holes && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">
+                            {selectedActivity?.measurement_type === 'steps' ? 'Steps' :
+                              selectedActivity?.measurement_type === 'hole' ? 'Holes' :
+                                selectedActivity?.measurement_type === 'distance' ? 'Distance' : 'Duration'}
+                          </span>
+                          <span className="font-medium">—</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Date</span>
+                        <span className="font-medium">
+                          {format(activityDate, 'MMM d, yyyy')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Proof</span>
+                        <span className="font-medium">
+                          {selectedFile ? (
+                            <span className="text-amber-600">Selected</span>
+                          ) : (
+                            <span className="text-muted-foreground">None</span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* RR Estimate */}
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">
+                          Estimated RR
+                        </span>
+                        <span className="text-xl font-bold text-primary">
+                          ~{estimatedRR.toFixed(1)} RR
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Final RR calculated on submission
+                      </p>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={loading || uploadingImage || !formData.activity_type || !selectedFile}
+                    >
+                      {loading || uploadingImage ? (
+                        <>
+                          <Loader2 className="mr-2 size-4 animate-spin" />
+                          {uploadingImage ? 'Uploading proof...' : 'Submitting...'}
+                        </>
+                      ) : (
+                        <>
+                          Submit Activity
+                          <ArrowRight className="ml-2 size-4" />
+                        </>
+                      )}
+                    </Button>
+
+                    <p className="text-xs text-muted-foreground">
+                      Your submission will be reviewed by your team captain before
+                      points are awarded.
+                    </p>
+                  </div>
                 </div>
-
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={loading || uploadingImage || !formData.activity_type || !selectedFile}
-                >
-                  {loading || uploadingImage ? (
-                    <>
-                      <Loader2 className="mr-2 size-4 animate-spin" />
-                      {uploadingImage ? 'Uploading proof...' : 'Submitting...'}
-                    </>
-                  ) : (
-                    <>
-                      Submit Activity
-                      <ArrowRight className="ml-2 size-4" />
-                    </>
-                  )}
-                </Button>
-
-                <p className="text-xs text-muted-foreground">
-                  Your submission will be reviewed by your team captain before
-                  points are awarded.
-                </p>
               </div>
             </div>
-          </div>
-        </div>
           </form>
         </TabsContent>
 
@@ -1354,16 +1436,18 @@ export default function SubmitActivityPage({
       </AlertDialog>
 
       {/* Success Dialog with Confetti */}
-      {showConfetti && (
-        <Confetti
-          width={windowSize.width}
-          height={windowSize.height}
-          recycle={false}
-          numberOfPieces={500}
-          gravity={0.2}
-          colors={['#22c55e', '#10b981', '#14b8a6', '#6366f1', '#8b5cf6', '#f59e0b']}
-        />
-      )}
+      {
+        showConfetti && (
+          <Confetti
+            width={windowSize.width}
+            height={windowSize.height}
+            recycle={false}
+            numberOfPieces={500}
+            gravity={0.2}
+            colors={['#22c55e', '#10b981', '#14b8a6', '#6366f1', '#8b5cf6', '#f59e0b']}
+          />
+        )
+      }
 
       <Dialog open={submitted} onOpenChange={(open) => !open && handleSubmitAnother()}>
         <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
@@ -1374,8 +1458,8 @@ export default function SubmitActivityPage({
                 submittedData?.isExemption
                   ? "bg-gradient-to-br from-amber-400 to-orange-600"
                   : submittedData?.isRestDay
-                  ? "bg-gradient-to-br from-blue-400 to-indigo-600"
-                  : "bg-gradient-to-br from-green-400 to-emerald-600"
+                    ? "bg-gradient-to-br from-blue-400 to-indigo-600"
+                    : "bg-gradient-to-br from-green-400 to-emerald-600"
               )}>
                 {submittedData?.isRestDay ? (
                   <Moon className="size-10 text-white" />
@@ -1388,15 +1472,15 @@ export default function SubmitActivityPage({
               {submittedData?.isExemption
                 ? 'Exemption Request Submitted!'
                 : submittedData?.isRestDay
-                ? 'Rest Day Logged!'
-                : 'Activity Submitted!'}
+                  ? 'Rest Day Logged!'
+                  : 'Activity Submitted!'}
             </DialogTitle>
             <DialogDescription className="text-base">
               {submittedData?.isExemption
                 ? 'Your rest day exemption request has been submitted and is awaiting approval from your Captain or Governor.'
                 : submittedData?.isRestDay
-                ? 'Your rest day has been logged and is pending validation.'
-                : 'Your workout has been submitted and is pending validation by your team captain.'}
+                  ? 'Your rest day has been logged and is pending validation.'
+                  : 'Your workout has been submitted and is pending validation by your team captain.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -1435,6 +1519,6 @@ export default function SubmitActivityPage({
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }

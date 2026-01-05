@@ -27,6 +27,7 @@ interface ActivityFormData {
   description: string;
   category_id: string | "";
   measurement_type: 'duration' | 'distance' | 'hole' | 'steps';
+  secondary_measurement_type?: 'duration' | 'distance' | 'hole' | 'steps' | '';
   admin_info?: string;
 }
 
@@ -62,6 +63,7 @@ export function ActivityFormDialog({
     description: "",
     category_id: "",
     measurement_type: 'duration',
+    secondary_measurement_type: "",
     admin_info: "",
   });
 
@@ -72,6 +74,7 @@ export function ActivityFormDialog({
         description: activity.description || "",
         category_id: activity.category_id || "",
         measurement_type: activity.measurement_type || 'duration',
+        secondary_measurement_type: activity.settings?.secondary_measurement_type || "",
         admin_info: activity.admin_info || "",
       });
     } else if (open && !activity) {
@@ -80,6 +83,7 @@ export function ActivityFormDialog({
         description: "",
         category_id: "",
         measurement_type: 'duration',
+        secondary_measurement_type: "",
         admin_info: "",
       });
     }
@@ -116,7 +120,7 @@ export function ActivityFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Edit Activity" : "Create Activity"}</DialogTitle>
           <DialogDescription>
@@ -145,13 +149,13 @@ export function ActivityFormDialog({
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Describe the activity..."
-                rows={4}
+                rows={3}
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="measurement_type">Measurement Type *</Label>
+                <Label htmlFor="measurement_type">Primary Measurement *</Label>
                 <select
                   id="measurement_type"
                   required
@@ -167,20 +171,37 @@ export function ActivityFormDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="admin_info">Admin Info (visible to users before upload)</Label>
-                <Textarea
-                  id="admin_info"
-                  value={formData.admin_info}
-                  onChange={(e) => setFormData({ ...formData, admin_info: e.target.value })}
-                  placeholder="Optional guidance users will see before uploading for this activity..."
-                  rows={3}
-                />
+                <Label htmlFor="secondary_measurement_type">Secondary (Optional)</Label>
+                <select
+                  id="secondary_measurement_type"
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  value={formData.secondary_measurement_type}
+                  onChange={(e) => setFormData({ ...formData, secondary_measurement_type: e.target.value as any })}
+                >
+                  <option value="">None</option>
+                  <option value="duration" disabled={formData.measurement_type === 'duration'}>Duration</option>
+                  <option value="distance" disabled={formData.measurement_type === 'distance'}>Distance</option>
+                  <option value="hole" disabled={formData.measurement_type === 'hole'}>Hole</option>
+                  <option value="steps" disabled={formData.measurement_type === 'steps'}>Steps</option>
+                </select>
+                <p className="text-[10px] text-muted-foreground">User can enter EITHER primary OR secondary.</p>
               </div>
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="admin_info">Admin Info (visible to users before upload)</Label>
+              <Textarea
+                id="admin_info"
+                value={formData.admin_info}
+                onChange={(e) => setFormData({ ...formData, admin_info: e.target.value })}
+                placeholder="Optional guidance users will see before uploading for this activity..."
+                rows={2}
+              />
+            </div>
+
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="category">Category</Label>
+                <Label htmlFor="category">Category *</Label>
                 <Button type="button" size="sm" variant="ghost" onClick={() => setNewCatOpen(true)}>
                   + New Category
                 </Button>
@@ -229,6 +250,7 @@ export function ActivityFormDialog({
               )}
             </Button>
           </DialogFooter>
+
         </form>
       </DialogContent>
       {/* New Category Dialog */}
@@ -271,7 +293,7 @@ export function ActivityFormDialog({
                     const r = await fetch('/api/admin/activity-categories');
                     const j = await r.json();
                     if (r.ok && Array.isArray(j.data)) setCategories(j.data);
-                  } catch {}
+                  } catch { }
                   setFormData((prev) => ({ ...prev, category_id: json.data.category_id as string }));
                   setNewCatOpen(false);
                   setNewCatName('');

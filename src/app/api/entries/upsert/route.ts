@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     if (!date) {
       return NextResponse.json({ error: "date is required" }, { status: 400 });
     }
-      const normalizedDate = normalizeDateOnly(date);
+    const normalizedDate = normalizeDateOnly(date);
 
     // Allow submissions only for today unless this is an explicit reupload of a rejected entry
     // Use user's timezone to calculate "today" correctly. We prefer friendly IANA tz strings but
@@ -259,30 +259,46 @@ export async function POST(req: NextRequest) {
     // Calculate RR value based on activity type
     if (type === 'rest') {
       payload.rr_value = 1.0;
-    } else if (workout_type === 'steps' && steps) {
-      if (steps < minSteps) {
-        payload.rr_value = 0;
-      } else {
-        const capped = Math.min(steps, maxSteps);
-        payload.rr_value = Math.min(1 + (capped - minSteps) / (maxSteps - minSteps), 2.0);
-      }
-    } else if (workout_type === 'golf' && holes) {
-      payload.rr_value = Math.min(holes / 9, 2.0);
-    } else if (workout_type === 'run' || workout_type === 'cardio') {
-      const rrDur = typeof duration === 'number' ? duration / baseDuration : 0;
-      const rrDist = typeof distance === 'number' ? distance / 4 : 0;
-      const rr = Math.max(rrDur, rrDist);
-      payload.rr_value = Math.min(rr, 2.0);
-    } else if (workout_type === 'cycling') {
-      const rrDur = typeof duration === 'number' ? duration / baseDuration : 0;
-      const rrDist = typeof distance === 'number' ? distance / 10 : 0;
-      const rr = Math.max(rrDur, rrDist);
-      payload.rr_value = Math.min(rr, 2.0);
-    } else if (typeof duration === 'number') {
-      // Default for gym, yoga, swimming, strength, hiit, sports, etc.
-      payload.rr_value = Math.min(duration / baseDuration, 2.0);
     } else {
-      payload.rr_value = 1.0;
+      // Calculate RR for each metric if present
+      let rrSteps = 0;
+      let rrHoles = 0;
+      let rrDuration = 0;
+      let rrDistance = 0;
+
+      // Steps Calculation
+      if (typeof steps === 'number') {
+        if (steps >= minSteps) {
+          const capped = Math.min(steps, maxSteps);
+          rrSteps = Math.min(1 + (capped - minSteps) / (maxSteps - minSteps), 2.0);
+        }
+      }
+
+      // Holes Calculation
+      if (typeof holes === 'number') {
+        rrHoles = Math.min(holes / 9, 2.0);
+      }
+
+      // Duration Calculation
+      if (typeof duration === 'number' && duration > 0) {
+        rrDuration = Math.min(duration / baseDuration, 2.0);
+      }
+
+      // Distance Calculation
+      if (typeof distance === 'number' && distance > 0) {
+        // Use activity-specific logic if available for distance scaling
+        let distanceDivisor = 4; // Default for running/walking (4km = 1 RR)
+
+        if (workout_type === 'cycling') {
+          distanceDivisor = 10; // 10km = 1 RR for cycling
+        }
+
+        rrDistance = Math.min(distance / distanceDivisor, 2.0);
+      }
+
+      // Take the maximum of all calculated RRs
+      // This allows users to qualify via whichever metric is strongest
+      payload.rr_value = Math.max(rrSteps, rrHoles, rrDuration, rrDistance);
     }
 
     // Enforce RR rules: workouts must have RR between 1 and 2.

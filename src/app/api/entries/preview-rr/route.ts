@@ -91,29 +91,50 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    let rr_value = 1.0;
+    let rr_value = 0;
 
     if (type === 'rest') {
       rr_value = 1.0;
-    } else if (workout_type === 'steps' && typeof steps === 'number') {
-      if (steps < minSteps) {
-        rr_value = 0;
-      } else {
-        const capped = Math.min(steps, maxSteps);
-        rr_value = Math.min(1 + (capped - minSteps) / (maxSteps - minSteps), 2.0);
+    } else {
+      // Calculate RR for each metric if present
+      let rrSteps = 0;
+      let rrHoles = 0;
+      let rrDuration = 0;
+      let rrDistance = 0;
+
+      // Steps Calculation
+      if (typeof steps === 'number') {
+        if (steps >= minSteps) {
+          const capped = Math.min(steps, maxSteps);
+          rrSteps = Math.min(1 + (capped - minSteps) / (maxSteps - minSteps), 2.0);
+        }
       }
-    } else if (workout_type === 'golf' && typeof holes === 'number') {
-      rr_value = Math.min(holes / 9, 2.0);
-    } else if (workout_type === 'run' || workout_type === 'cardio') {
-      const rrDur = typeof duration === 'number' ? duration / baseDuration : 0;
-      const rrDist = typeof distance === 'number' ? distance / 4 : 0;
-      rr_value = Math.min(Math.max(rrDur, rrDist), 2.0);
-    } else if (workout_type === 'cycling') {
-      const rrDur = typeof duration === 'number' ? duration / baseDuration : 0;
-      const rrDist = typeof distance === 'number' ? distance / 10 : 0;
-      rr_value = Math.min(Math.max(rrDur, rrDist), 2.0);
-    } else if (typeof duration === 'number') {
-      rr_value = Math.min(duration / baseDuration, 2.0);
+
+      // Holes Calculation
+      if (typeof holes === 'number') {
+        rrHoles = Math.min(holes / 9, 2.0);
+      }
+
+      // Duration Calculation
+      if (typeof duration === 'number' && duration > 0) {
+        rrDuration = Math.min(duration / baseDuration, 2.0);
+      }
+
+      // Distance Calculation
+      if (typeof distance === 'number' && distance > 0) {
+        // Use activity-specific logic if available for distance scaling
+        let distanceDivisor = 4; // Default for running/walking (4km = 1 RR)
+
+        if (workout_type === 'cycling') {
+          distanceDivisor = 10; // 10km = 1 RR for cycling
+        }
+
+        rrDistance = Math.min(distance / distanceDivisor, 2.0);
+      }
+
+      // Take the maximum of all calculated RRs
+      // This allows users to qualify via whichever metric is strongest
+      rr_value = Math.max(rrSteps, rrHoles, rrDuration, rrDistance);
     }
 
     const canSubmit = type === 'rest' || rr_value >= 1.0;

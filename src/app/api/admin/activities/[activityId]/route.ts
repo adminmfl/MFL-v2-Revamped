@@ -75,10 +75,59 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       }
       input.measurement_type = body.measurement_type;
     }
+
+    // Handle secondary measurement type
+    if (body.secondary_measurement_type !== undefined) {
+      const allowed = ['duration', 'distance', 'hole', 'steps'];
+      // Allow passing null or empty string to clear it
+      if (body.secondary_measurement_type) {
+        if (!allowed.includes(body.secondary_measurement_type)) {
+          return NextResponse.json({ error: 'Invalid secondary_measurement_type' }, { status: 400 });
+        }
+
+        // Fetch current activity to check if secondary matches primary (if primary isn't being updated)
+        if (!input.measurement_type) {
+          const currentActivity = await getActivityById(activityId);
+          if (currentActivity?.measurement_type === body.secondary_measurement_type) {
+            return NextResponse.json({ error: 'Secondary measurement type cannot be the same as primary' }, { status: 400 });
+          }
+        } else if (input.measurement_type === body.secondary_measurement_type) {
+          return NextResponse.json({ error: 'Secondary measurement type cannot be the same as primary' }, { status: 400 });
+        }
+
+        // Merge into settings
+        // Note: For a partial update, we might ideally want to merge with existing settings.
+        // But for now, we'll assume we are setting the specific key. 
+        // A safer way is to fetch existing settings first if we want to preserve other keys.
+        // Given we only use settings for this feature right now, constructing a new object is okay,
+        // BUT to be safe let's fetch first if we can, or just set it. 
+        // For simplicity in this Admin API pattern, we will fetch existing activity first if we want to act properly partial,
+        // but `updateActivity` in service just replaces fields. 
+        // Let's implement robustly: We will fetch the activity first to get current settings.
+
+        const currentActivity = await getActivityById(activityId);
+        const currentSettings = currentActivity?.settings || {};
+
+        input.settings = {
+          ...currentSettings,
+          secondary_measurement_type: body.secondary_measurement_type
+        };
+      } else {
+        // Clearing it
+        const currentActivity = await getActivityById(activityId);
+        const currentSettings = currentActivity?.settings || {};
+        const newSettings = { ...currentSettings };
+        delete newSettings.secondary_measurement_type;
+        input.settings = newSettings;
+      }
+    }
+
     if (body.admin_info !== undefined) input.admin_info = body.admin_info;
 
     const adminUserId = (session.user as any)?.id;
-    const activity = await updateActivity(activityId, input, adminUserId);
+    // FIX: Pass undefined for accessToken (2nd arg), adminUserId for modifiedBy (3rd arg)
+    // The service signature is: updateActivity(id, input, accessToken, modifiedBy)
+    const activity = await updateActivity(activityId, input, undefined, adminUserId);
 
     if (!activity) {
       return NextResponse.json({ error: 'Failed to update activity' }, { status: 500 });
