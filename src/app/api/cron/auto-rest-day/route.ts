@@ -124,13 +124,24 @@ async function getMemberRestDaysRemaining(
 async function hasEntryForDate(leagueMemberId: string, dateStr: string): Promise<boolean> {
   const supabase = getSupabaseServiceRole();
 
-  const { data } = await supabase
+  const { count, error } = await supabase
     .from('effortentry')
     .select('id', { count: 'exact', head: true })
     .eq('league_member_id', leagueMemberId)
     .eq('date', dateStr);
 
-  return !!data;
+  if (error) {
+    console.error(`${LOG_PREFIX} Error checking entries for date`, {
+      leagueMemberId,
+      dateStr,
+      error,
+    });
+    return false;
+  }
+
+  // If there is ANY entry for that date (workout or rest, any status),
+  // we should NOT auto-assign a rest day.
+  return (count ?? 0) > 0;
 }
 
 // ============================================================================
