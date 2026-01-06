@@ -5,6 +5,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { getClientCache, setClientCache } from '@/lib/client-cache';
 
 // ============================================================================
 // Types
@@ -136,7 +137,7 @@ export function useLeagueLeaderboard(
   const [rawTeams, setRawTeams] = useState<TeamRanking[] | undefined>(undefined);
   const [rawPendingWindow, setRawPendingWindow] = useState<PendingWindow | undefined>(undefined);
 
-  const fetchLeaderboard = useCallback(async () => {
+  const fetchLeaderboard = useCallback(async (force = false) => {
     if (!leagueId) {
       setData(null);
       setIsLoading(false);
@@ -158,6 +159,23 @@ export function useLeagueLeaderboard(
       }
 
       const url = `/api/leagues/${leagueId}/leaderboard${params.toString() ? `?${params.toString()}` : ''}`;
+
+      // Try in-memory cache first for snappy back/forward navigation.
+      const cacheKey = `leaderboard:${leagueId}:${dateRange.startDate || ''}:${dateRange.endDate || ''}`;
+      const cached = getClientCache<{
+        data: LeaderboardData | null;
+        rawTeams?: TeamRanking[];
+        rawPendingWindow?: PendingWindow;
+      }>(cacheKey);
+
+      if (!force && cached && cached.data) {
+        setData(cached.data);
+        setRawTeams(cached.rawTeams);
+        setRawPendingWindow(cached.rawPendingWindow);
+        setIsLoading(false);
+        return;
+      }
+
       const response = await fetch(url);
       const result = await response.json();
 
@@ -171,7 +189,8 @@ export function useLeagueLeaderboard(
 
       let data: LeaderboardData = result.data;
       // Snapshot raw data before normalization
-      setRawTeams(Array.isArray(data?.teams) ? data.teams : undefined);
+      const initialTeams = Array.isArray(data?.teams) ? data.teams : undefined;
+      setRawTeams(initialTeams);
       setRawPendingWindow(data?.pendingWindow);
 
       // Fetch normalization flag and team size variance from teams endpoint
@@ -265,6 +284,13 @@ export function useLeagueLeaderboard(
       }
 
       setData(data);
+
+      // Store in client cache for fast subsequent navigations.
+      setClientCache(cacheKey, {
+        data,
+        rawTeams: initialTeams,
+        rawPendingWindow: data?.pendingWindow,
+      });
     } catch (err) {
       console.error('Error fetching leaderboard:', err);
       setError(err instanceof Error ? err.message : 'Failed to load leaderboard');
@@ -289,7 +315,7 @@ export function useLeagueLeaderboard(
     rawPendingWindow,
     isLoading,
     error,
-    refetch: fetchLeaderboard,
+    refetch: () => fetchLeaderboard(true),
     setDateRange,
   };
 }
