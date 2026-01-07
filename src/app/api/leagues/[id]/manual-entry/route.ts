@@ -185,11 +185,16 @@ export async function POST(
 
     const { data: member, error: memberError } = await supabase
       .from('leaguemembers')
-      .select('league_id, user_id, users(date_of_birth)')
+      .select('league_id, user_id, users!leaguemembers_user_id_fkey(date_of_birth)')
       .eq('league_member_id', payload.league_member_id)
       .single();
 
     if (memberError || !member || member.league_id !== leagueId) {
+      console.error('manual-entry POST: member lookup failed', {
+        memberError,
+        foundMember: !!member,
+        leagueMismatch: member ? member.league_id !== leagueId : false,
+      });
       return NextResponse.json(
         { error: 'League member not found in this league' },
         { status: 404 }
