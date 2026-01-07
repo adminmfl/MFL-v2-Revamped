@@ -22,13 +22,15 @@ import {
   Zap,
   Medal,
   Timer,
-  TrendingUp
+  TrendingUp,
+  RefreshCw
 } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
 import { useAuth } from '@/hooks/use-auth';
 import { useRole } from '@/contexts/role-context';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { InviteDialog } from '@/components/league/invite-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -43,6 +45,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
+import { getClientCache, setClientCache } from '@/lib/client-cache';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -90,6 +93,7 @@ function formatWeekRange(startLocal: Date) {
 interface LeagueDetails {
   league_id: string;
   league_name: string;
+  logo_url?: string | null;
   description: string | null;
   start_date: string;
   end_date: string;
@@ -167,9 +171,25 @@ export default function LeagueDashboardPage({
     }
   }, [id, userLeagues, activeLeague, setActiveLeague]);
 
-  // Fetch league details and stats
-  React.useEffect(() => {
-    const fetchLeagueData = async () => {
+  const fetchLeagueData = React.useCallback(
+    async (force = false) => {
+      const cacheKey = `league-dashboard:${id}`;
+
+      if (!force) {
+        const cached = getClientCache<{
+          league: LeagueDetails;
+          stats: LeagueStats | null;
+          rejectedCount: number;
+        }>(cacheKey);
+        if (cached?.league) {
+          setLeague(cached.league);
+          setStats(cached.stats);
+          setRejectedCount(cached.rejectedCount);
+          setLoading(false);
+          return;
+        }
+      }
+
       try {
         setLoading(true);
 
@@ -184,19 +204,23 @@ export default function LeagueDashboardPage({
         if (!leagueRes.ok) throw new Error('Failed to fetch league');
 
         const leagueData = await leagueRes.json();
-        const leagueForTracking: LeagueDetails | null =
-          leagueData?.success && leagueData?.data ? (leagueData.data as LeagueDetails) : null;
         if (leagueData.success && leagueData.data) {
           setLeague(leagueData.data);
         } else {
           throw new Error('League not found');
         }
 
+        let nextStats: LeagueStats | null = null;
+        let nextRejected = 0;
+
         // Stats are optional, don't fail if they can't be fetched
         if (statsRes.ok) {
           const statsData = await statsRes.json();
           if (statsData.success && statsData.stats) {
+            nextStats = statsData.stats;
             setStats(statsData.stats);
+          } else {
+            setStats(null);
           }
 
           // Rejected reminder is best-effort: ignore auth/membership failures.
@@ -217,23 +241,38 @@ export default function LeagueDashboardPage({
               });
 
               const rejectedDays = Array.from(latestByDate.values()).filter((v) => v.status === 'rejected').length;
+              nextRejected = rejectedDays;
               setRejectedCount(rejectedDays);
             } else {
+              nextRejected = 0;
               setRejectedCount(0);
             }
           } else {
+            nextRejected = 0;
             setRejectedCount(0);
           }
+        } else {
+          setStats(null);
         }
+
+        setClientCache(cacheKey, {
+          league: leagueData.data as LeagueDetails,
+          stats: nextStats,
+          rejectedCount: nextRejected,
+        });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load league');
       } finally {
         setLoading(false);
       }
-    };
+    },
+    [id]
+  );
 
+  // Fetch league details and stats
+  React.useEffect(() => {
     fetchLeagueData();
-  }, [id]);
+  }, [fetchLeagueData]);
 
   // Week view (Sunday → Saturday) with navigation
   React.useEffect(() => {
@@ -646,8 +685,16 @@ export default function LeagueDashboardPage({
       {/* Header */}
       <div className="flex flex-col gap-4 px-4 lg:px-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
-          <div className="size-14 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shrink-0 shadow-lg">
-            <Trophy className="size-7 text-primary-foreground" />
+          <div className="size-14 rounded-xl p-1 flex items-center justify-center shrink-0 shadow-lg bg-background border border-border/60">
+            <Avatar className="size-full rounded-lg bg-background/80">
+              {league.logo_url ? (
+                <AvatarImage src={league.logo_url} alt={`${league.league_name} logo`} />
+              ) : (
+                <AvatarFallback className="rounded-lg bg-primary/20 text-primary-foreground font-semibold uppercase">
+                  {league.league_name?.slice(0, 2) || 'LG'}
+                </AvatarFallback>
+              )}
+            </Avatar>
           </div>
           <div>
             <div className="flex items-center gap-3 mb-1">
@@ -665,6 +712,10 @@ export default function LeagueDashboardPage({
         </div>
 
         <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={() => fetchLeagueData(true)}>
+            <RefreshCw className="mr-2 size-4" />
+            Refresh
+          </Button>
           {isHost && (
             <InviteDialog
               leagueId={league.league_id}
@@ -831,9 +882,6 @@ export default function LeagueDashboardPage({
                           <span className="text-foreground tabular-nums">
                             {typeof you === 'number' ? you.toFixed(2) : '—'}
                           </span>
-                          {youPoints !== null ? (
-                            <span className="tabular-nums">({youPoints.toLocaleString()} pt)</span>
-                          ) : null}
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-primary inline-block" />
@@ -841,9 +889,6 @@ export default function LeagueDashboardPage({
                           <span className="text-foreground tabular-nums">
                             {typeof team === 'number' ? team.toFixed(2) : '—'}
                           </span>
-                          {teamPoints !== null ? (
-                            <span className="tabular-nums">({teamPoints.toLocaleString()} pt)</span>
-                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -1106,7 +1151,7 @@ export default function LeagueDashboardPage({
 
           <div className="border-t p-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="flex flex-col gap-1 md:flex-col md:items-start">
+              <div className="flex flex-col gap-1 md:flex-col md:items-start min-w-0">
                 <span className="text-sm text-muted-foreground">Visibility</span>
                 <Badge variant={league.is_public ? 'default' : 'secondary'}>
                   {league.is_public ? (
@@ -1116,25 +1161,25 @@ export default function LeagueDashboardPage({
                   )}
                 </Badge>
               </div>
-              <div className="flex flex-col gap-1 md:flex-col md:items-start">
+              <div className="flex flex-col gap-1 md:flex-col md:items-start min-w-0">
 
                 <span className="text-sm text-muted-foreground">Join Type</span>
                 <Badge variant="outline">
                   {league.is_exclusive ? 'Invite Only' : 'Open'}
                 </Badge>
               </div>
-              <div className="flex flex-col gap-1 md:flex-col md:items-start">
+              <div className="flex flex-col gap-1 md:flex-col md:items-start min-w-0">
 
                 <span className="text-sm text-muted-foreground">Rest Days</span>
                 <Badge variant="outline">
                   {league.rest_days} per week
                 </Badge>
               </div>
-              <div className="flex flex-col gap-1 md:flex-col md:items-start">
+              <div className="flex flex-col gap-1 md:flex-col md:items-start min-w-0">
 
                 <span className="text-sm text-muted-foreground">Schedule</span>
-                <Badge variant="outline" className="text-xs">
-                  <Calendar className="size-3 mr-1" />
+                <Badge variant="outline" className="text-xs max-w-full whitespace-normal break-words text-left leading-tight flex items-center gap-1">
+                  <Calendar className="size-3" />
                   {formatDate(league.start_date)} - {formatDate(league.end_date)}
                 </Badge>
               </div>

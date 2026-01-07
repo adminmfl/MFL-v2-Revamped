@@ -47,6 +47,84 @@ function mapLeagueInputToDbUpdates(input: Partial<LeagueInput>): Record<string, 
 }
 
 /**
+ * Derive a UI-friendly status from stored status and schedule dates.
+ * Returns the derived status plus a flag indicating if we should persist it
+ * back to the DB (we only persist when transitioning to 'completed').
+ */
+export function deriveLeagueStatus(
+  league: { status?: string | null; start_date?: string | null; end_date?: string | null }
+): { derivedStatus: string; shouldPersist: boolean } {
+  const parseYmd = (ymd?: string | null): Date | null => {
+    if (!ymd) return null;
+    const m = /^\d{4}-\d{2}-\d{2}$/.exec(String(ymd));
+    if (!m) return null;
+    const [y, mo, d] = String(ymd).split('-').map((p) => Number(p));
+    if (!y || !mo || !d) return null;
+    const dt = new Date(y, mo - 1, d);
+    dt.setHours(0, 0, 0, 0);
+    return isNaN(dt.getTime()) ? null : dt;
+  };
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const startDt = parseYmd(league?.start_date || null);
+  const endDt = parseYmd(league?.end_date || null);
+
+  const rawStatus = String(league?.status || 'draft').toLowerCase();
+  let derivedStatus = rawStatus;
+
+  if (derivedStatus !== 'draft') {
+    if (startDt && endDt) {
+      if (today.getTime() > endDt.getTime()) {
+        derivedStatus = 'completed';
+      } else if (today.getTime() >= startDt.getTime() && today.getTime() <= endDt.getTime()) {
+        derivedStatus = 'active';
+      } else if (today.getTime() < startDt.getTime()) {
+        if (derivedStatus === 'scheduled' || derivedStatus === 'payment_pending') derivedStatus = 'launched';
+      }
+    } else if (endDt && today.getTime() > endDt.getTime()) {
+      derivedStatus = 'completed';
+    }
+  }
+
+  if (!['draft', 'launched', 'active', 'completed'].includes(derivedStatus)) {
+    if (derivedStatus === 'scheduled') derivedStatus = 'launched';
+    else if (derivedStatus === 'ended') derivedStatus = 'completed';
+  }
+
+  return {
+    derivedStatus,
+    shouldPersist: derivedStatus === 'completed' && rawStatus !== 'completed',
+  };
+}
+
+/**
+ * Persist a derived status back to the DB when appropriate.
+ * Currently only writes when moving into 'completed'.
+ */
+export async function persistLeagueStatusIfNeeded(
+  leagueId: string,
+  currentStatus: string | null,
+  derivedStatus: string
+): Promise<boolean> {
+  const normalizedCurrent = String(currentStatus || '').toLowerCase();
+  if (derivedStatus !== 'completed' || normalizedCurrent === 'completed') return false;
+
+  const { error } = await getSupabaseServiceRole()
+    .from('leagues')
+    .update({ status: derivedStatus, modified_date: new Date().toISOString() })
+    .eq('league_id', leagueId);
+
+  if (error) {
+    console.error(`Failed to persist league status for ${leagueId}:`, error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * Generate a unique 8-character invite code
  */
 function generateInviteCode(): string {
@@ -188,53 +266,15 @@ export async function getLeagueById(leagueId: string): Promise<League | null> {
       league_capacity: leagueCapacity,
     };
     
-    // Derive a user-facing status from the stored status and scheduled dates.
-    // Rules:
-    // - If the league is a draft, keep as 'draft'.
-    // - If the stored status indicates scheduled/launched/payment_pending,
-    //   derive 'active' when today's local date is between start_date and end_date.
-    // - If today's local date is after the end_date, present 'completed'.
-    // - Otherwise, preserve the stored status when it doesn't map to the simplified UI statuses.
-    const parseYmd = (ymd?: string | null): Date | null => {
-      if (!ymd) return null;
-      const m = /^\d{4}-\d{2}-\d{2}$/.exec(ymd);
-      if (!m) return null;
-      const [y, mo, d] = String(ymd).split('-').map((p) => Number(p));
-      if (!y || !mo || !d) return null;
-      const dt = new Date(y, mo - 1, d);
-      dt.setHours(0, 0, 0, 0);
-      return isNaN(dt.getTime()) ? null : dt;
-    };
+    // Derive the status for UI and persist completion back to DB when needed.
+    const { derivedStatus, shouldPersist } = deriveLeagueStatus(leagueWithCapacity);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const startDt = parseYmd(leagueWithCapacity.start_date);
-    const endDt = parseYmd(leagueWithCapacity.end_date);
-
-    let derivedStatus = String(leagueWithCapacity.status || '').toLowerCase();
-
-    // If the league has explicit draft, keep it.
-    if (derivedStatus === 'draft') {
-      // noop
-    } else if (startDt && endDt) {
-      if (today.getTime() > endDt.getTime()) {
-        derivedStatus = 'completed';
-      } else if (today.getTime() >= startDt.getTime() && today.getTime() <= endDt.getTime()) {
-        derivedStatus = 'active';
-      } else if (today.getTime() < startDt.getTime()) {
-        // Keep scheduled/launched mapping: prefer 'launched' for UI consistency
-        if (derivedStatus === 'scheduled' || derivedStatus === 'payment_pending') derivedStatus = 'launched';
-      }
-    } else if (endDt && today.getTime() > endDt.getTime()) {
-      derivedStatus = 'completed';
-    }
-
-    // Normalize to UI-friendly values (draft, launched, active, completed)
-    if (!['draft', 'launched', 'active', 'completed'].includes(derivedStatus)) {
-      // fallback mapping
-      if (derivedStatus === 'ended' || derivedStatus === 'ended' || derivedStatus === 'ended') derivedStatus = 'completed';
-      else if (derivedStatus === 'scheduled') derivedStatus = 'launched';
+    if (shouldPersist) {
+      await persistLeagueStatusIfNeeded(
+        leagueWithCapacity.league_id,
+        leagueWithCapacity.status,
+        derivedStatus
+      );
     }
 
     // Return league with possibly overridden status for UI consumers.
