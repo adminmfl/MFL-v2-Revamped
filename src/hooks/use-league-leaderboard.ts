@@ -5,7 +5,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getClientCache, setClientCache } from '@/lib/client-cache';
+import { getClientCache, setClientCache, invalidateClientCache } from '@/lib/client-cache';
 
 // ============================================================================
 // Types
@@ -162,18 +162,24 @@ export function useLeagueLeaderboard(
 
       // Try in-memory cache first for snappy back/forward navigation.
       const cacheKey = `leaderboard:${leagueId}:${dateRange.startDate || ''}:${dateRange.endDate || ''}`;
-      const cached = getClientCache<{
-        data: LeaderboardData | null;
-        rawTeams?: TeamRanking[];
-        rawPendingWindow?: PendingWindow;
-      }>(cacheKey);
+      
+      if (!force) {
+        const cached = getClientCache<{
+          data: LeaderboardData | null;
+          rawTeams?: TeamRanking[];
+          rawPendingWindow?: PendingWindow;
+        }>(cacheKey);
 
-      if (!force && cached && cached.data) {
-        setData(cached.data);
-        setRawTeams(cached.rawTeams);
-        setRawPendingWindow(cached.rawPendingWindow);
-        setIsLoading(false);
-        return;
+        if (cached && cached.data) {
+          setData(cached.data);
+          setRawTeams(cached.rawTeams);
+          setRawPendingWindow(cached.rawPendingWindow);
+          setIsLoading(false);
+          return;
+        }
+      } else {
+        // Invalidate cache before forced refresh to ensure fresh data
+        invalidateClientCache(cacheKey);
       }
 
       const response = await fetch(url);
