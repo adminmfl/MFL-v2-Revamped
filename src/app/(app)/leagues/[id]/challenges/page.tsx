@@ -21,7 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Upload, Plus, CheckCircle2, Clock3, XCircle, Shield, FileText, Trash2 } from 'lucide-react';
+import { Upload, Plus, CheckCircle2, Clock3, XCircle, Shield, FileText, Trash2, Share2, Copy } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -159,6 +159,10 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
   const [reviewFilterSubTeamId, setReviewFilterSubTeamId] = React.useState<string>('');
   const [teams, setTeams] = React.useState<Array<{ team_id: string; team_name: string }>>([]);
   const [subTeams, setSubTeams] = React.useState<Array<{ subteam_id: string; name: string }>>([]);
+  const [shareOpen, setShareOpen] = React.useState(false);
+  const [shareLink, setShareLink] = React.useState('');
+  const [shareChallengeName, setShareChallengeName] = React.useState('');
+  const [shareMessage, setShareMessage] = React.useState('');
   // Finish creation dialog state (for draft challenges)
   const [finishOpen, setFinishOpen] = React.useState(false);
   const [finishChallenge, setFinishChallenge] = React.useState<Challenge | null>(null);
@@ -193,6 +197,30 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
     if (!finishBase) return 0;
     return finishBase * ((finishTaxPercent || 0) / 100);
   }, [finishBase, finishTaxPercent]);
+
+  const handleOpenShare = React.useCallback(
+    (challenge: Challenge) => {
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const url = `${origin}/leagues/${leagueId}/challenges?challenge=${challenge.id}`;
+      setShareLink(url);
+      setShareChallengeName(challenge.name);
+      const base = 'A new challenge is online!';
+      const namePart = challenge.name ? ` ${challenge.name} is live.` : '';
+      const linkPart = url ? ` Jump in: ${url}` : '';
+      setShareMessage(`${base}${namePart}${linkPart}`.trim());
+      setShareOpen(true);
+    },
+    [leagueId]
+  );
+
+  const handleCopyShare = async () => {
+    try {
+      await navigator.clipboard.writeText(shareMessage || shareLink);
+      toast.success('Share message copied');
+    } catch (err) {
+      toast.error('Failed to copy link');
+    }
+  };
 
   const pricingPillClass = 'rounded-full border border-border bg-gray-100 px-3 py-1 text-xs font-medium text-foreground shadow-sm dark:border-white/15 dark:bg-white/5 dark:text-white/80';
   // Delete dialog state
@@ -876,6 +904,13 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                     Submit Proof
                   </Button>
 
+                  {challenge.status === 'active' && (
+                    <Button size="sm" variant="outline" onClick={() => handleOpenShare(challenge)}>
+                      <Share2 className="mr-2 size-4" />
+                      Share
+                    </Button>
+                  )}
+
                   {challenge.my_submission &&
                     submissionStatusBadge(challenge.my_submission.status)}
 
@@ -1366,6 +1401,46 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
               {finishing ? 'Processing...' : 'Pay & Activate'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Share Dialog */}
+      <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Share Challenge</DialogTitle>
+            <DialogDescription>
+              Send this link so others can open the challenge page directly.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-sm font-medium">Challenge</Label>
+              <p className="text-sm text-foreground">{shareChallengeName || 'Challenge'}</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="share-link">Shareable link</Label>
+              <div className="flex gap-2">
+                <Input id="share-link" value={shareLink} readOnly className="font-mono text-xs" />
+                <Button type="button" variant="outline" onClick={handleCopyShare}>
+                  <Copy className="mr-2 size-4" />
+                  Copy message
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="share-message">Preview message</Label>
+              <Textarea
+                id="share-message"
+                value={shareMessage}
+                onChange={(e) => setShareMessage(e.target.value)}
+                className="text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Edit the message before sharing; the link stays included.
+              </p>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

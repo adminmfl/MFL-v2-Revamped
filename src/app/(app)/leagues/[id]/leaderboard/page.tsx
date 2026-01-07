@@ -7,7 +7,6 @@
 import React, { use, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import {
-  Trophy,
   RefreshCw,
   AlertCircle,
   Calendar,
@@ -36,6 +35,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 import { useLeagueLeaderboard } from '@/hooks/use-league-leaderboard';
 import {
@@ -93,6 +93,30 @@ function TopPodium({ teams }: PodiumProps) {
   const second = teams[1];
   const third = teams[2];
 
+  const renderTeamAvatar = (
+    team: PodiumProps['teams'][number] | undefined,
+    theme: 'gold' | 'silver' | 'bronze'
+  ) => {
+    if (!team) return null;
+    const initials = team.team_name?.slice(0, 2)?.toUpperCase() || 'TM';
+    const themeClasses =
+      theme === 'gold'
+        ? 'bg-card text-amber-700 dark:text-amber-200 ring-4 ring-amber-200 dark:ring-amber-700/70'
+        : theme === 'silver'
+          ? 'bg-card text-gray-700 dark:text-gray-200 ring-4 ring-gray-300 dark:ring-gray-600'
+          : 'bg-card text-amber-800 dark:text-amber-100 ring-4 ring-amber-300/80 dark:ring-amber-800/70';
+
+    return (
+      <Avatar className={`size-16 mx-auto rounded-full ${themeClasses} flex items-center justify-center mb-3 overflow-hidden`}>
+        {team.logo_url ? (
+          <AvatarImage src={team.logo_url} alt={`${team.team_name} logo`} />
+        ) : (
+          <AvatarFallback className="rounded-full font-semibold">{initials}</AvatarFallback>
+        )}
+      </Avatar>
+    );
+  };
+
   return (
     <div className="grid grid-cols-3 gap-4">
       {/* 2nd Place */}
@@ -100,9 +124,7 @@ function TopPodium({ teams }: PodiumProps) {
         <CardContent className="p-4">
           {second ? (
             <>
-              <div className="size-14 mx-auto rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mb-3">
-                <Trophy className="size-7 text-gray-500" />
-              </div>
+              {renderTeamAvatar(second, 'silver')}
               <Badge className="bg-gray-400 text-white border-0 mb-2">2nd Place</Badge>
               <p className="font-semibold truncate">{second.team_name}</p>
               <p className="text-2xl font-bold text-muted-foreground tabular-nums">
@@ -121,9 +143,7 @@ function TopPodium({ teams }: PodiumProps) {
         <CardContent className="p-4">
           {first ? (
             <>
-              <div className="size-16 mx-auto rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center mb-3 -mt-2 ring-4 ring-amber-200 dark:ring-amber-800">
-                <Trophy className="size-9 text-amber-500" />
-              </div>
+              {renderTeamAvatar(first, 'gold')}
               <Badge className="bg-amber-500 text-white border-0 mb-2">1st Place</Badge>
               <p className="font-bold text-lg truncate">{first.team_name}</p>
               <p className="text-3xl font-bold text-amber-600 dark:text-amber-400 tabular-nums">
@@ -142,9 +162,7 @@ function TopPodium({ teams }: PodiumProps) {
         <CardContent className="p-4">
           {third ? (
             <>
-              <div className="size-14 mx-auto rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-3">
-                <Trophy className="size-7 text-amber-700" />
-              </div>
+              {renderTeamAvatar(third, 'bronze')}
               <Badge className="bg-amber-700 text-white border-0 mb-2">3rd Place</Badge>
               <p className="font-semibold truncate">{third.team_name}</p>
               <p className="text-2xl font-bold text-muted-foreground tabular-nums">

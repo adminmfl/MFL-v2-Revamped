@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 import { getSupabaseServiceRole } from '@/lib/supabase/client';
+import { deriveLeagueStatus, persistLeagueStatusIfNeeded } from '@/lib/services/leagues';
 
 // ============================================================================
 // GET /api/user/leagues
@@ -128,6 +129,8 @@ export async function GET() {
       }
     });
 
+    const pendingStatusUpdates: Promise<boolean>[] = [];
+
     // Build the response
     const leagues = (memberships || []).map((membership: any) => {
       const leagueId = membership.league_id;
@@ -145,44 +148,12 @@ export async function GET() {
 
       // Get league_capacity from tier map
       const leagueCapacity = league?.tier_id ? (tierCapacityMap.get(league.tier_id) || 20) : 20;
+      const { derivedStatus, shouldPersist } = deriveLeagueStatus(league || {});
 
-      // Derive a UI-friendly status based on start/end dates and stored status
-      const parseYmd = (ymd?: string | null): Date | null => {
-        if (!ymd) return null;
-        const m = /^\d{4}-\d{2}-\d{2}$/.exec(String(ymd));
-        if (!m) return null;
-        const [y, mo, d] = String(ymd).split('-').map((p) => Number(p));
-        if (!y || !mo || !d) return null;
-        const dt = new Date(y, mo - 1, d);
-        dt.setHours(0, 0, 0, 0);
-        return isNaN(dt.getTime()) ? null : dt;
-      };
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const startDt = parseYmd(league?.start_date || null);
-      const endDt = parseYmd(league?.end_date || null);
-
-      let derivedStatus = String(league?.status || 'draft').toLowerCase();
-      if (derivedStatus !== 'draft') {
-        if (startDt && endDt) {
-          if (today.getTime() > endDt.getTime()) {
-            derivedStatus = 'completed';
-          } else if (today.getTime() >= startDt.getTime() && today.getTime() <= endDt.getTime()) {
-            derivedStatus = 'active';
-          } else if (today.getTime() < startDt.getTime()) {
-            if (derivedStatus === 'scheduled' || derivedStatus === 'payment_pending') derivedStatus = 'launched';
-          }
-        } else if (endDt && today.getTime() > endDt.getTime()) {
-          derivedStatus = 'completed';
-        }
-      }
-
-      // Normalize to UI set
-      if (!['draft', 'launched', 'active', 'completed'].includes(derivedStatus)) {
-        if (derivedStatus === 'scheduled') derivedStatus = 'launched';
-        else if (derivedStatus === 'ended') derivedStatus = 'completed';
+      if (shouldPersist && leagueId) {
+        pendingStatusUpdates.push(
+          persistLeagueStatusIfNeeded(leagueId, league?.status || null, derivedStatus)
+        );
       }
 
       return {
@@ -209,6 +180,10 @@ export async function GET() {
     const uniqueLeagues = Array.from(
       new Map(leagues.map((l: any) => [l.league_id, l])).values()
     );
+
+    if (pendingStatusUpdates.length > 0) {
+      await Promise.allSettled(pendingStatusUpdates);
+    }
 
     return NextResponse.json({ leagues: uniqueLeagues });
   } catch (err) {
