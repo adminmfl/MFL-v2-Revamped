@@ -46,6 +46,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { getClientCache, setClientCache, invalidateClientCache } from '@/lib/client-cache';
+import { DownloadReportButton } from '@/components/leagues/download-report-button';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -735,6 +736,15 @@ export default function LeagueDashboardPage({
                 Settings
               </Link>
             </Button>
+          )}
+          {user && (
+            <DownloadReportButton
+              leagueId={id}
+              userId={user.id}
+              leagueStatus={league.status}
+              variant="outline"
+              size="sm"
+            />
           )}
         </div>
       </div>
