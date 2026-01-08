@@ -10,6 +10,7 @@ type ChallengeStatus =
   | 'scheduled'
   | 'active'
   | 'submission_closed'
+  | 'published'
   | 'closed'
   | 'upcoming';
 
@@ -18,6 +19,7 @@ const challengeStatusOrder: ChallengeStatus[] = [
   'scheduled',
   'active',
   'submission_closed',
+  'published',
   'closed',
   'upcoming',
 ];

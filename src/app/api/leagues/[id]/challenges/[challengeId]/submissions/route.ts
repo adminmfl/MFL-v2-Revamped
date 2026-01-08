@@ -16,7 +16,7 @@ function buildError(message: string, status = 400) {
 
 async function getMembership(userId: string, leagueId: string): Promise<Membership | null> {
   const supabase = getSupabaseServiceRole();
-  
+
   // First check if user is a league member
   const { data: memberData, error: memberError } = await supabase
     .from('leaguemembers')
@@ -213,8 +213,50 @@ export async function POST(
       }
     }
 
-    if (['draft', 'scheduled', 'submission_closed', 'closed', 'upcoming'].includes(String(effectiveStatus))) {
-      return buildError('Challenge is not accepting submissions', 400);
+    let isResubmission = false;
+
+    if (effectiveStatus !== 'active') {
+      // Allow resubmission if submission_closed AND user has a rejected submission
+      if (effectiveStatus === 'submission_closed') {
+        // Check for existing rejected submission
+        const { data: existing } = await supabase
+          .from('challenge_submissions')
+          .select('status')
+          .eq('league_challenge_id', challengeId)
+          .eq('league_member_id', membership.leagueMemberId)
+          .single();
+
+        if (!existing || existing.status !== 'rejected') {
+          return buildError('Challenge is not active', 400);
+        }
+        isResubmission = true;
+      } else {
+        return buildError('Challenge is not active', 400);
+      }
+    } else {
+      // Also check if active, if user already has a submission
+      // If rejected, it counts as resubmission (allowed).
+      // If approved/pending, checked later or via unique constraint, but better to check here?
+      // For now, reliance on upsert behavior + status check is safest.
+      // Let's just check if we need to set isResubmission for date-bypass (active doesn't need bypass).
+      // However, we do need to detect existing for upsert logic if we want to be explicit,
+      // but upsert covers it. The only risk is overwriting a 'pending' submission with a new one?
+      // Usually we don't allow overwriting pending.
+
+      const { data: existing } = await supabase
+        .from('challenge_submissions')
+        .select('status')
+        .eq('league_challenge_id', challengeId)
+        .eq('league_member_id', membership.leagueMemberId)
+        .maybeSingle();
+
+      if (existing) {
+        if (existing.status === 'rejected') {
+          isResubmission = true;
+        } else {
+          return buildError('You already submitted for this challenge', 409);
+        }
+      }
     }
 
     const body = await req.json();
@@ -235,8 +277,8 @@ export async function POST(
       return buildError('Failed to fetch challenge details', 500);
     }
 
-    // Strict cutoff: cannot submit after end_date
-    if (challengeData.end_date) {
+    // Strict cutoff: cannot submit after end_date UNLESS it is a resubmission
+    if (challengeData.end_date && !isResubmission) {
       const todayUtc = new Date().toISOString().slice(0, 10);
       const endDate = String(challengeData.end_date);
       if (todayUtc > endDate) {
@@ -285,6 +327,8 @@ export async function POST(
       awarded_points: null,
       team_id: null,
       sub_team_id: null,
+      reviewed_by: null,
+      reviewed_at: null
     };
 
     // Set team_id for team challenges (only if verified via teamleagues)
@@ -312,15 +356,11 @@ export async function POST(
 
     const { data, error } = await supabase
       .from('challenge_submissions')
-      .insert(submissionPayload)
+      .upsert(submissionPayload, { onConflict: 'league_challenge_id, league_member_id' })
       .select()
       .single();
 
     if (error) {
-      // Handle unique constraint (one per member)
-      if ((error as any).code === '23505') {
-        return buildError('You already submitted for this challenge', 409);
-      }
       console.error('Error submitting challenge proof', error);
       return buildError('Failed to submit challenge', 500);
     }

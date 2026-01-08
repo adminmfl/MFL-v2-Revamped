@@ -45,7 +45,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { getClientCache, setClientCache } from '@/lib/client-cache';
+import { getClientCache, setClientCache, invalidateClientCache } from '@/lib/client-cache';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -188,6 +188,9 @@ export default function LeagueDashboardPage({
           setLoading(false);
           return;
         }
+      } else {
+        // Invalidate cache before forced refresh to ensure fresh data
+        invalidateClientCache(cacheKey);
       }
 
       try {
