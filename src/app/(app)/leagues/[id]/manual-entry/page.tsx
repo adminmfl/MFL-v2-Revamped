@@ -8,6 +8,9 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
+  Eye,
+  EyeOff,
   Loader2,
   PenSquare,
   PlusCircle,
@@ -207,6 +210,8 @@ export default function ManualEntryPage({
   const [dialogMode, setDialogMode] = React.useState<'add' | 'overwrite'>('add');
   const [dialogDate, setDialogDate] = React.useState<string | null>(null);
   const [dialogSubmitting, setDialogSubmitting] = React.useState(false);
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+  const [showPreview, setShowPreview] = React.useState(false);
   const [uploadingProof, setUploadingProof] = React.useState(false);
   const [dialogForm, setDialogForm] = React.useState({
     type: 'workout' as 'workout' | 'rest',
@@ -317,6 +322,8 @@ export default function ManualEntryPage({
       proof_url: row.entry?.proof_url || '',
       notes: row.entry?.notes || '',
     });
+    setSelectedFile(null);
+    setShowPreview(false);
     setDialogOpen(true);
   }
 
@@ -354,7 +361,8 @@ export default function ManualEntryPage({
       }
 
       if (dialogMode === 'overwrite') {
-        if (!dialogForm.proof_url || dialogForm.proof_url.trim().length === 0) {
+        const hasProof = (dialogForm.proof_url && dialogForm.proof_url.trim().length > 0) || selectedFile;
+        if (!hasProof) {
           toast.error('Proof image is required when overwriting. Upload or paste a proof URL.');
           return;
         }
@@ -363,6 +371,22 @@ export default function ManualEntryPage({
 
     setDialogSubmitting(true);
     try {
+      let finalProofUrl = dialogForm.proof_url;
+
+      if (selectedFile) {
+        setUploadingProof(true);
+        try {
+          finalProofUrl = await uploadProofFile(selectedFile, leagueId);
+        } catch (err) {
+          console.error(err);
+          toast.error(err instanceof Error ? err.message : 'Proof upload failed');
+          setUploadingProof(false);
+          setDialogSubmitting(false);
+          return;
+        }
+        setUploadingProof(false);
+      }
+
       const payload = {
         league_member_id: formMemberId,
         date: dialogDate,
@@ -373,7 +397,7 @@ export default function ManualEntryPage({
         steps: stepsNum,
         holes: holesNum,
         rr_value: typeof computedRR === 'number' ? computedRR : null,
-        proof_url: dialogForm.proof_url || null,
+        proof_url: finalProofUrl || null,
         notes: dialogForm.notes || null,
         overwriteExisting: true,
       };
@@ -482,7 +506,7 @@ export default function ManualEntryPage({
                 onValueChange={(value) => setFormMemberId(value)}
                 disabled={membersLoading}
               >
-                <SelectTrigger id="member">
+                <SelectTrigger id="member" className="h-auto min-h-12 py-3 [&>span]:line-clamp-none [&>span]:whitespace-normal text-left">
                   <SelectValue placeholder={membersLoading ? 'Loading players...' : 'Select player'} />
                 </SelectTrigger>
                 <SelectContent>
@@ -724,32 +748,28 @@ export default function ManualEntryPage({
               <p className="text-xs text-muted-foreground">Auto-calculated from workout type, duration, distance, steps, or holes.</p>
             </div>
 
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="proof_upload">Upload new proof (image)</Label>
-              <Input
-                id="proof_upload"
-                type="file"
-                accept="image/jpeg,image/png,image/gif,image/webp"
-                disabled={uploadingProof || !leagueId}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file || !leagueId) return;
-                  setUploadingProof(true);
-                  try {
-                    const url = await uploadProofFile(file, leagueId);
-                    setDialogForm((p) => ({ ...p, proof_url: url }));
-                    toast.success('Proof uploaded');
-                  } catch (err) {
-                    console.error(err);
-                    toast.error(err instanceof Error ? err.message : 'Upload failed');
-                  } finally {
-                    setUploadingProof(false);
-                    e.target.value = '';
-                  }
-                }}
-              />
-              <p className="text-xs text-muted-foreground">Images only (JPG, PNG, GIF, WebP), max 10MB. Uploaded to proof bucket.</p>
-            </div>
+            {dialogForm.type !== 'rest' && (
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="proof_upload">Upload new proof (image)</Label>
+                <Input
+                  id="proof_upload"
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  disabled={uploadingProof || dialogSubmitting || !leagueId}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setSelectedFile(file);
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {selectedFile
+                    ? `Selected: ${selectedFile.name}`
+                    : 'Images only (JPG, PNG, GIF, WebP), max 10MB. Uploaded on save.'}
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="notes">Notes</Label>
@@ -761,21 +781,51 @@ export default function ManualEntryPage({
               />
             </div>
 
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="proof_url">Current proof</Label>
-              <Input
-                id="proof_url"
-                type="url"
-                placeholder="Link to uploaded proof"
-                value={dialogForm.proof_url}
-                onChange={(e) => setDialogForm((p) => ({ ...p, proof_url: e.target.value }))}
-              />
-              <p className="text-xs text-muted-foreground">
-                {dialogMode === 'overwrite'
-                  ? 'Required when overwriting: add proof for the new workout you are submitting now.'
-                  : 'Optional for new workouts; upload above to attach proof.'}
-              </p>
-            </div>
+            {dialogForm.type !== 'rest' && (
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="proof_url">Current proof</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="proof_url"
+                    type="url"
+                    placeholder="Link to uploaded proof"
+                    value={dialogForm.proof_url}
+                    onChange={(e) => setDialogForm((p) => ({ ...p, proof_url: e.target.value }))}
+                  />
+                  {dialogForm.proof_url && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setShowPreview(!showPreview)}
+                      title={showPreview ? 'Hide Preview' : 'Show Preview'}
+                    >
+                      {showPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  )}
+                </div>
+                {showPreview && dialogForm.proof_url && (
+                  <div className="relative mt-2 overflow-hidden rounded-md border bg-muted">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={dialogForm.proof_url}
+                      alt="Proof preview"
+                      className="max-h-[300px] w-full object-contain"
+                      loading="lazy"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                        toast.error('Failed to load image preview');
+                      }}
+                    />
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {dialogMode === 'overwrite'
+                    ? 'Required when overwriting: add proof for the new workout you are submitting now.'
+                    : 'Optional for new workouts; upload above to attach proof.'}
+                </p>
+              </div>
+            )}
           </div>
 
           <DialogFooter className="gap-2">

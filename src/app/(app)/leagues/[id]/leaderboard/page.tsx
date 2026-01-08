@@ -369,7 +369,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* Overall Leaderboard Tables */}
-      <div className="px-4 lg:px-6">
+      <div className="px-4 lg:px-6 py-4 border border-border rounded-lg">
         <div className="mb-4">
           <h2 className="text-lg font-semibold">Overall Leaderboard</h2>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -414,7 +414,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
 
       {/* Real-time (2-day delay window) */}
       {pendingWindow?.dates?.length ? (
-        <div className="px-4 lg:px-6">
+        <div className="px-4 lg:px-6 py-4 border border-border rounded-lg">
           <div className="mb-4">
             <h2 className="text-lg font-semibold">Real-time Scoreboard</h2>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -450,7 +450,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
       ) : null}
 
       {/* Individual Leaderboard */}
-      <div className="px-4 lg:px-6">
+      <div className="px-4 lg:px-6 py-4 border border-border rounded-lg">
         <div className="mb-4">
           <h2 className="text-lg font-semibold">Individual Leaderboard</h2>
           <p className="text-sm text-muted-foreground">Individual standings for the selected date range</p>

@@ -11,9 +11,15 @@ import {
   Search,
   Pencil,
   Trash2,
+  Search,
+  Pencil,
+  Trash2,
   Target,
   Users,
   Calendar,
+  CheckCircle,
+  FileCheck,
+  Lock,
 } from "lucide-react";
 import {
   flexRender,
@@ -71,16 +77,20 @@ import { ChallengeFormDialog, type Challenge } from "./challenge-form-dialog";
 // ============================================================================
 
 function StatusBadge({ status }: { status: string }) {
-  const variants: Record<string, string> = {
-    active: "bg-green-500/10 text-green-600",
-    upcoming: "bg-blue-500/10 text-blue-600",
-    completed: "bg-gray-500/10 text-gray-600",
-    draft: "bg-yellow-500/10 text-yellow-600",
+  const variants: Record<string, { className: string; label: string }> = {
+    active: { className: "bg-green-500/10 text-green-600", label: "Active" },
+    scheduled: { className: "bg-blue-500/10 text-blue-600", label: "Scheduled" },
+    submission_closed: { className: "bg-orange-500/10 text-orange-600", label: "Submissions Closed" },
+    published: { className: "bg-green-500/10 text-green-600", label: "Scores Published" },
+    closed: { className: "bg-gray-500/10 text-gray-600", label: "Challenge Closed" },
+    draft: { className: "bg-yellow-500/10 text-yellow-600", label: "Draft" },
   };
 
+  const config = variants[status] || variants.draft;
+
   return (
-    <Badge variant="outline" className={variants[status] || variants.draft}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+    <Badge variant="outline" className={config.className}>
+      {config.label}
     </Badge>
   );
 }
@@ -113,9 +123,10 @@ function TypeBadge({ type }: { type: string }) {
 
 interface ChallengesTableProps {
   data: Challenge[];
+  leagueId: string; // Needed for API calls
 }
 
-export function ChallengesTable({ data: initialData }: ChallengesTableProps) {
+export function ChallengesTable({ data: initialData, leagueId }: ChallengesTableProps) {
   const [data, setData] = React.useState<Challenge[]>(initialData);
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -148,6 +159,40 @@ export function ChallengesTable({ data: initialData }: ChallengesTableProps) {
       toast.success(`Challenge "${challengeToDelete.name}" deleted successfully`);
       setDeleteDialogOpen(false);
       setChallengeToDelete(null);
+    }
+  };
+
+  const handlePublishScores = async (challenge: Challenge) => {
+    try {
+      const res = await fetch(`/api/leagues/${leagueId}/challenges/${challenge.id}/publish`, {
+        method: "POST",
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success("Scores published successfully");
+        setData(data.map((c) => (c.id === challenge.id ? { ...c, status: "published" } : c)));
+      } else {
+        toast.error(result.error || "Failed to publish scores");
+      }
+    } catch (error) {
+      toast.error("Failed to publish scores");
+    }
+  };
+
+  const handleCloseChallenge = async (challenge: Challenge) => {
+    try {
+      const res = await fetch(`/api/leagues/${leagueId}/challenges/${challenge.id}/close`, {
+        method: "POST",
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success("Challenge closed successfully");
+        setData(data.map((c) => (c.id === challenge.id ? { ...c, status: "closed" } : c)));
+      } else {
+        toast.error(result.error || "Failed to close challenge");
+      }
+    } catch (error) {
+      toast.error("Failed to close challenge");
     }
   };
 
@@ -267,6 +312,18 @@ export function ChallengesTable({ data: initialData }: ChallengesTableProps) {
               Edit
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            {row.original.status === "submission_closed" && (
+              <DropdownMenuItem onClick={() => handlePublishScores(row.original)}>
+                <CheckCircle className="mr-2 size-4 text-green-600" />
+                Publish Scores
+              </DropdownMenuItem>
+            )}
+            {row.original.status === "published" && (
+              <DropdownMenuItem onClick={() => handleCloseChallenge(row.original)}>
+                <Lock className="mr-2 size-4 text-gray-600" />
+                Close Challenge
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               onClick={() => handleDeleteClick(row.original)}
               className="text-destructive focus:text-destructive"
@@ -345,9 +402,11 @@ export function ChallengesTable({ data: initialData }: ChallengesTableProps) {
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="upcoming">Upcoming</SelectItem>
+            <SelectItem value="scheduled">Scheduled</SelectItem>
             <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="submission_closed">Submissions Closed</SelectItem>
+            <SelectItem value="published">Scores Published</SelectItem>
+            <SelectItem value="closed">Closed</SelectItem>
           </SelectContent>
         </Select>
       </div>

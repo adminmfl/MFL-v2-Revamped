@@ -11,23 +11,23 @@ type ChallengeStatus =
   | 'scheduled'
   | 'active'
   | 'submission_closed'
-  | 'closed'
-  | 'upcoming'; // keep legacy value for compatibility
+  | 'published'
+  | 'closed';
 
 const challengeStatusOrder: ChallengeStatus[] = [
   'draft',
   'scheduled',
   'active',
   'submission_closed',
+  'published',
   'closed',
-  'upcoming',
 ];
 
 const defaultChallengeStatus: ChallengeStatus = 'draft';
 
 function normalizeStatus(status: ChallengeStatus | string | null | undefined): ChallengeStatus {
   if (!status) return defaultChallengeStatus;
-  if (status === 'upcoming') return 'scheduled';
+  if (status === 'upcoming') return 'scheduled'; // Legacy support
   if (challengeStatusOrder.includes(status as ChallengeStatus)) {
     return status as ChallengeStatus;
   }
@@ -41,7 +41,7 @@ type Membership = {
 
 async function getMembership(userId: string, leagueId: string): Promise<Membership | null> {
   const supabase = getSupabaseServiceRole();
-  
+
   // First check if user is a league member
   const { data: memberData, error: memberError } = await supabase
     .from('leaguemembers')
@@ -200,7 +200,11 @@ export async function GET(
 
     const deriveStatus = (rawStatus: any, startDate?: string | null, endDate?: string | null) => {
       const normalized = normalizeStatus(rawStatus);
-      if (normalized === 'draft') return 'draft' as const;
+
+      // Explicit states that override time-based calculations
+      if (normalized === 'draft' || normalized === 'published' || normalized === 'closed') {
+        return normalized;
+      }
 
       const startDt = parseYmd(startDate || null);
       const endDt = parseYmd(endDate || null);
@@ -212,42 +216,50 @@ export async function GET(
         if (today.getTime() < startDt.getTime()) {
           return 'scheduled' as const;
         }
-        // today > endDt
-        return (isPrivileged ? 'submission_closed' : 'closed') as const;
+        // today > endDt -> Submission Closed (waiting for publish)
+        return 'submission_closed' as const;
       }
 
       if (endDt && today.getTime() > endDt.getTime()) {
-        return (isPrivileged ? 'submission_closed' : 'closed') as const;
+        return 'submission_closed' as const;
       }
 
       // fallback to stored/normalized value
       return normalized;
     };
 
-    const activePayload = (challenges || []).map((c) => {
-      const template = (c as any).specialchallenges;
-      const challengeId = String(c.id);
-      const derived = deriveStatus(c.status, c.start_date, c.end_date);
+    const activePayload = (challenges || [])
+      .map((c) => {
+        const template = (c as any).specialchallenges;
+        const challengeId = String(c.id);
+        const derived = deriveStatus(c.status, c.start_date, c.end_date);
 
-      return {
-        id: challengeId,
-        league_id: c.league_id,
-        name: c.name || template?.name || 'Challenge',
-        pricing_id: c.pricing_id || null,
-        description: c.description || null,
-        challenge_type: c.challenge_type,
-        total_points: Number(c.total_points || template?.total_points || 0),
-        is_custom: !!c.is_custom,
-        payment_id: c.payment_id,
-        doc_url: c.doc_url || template?.doc_url || null,
-        start_date: c.start_date,
-        end_date: c.end_date,
-        status: derived,
-        template_id: c.challenge_id,
-        my_submission: mySubmissions[challengeId] || null,
-        stats: statsByChallenge[challengeId] || null,
-      };
-    });
+        return {
+          id: challengeId,
+          league_id: c.league_id,
+          name: c.name || template?.name || 'Challenge',
+          pricing_id: c.pricing_id || null,
+          description: c.description || null,
+          challenge_type: c.challenge_type,
+          total_points: Number(c.total_points || template?.total_points || 0),
+          is_custom: !!c.is_custom,
+          payment_id: c.payment_id,
+          doc_url: c.doc_url || template?.doc_url || null,
+          start_date: c.start_date,
+          end_date: c.end_date,
+          status: derived,
+          template_id: c.challenge_id,
+          my_submission: mySubmissions[challengeId] || null,
+          stats: statsByChallenge[challengeId] || null,
+        };
+      })
+      .filter((c) => {
+        // Drafts only visible to host/governor
+        if (c.status === 'draft' && !isPrivileged) {
+          return false;
+        }
+        return true;
+      });
 
     // Fetch available preset challenges (admin templates) that haven't been activated yet
     let availablePresets: any[] = [];

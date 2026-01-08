@@ -6,13 +6,22 @@ import { syncSpecialChallengeScores } from '@/lib/services/challenges/special-ch
 
 type LeagueRole = 'host' | 'governor' | 'captain' | 'player' | null;
 
+type ChallengeStatus =
+  | 'draft'
+  | 'scheduled'
+  | 'active'
+  | 'submission_closed'
+  | 'published'
+  | 'closed'
+  | 'upcoming';
+
 function buildError(message: string, status = 400) {
   return NextResponse.json({ success: false, error: message }, { status });
 }
 
 async function getMembership(userId: string, leagueId: string) {
   const supabase = getSupabaseServiceRole();
-  
+
   // First check if user is a league member
   const { data: memberData, error: memberError } = await supabase
     .from('leaguemembers')
@@ -45,6 +54,13 @@ function isHostOrGovernor(role: LeagueRole) {
   return role === 'host' || role === 'governor';
 }
 
+function normalizeStatus(status: ChallengeStatus | string | null | undefined): ChallengeStatus {
+  if (!status) return 'draft';
+  if (status === 'upcoming') return 'scheduled';
+  const allowed: ChallengeStatus[] = ['draft', 'scheduled', 'active', 'submission_closed', 'published', 'closed', 'upcoming'];
+  return allowed.includes(status as ChallengeStatus) ? (status as ChallengeStatus) : 'draft';
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ submissionId: string }> }
@@ -69,7 +85,7 @@ export async function POST(
         league_challenge_id,
         status,
         awarded_points,
-        leagueschallenges(league_id, challenge_id, challenge_type, total_points),
+        leagueschallenges(league_id, challenge_id, challenge_type, total_points, status, start_date, end_date),
         leaguemembers(team_id)
       `
       )
@@ -107,6 +123,40 @@ export async function POST(
 
     const challenge = leagueChallenge as any;
 
+    const parseYmd = (ymd?: string | null): Date | null => {
+      if (!ymd) return null;
+      const dt = new Date(String(ymd));
+      if (Number.isNaN(dt.getTime())) return null;
+      return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const storedStatus = normalizeStatus(challenge?.status || null);
+    const startDt = parseYmd(challenge?.start_date || null);
+    const endDt = parseYmd(challenge?.end_date || null);
+
+    let effectiveStatus: ChallengeStatus = storedStatus;
+    if (storedStatus !== 'draft' && storedStatus !== 'published') {
+      if (startDt && endDt) {
+        if (today.getTime() >= startDt.getTime() && today.getTime() <= endDt.getTime()) {
+          effectiveStatus = 'active';
+        } else if (today.getTime() < startDt.getTime()) {
+          effectiveStatus = 'scheduled';
+        } else {
+          effectiveStatus = 'submission_closed';
+        }
+      } else if (endDt && today.getTime() > endDt.getTime()) {
+        effectiveStatus = 'submission_closed';
+      }
+    }
+
+    // Allow reviews if status is submission_closed OR published
+    if (effectiveStatus !== 'submission_closed' && effectiveStatus !== 'published') {
+      return buildError('Reviews are allowed only after submissions close or after scores are published.', 400);
+    }
+
     const maxPointsRaw = challenge?.total_points;
     const maxPoints =
       maxPointsRaw !== undefined && maxPointsRaw !== null && Number.isFinite(Number(maxPointsRaw))
@@ -122,7 +172,7 @@ export async function POST(
     if (status === 'approved') {
       // Priority: explicit awardedPoints > challenge.total_points
       let resolvedPoints: number | null = null;
-      
+
       if (awardedPoints !== undefined && awardedPoints !== null) {
         const pts = Number(awardedPoints);
         if (!Number.isFinite(pts)) {
