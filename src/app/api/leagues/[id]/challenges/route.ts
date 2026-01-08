@@ -11,6 +11,7 @@ type ChallengeStatus =
   | 'scheduled'
   | 'active'
   | 'submission_closed'
+  | 'published'
   | 'closed'
   | 'upcoming'; // keep legacy value for compatibility
 
@@ -19,6 +20,7 @@ const challengeStatusOrder: ChallengeStatus[] = [
   'scheduled',
   'active',
   'submission_closed',
+  'published',
   'closed',
   'upcoming',
 ];
@@ -200,7 +202,7 @@ export async function GET(
 
     const deriveStatus = (rawStatus: any, startDate?: string | null, endDate?: string | null) => {
       const normalized = normalizeStatus(rawStatus);
-      if (normalized === 'draft') return 'draft' as const;
+      if (normalized === 'draft' || normalized === 'published') return normalized as const;
 
       const startDt = parseYmd(startDate || null);
       const endDt = parseYmd(endDate || null);

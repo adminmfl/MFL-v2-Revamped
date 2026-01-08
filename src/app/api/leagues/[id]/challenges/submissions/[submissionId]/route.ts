@@ -10,6 +10,15 @@ import { syncSpecialChallengeScores } from '@/lib/services/challenges/special-ch
 
 type LeagueRole = 'host' | 'governor' | 'captain' | 'player' | null;
 
+type ChallengeStatus =
+  | 'draft'
+  | 'scheduled'
+  | 'active'
+  | 'submission_closed'
+  | 'published'
+  | 'closed'
+  | 'upcoming';
+
 function buildError(message: string, status = 400) {
   return NextResponse.json({ success: false, error: message }, { status });
 }
@@ -43,6 +52,13 @@ async function getMembership(userId: string, leagueId: string): Promise<{ league
 
 function isHostOrGovernor(role: LeagueRole): boolean {
   return role === 'host' || role === 'governor';
+}
+
+function normalizeStatus(status: ChallengeStatus | string | null | undefined): ChallengeStatus {
+  if (!status) return 'draft';
+  if (status === 'upcoming') return 'scheduled';
+  const allowed: ChallengeStatus[] = ['draft', 'scheduled', 'active', 'submission_closed', 'published', 'closed', 'upcoming'];
+  return allowed.includes(status as ChallengeStatus) ? (status as ChallengeStatus) : 'draft';
 }
 
 export async function PATCH(
@@ -85,7 +101,10 @@ export async function PATCH(
           league_id,
           challenge_type,
           total_points,
-          challenge_id
+          challenge_id,
+          status,
+          start_date,
+          end_date
         )
       `)
       .eq('id', submissionId)
@@ -100,6 +119,43 @@ export async function PATCH(
     const submissionChallenge = (submission.leagueschallenges as any);
     if (String(challengeLeague) !== String(leagueId)) {
       return buildError('Submission not in this league', 403);
+    }
+
+    const parseYmd = (ymd?: string | null): Date | null => {
+      if (!ymd) return null;
+      const dt = new Date(String(ymd));
+      if (Number.isNaN(dt.getTime())) return null;
+      return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const storedStatus = normalizeStatus(submissionChallenge?.status || null);
+    const startDt = parseYmd(submissionChallenge?.start_date || null);
+    const endDt = parseYmd(submissionChallenge?.end_date || null);
+
+    let effectiveStatus: ChallengeStatus = storedStatus;
+    if (storedStatus !== 'draft' && storedStatus !== 'published') {
+      if (startDt && endDt) {
+        if (today.getTime() >= startDt.getTime() && today.getTime() <= endDt.getTime()) {
+          effectiveStatus = 'active';
+        } else if (today.getTime() < startDt.getTime()) {
+          effectiveStatus = 'scheduled';
+        } else {
+          effectiveStatus = 'submission_closed';
+        }
+      } else if (endDt && today.getTime() > endDt.getTime()) {
+        effectiveStatus = 'submission_closed';
+      }
+    }
+
+    if (effectiveStatus === 'published') {
+      return buildError('Challenge is closed and scores are published. Reviews are locked.', 400);
+    }
+
+    if (effectiveStatus !== 'submission_closed') {
+      return buildError('Reviews are allowed only after submissions close.', 400);
     }
 
     // Prepare update payload

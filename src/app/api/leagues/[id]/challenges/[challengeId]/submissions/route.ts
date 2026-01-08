@@ -213,7 +213,7 @@ export async function POST(
       }
     }
 
-    if (['draft', 'scheduled', 'submission_closed', 'closed', 'upcoming'].includes(String(effectiveStatus))) {
+    if (['draft', 'scheduled', 'submission_closed', 'closed', 'published', 'upcoming'].includes(String(effectiveStatus))) {
       return buildError('Challenge is not accepting submissions', 400);
     }
 

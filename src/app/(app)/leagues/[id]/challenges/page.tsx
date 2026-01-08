@@ -45,7 +45,7 @@ type Challenge = {
   description: string | null;
   challenge_type: 'individual' | 'team' | 'sub_team';
   total_points: number;
-  status: 'draft' | 'scheduled' | 'active' | 'submission_closed' | 'closed' | 'upcoming';
+  status: 'draft' | 'scheduled' | 'active' | 'submission_closed' | 'published' | 'closed' | 'upcoming';
   start_date: string | null;
   end_date: string | null;
   doc_url: string | null;
@@ -85,6 +85,10 @@ function statusBadge(status: Challenge['status'], isAdmin = false) {
     submission_closed: {
       label: isAdmin ? 'Submission Closed' : 'Closed',
       className: 'bg-purple-100 text-purple-700',
+    },
+    published: {
+      label: 'Closed - Scores Published',
+      className: 'bg-slate-200 text-slate-800',
     },
     closed: { label: 'Closed', className: 'bg-gray-100 text-gray-700' },
     upcoming: { label: 'Scheduled', className: 'bg-blue-100 text-blue-700' }, // legacy mapping
@@ -227,6 +231,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [challengeToDelete, setChallengeToDelete] = React.useState<Challenge | null>(null);
   const [deleting, setDeleting] = React.useState(false);
+  const [publishingId, setPublishingId] = React.useState<string | null>(null);
   const fetchChallenges = React.useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -657,6 +662,30 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
     await fetchSubmissions(challenge);
   };
 
+  const handlePublish = async (challenge: Challenge) => {
+    if (challenge.stats && challenge.stats.pending > 0) {
+      toast.error('Review all pending submissions before publishing');
+      return;
+    }
+
+    setPublishingId(challenge.id);
+    try {
+      const res = await fetch(`/api/leagues/${leagueId}/challenges/${challenge.id}/publish`, {
+        method: 'POST',
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'Failed to publish scores');
+      }
+      toast.success('Scores published and challenge closed');
+      fetchChallenges();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to publish scores');
+    } finally {
+      setPublishingId(null);
+    }
+  };
+
   // Re-fetch submissions when filters change
   React.useEffect(() => {
     if (reviewChallenge && reviewOpen) {
@@ -899,7 +928,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                     size="sm"
                     variant="secondary"
                     onClick={() => handleOpenSubmit(challenge)}
-                    disabled={['draft', 'scheduled', 'submission_closed', 'closed'].includes(challenge.status)}
+                    disabled={['draft', 'scheduled', 'submission_closed', 'published', 'closed'].includes(challenge.status)}
                   >
                     Submit Proof
                   </Button>
@@ -928,13 +957,29 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                         size="sm"
                         variant="outline"
                         onClick={() => handleOpenReview(challenge)}
+                        disabled={challenge.status !== 'submission_closed'}
+                        title={challenge.status !== 'submission_closed' ? 'Reviews open after submissions close' : ''}
                         className="ml-auto"
                       >
                         Review
                       </Button>
                     )
                   )}
+
+                  {isAdmin && challenge.status === 'submission_closed' && (
+                    <Button
+                      size="sm"
+                      onClick={() => handlePublish(challenge)}
+                      disabled={publishingId === challenge.id || (challenge.stats?.pending ?? 0) > 0}
+                    >
+                      {publishingId === challenge.id ? 'Publishing...' : 'Publish Scores & Close'}
+                    </Button>
+                  )}
                 </div>
+
+                {isAdmin && challenge.status === 'submission_closed' && (challenge.stats?.pending ?? 0) > 0 && (
+                  <p className="text-xs text-muted-foreground">Review pending submissions before publishing.</p>
+                )}
 
                 {isAdmin && (
                   <div className="flex items-center justify-between gap-2 flex-wrap">
