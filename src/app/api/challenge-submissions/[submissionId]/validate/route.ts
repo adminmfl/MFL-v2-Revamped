@@ -21,7 +21,7 @@ function buildError(message: string, status = 400) {
 
 async function getMembership(userId: string, leagueId: string) {
   const supabase = getSupabaseServiceRole();
-  
+
   // First check if user is a league member
   const { data: memberData, error: memberError } = await supabase
     .from('leaguemembers')
@@ -152,12 +152,9 @@ export async function POST(
       }
     }
 
-    if (effectiveStatus === 'published') {
-      return buildError('Challenge is closed and scores are published. Reviews are locked.', 400);
-    }
-
-    if (effectiveStatus !== 'submission_closed') {
-      return buildError('Reviews are allowed only after submissions close.', 400);
+    // Allow reviews if status is submission_closed OR published
+    if (effectiveStatus !== 'submission_closed' && effectiveStatus !== 'published') {
+      return buildError('Reviews are allowed only after submissions close or after scores are published.', 400);
     }
 
     const maxPointsRaw = challenge?.total_points;
@@ -175,7 +172,7 @@ export async function POST(
     if (status === 'approved') {
       // Priority: explicit awardedPoints > challenge.total_points
       let resolvedPoints: number | null = null;
-      
+
       if (awardedPoints !== undefined && awardedPoints !== null) {
         const pts = Number(awardedPoints);
         if (!Number.isFinite(pts)) {

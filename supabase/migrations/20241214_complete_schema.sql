@@ -17,7 +17,7 @@ CREATE TYPE effort_status AS ENUM ('pending', 'approved', 'rejected');
 CREATE TYPE platform_role AS ENUM ('admin', 'user');
 CREATE TYPE payment_status AS ENUM ('pending', 'completed', 'failed', 'refunded');
 CREATE TYPE payment_purpose AS ENUM ('league_creation', 'subscription', 'other', 'challenge_creation');
-CREATE TYPE challenge_status AS ENUM ('active', 'upcoming', 'closed');
+CREATE TYPE challenge_status AS ENUM ('draft', 'scheduled', 'active', 'submission_closed', 'published', 'closed', 'upcoming');
 CREATE TYPE activity_measurement_type AS ENUM ('duration', 'distance', 'hole', 'steps');
 
 -- =====================================================================================

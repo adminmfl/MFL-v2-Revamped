@@ -12,8 +12,7 @@ type ChallengeStatus =
   | 'active'
   | 'submission_closed'
   | 'published'
-  | 'closed'
-  | 'upcoming';
+  | 'closed';
 
 type Membership = { leagueMemberId: string; role: LeagueRole };
 
@@ -30,7 +29,7 @@ function isHostOrGovernor(role: LeagueRole): boolean {
 function normalizeStatus(status: ChallengeStatus | string | null | undefined): ChallengeStatus {
   if (!status) return 'draft';
   if (status === 'upcoming') return 'scheduled';
-  const allowed: ChallengeStatus[] = ['draft', 'scheduled', 'active', 'submission_closed', 'published', 'closed', 'upcoming'];
+  const allowed: ChallengeStatus[] = ['draft', 'scheduled', 'active', 'submission_closed', 'published', 'closed'];
   return allowed.includes(status as ChallengeStatus) ? (status as ChallengeStatus) : 'draft';
 }
 

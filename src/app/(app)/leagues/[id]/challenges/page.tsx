@@ -45,7 +45,7 @@ type Challenge = {
   description: string | null;
   challenge_type: 'individual' | 'team' | 'sub_team';
   total_points: number;
-  status: 'draft' | 'scheduled' | 'active' | 'submission_closed' | 'published' | 'closed' | 'upcoming';
+  status: 'draft' | 'scheduled' | 'active' | 'submission_closed' | 'published' | 'closed';
   start_date: string | null;
   end_date: string | null;
   doc_url: string | null;
@@ -77,25 +77,24 @@ type SubmissionRow = ChallengeSubmission & {
 
 // Helpers -------------------------------------------------------------------
 
-function statusBadge(status: Challenge['status'], isAdmin = false) {
-  const map = {
-    draft: { label: 'Draft', className: 'bg-amber-100 text-amber-800' },
-    scheduled: { label: 'Scheduled', className: 'bg-blue-100 text-blue-700' },
-    active: { label: 'Active', className: 'bg-green-100 text-green-700' },
-    submission_closed: {
-      label: isAdmin ? 'Submission Closed' : 'Closed',
-      className: 'bg-purple-100 text-purple-700',
-    },
-    published: {
-      label: 'Closed - Scores Published',
-      className: 'bg-slate-200 text-slate-800',
-    },
-    closed: { label: 'Closed', className: 'bg-gray-100 text-gray-700' },
-    upcoming: { label: 'Scheduled', className: 'bg-blue-100 text-blue-700' }, // legacy mapping
-  } as const;
-  const cfg = map[status] || map.active;
-  return <Badge className={cn('w-fit', cfg.className)} variant="outline">{cfg.label}</Badge>;
-}
+const statusBadge = (s: Challenge['status']) => {
+  switch (s) {
+    case 'draft':
+      return <Badge variant="secondary">Draft</Badge>;
+    case 'scheduled':
+      return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100/80 border-blue-200">Scheduled</Badge>;
+    case 'active':
+      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100/80 border-green-200">Active</Badge>;
+    case 'submission_closed':
+      return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100/80 border-orange-200">Submissions Closed</Badge>;
+    case 'published':
+      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100/80 border-green-200">Scores Published</Badge>;
+    case 'closed':
+      return <Badge variant="secondary">Challenge Closed</Badge>;
+    default:
+      return <Badge variant="outline">{s}</Badge>;
+  }
+};
 
 function submissionStatusBadge(status: ChallengeSubmission['status']) {
   const map = {
@@ -124,7 +123,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
   const [error, setError] = React.useState<string | null>(null);
   const [challenges, setChallenges] = React.useState<Challenge[]>([]);
   const [presets, setPresets] = React.useState<any[]>([]);
-  const [pricing, setPricing] = React.useState<{ pricing_id?: string | null; per_day_rate?: number | null; tax?: number | null } | null>(null);
+  const [pricing, setPricing] = React.useState<{ pricing_id?: string | null; per_day_rate?: number | null; tax?: number | null; admin_markup?: number | null } | null>(null);
   const [selectedPresetId, setSelectedPresetId] = React.useState<string>('');
 
   // Create challenge dialog state
@@ -139,6 +138,10 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
 
   // Activate preset dialog state
   const [activateOpen, setActivateOpen] = React.useState(false);
+
+  // View Proof dialog state
+  const [viewProofOpen, setViewProofOpen] = React.useState(false);
+  const [viewProofUrl, setViewProofUrl] = React.useState<string | null>(null);
   const [selectedPreset, setSelectedPreset] = React.useState<any | null>(null);
   const [activateForm, setActivateForm] = React.useState({
     totalPoints: 50,
@@ -281,7 +284,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Failed to load Razorpay')); 
+      script.onerror = () => reject(new Error('Failed to load Razorpay'));
       document.body.appendChild(script);
     });
     return (window as any).Razorpay;
@@ -593,6 +596,29 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
     }
   };
 
+  const [closingId, setClosingId] = React.useState<string | null>(null);
+
+  const handleCloseChallenge = async (challenge: Challenge) => {
+    if (!confirm('Are you sure you want to finalize and close this challenge? This action cannot be undone.')) return;
+
+    setClosingId(challenge.id);
+    try {
+      const res = await fetch(`/api/leagues/${leagueId}/challenges/${challenge.id}/close`, {
+        method: 'POST',
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'Failed to close challenge');
+      }
+      toast.success('Challenge closed successfully');
+      fetchChallenges();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to close challenge');
+    } finally {
+      setClosingId(null);
+    }
+  };
+
   const fetchSubmissions = async (challenge: Challenge) => {
     try {
       // Build query params
@@ -653,11 +679,11 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
     setReviewFilterTeamId('');
     setReviewFilterSubTeamId('');
     setSubTeams([]);
-    
+
     if (challenge.challenge_type === 'team' || challenge.challenge_type === 'sub_team') {
       await fetchTeams();
     }
-    
+
     // Fetch submissions without team filter initially
     await fetchSubmissions(challenge);
   };
@@ -737,38 +763,38 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
   };
 
   function ReadMoreText({
-  text,
-  maxChars = 120,
-}: {
-  text: string
-  maxChars?: number
-}) {
-  const [expanded, setExpanded] = React.useState(false)
+    text,
+    maxChars = 120,
+  }: {
+    text: string
+    maxChars?: number
+  }) {
+    const [expanded, setExpanded] = React.useState(false)
 
-  if (!text || text.length <= maxChars) {
+    if (!text || text.length <= maxChars) {
+      return (
+        <p className="text-sm text-muted-foreground">
+          {text || 'No description provided'}
+        </p>
+      )
+    }
+
     return (
-      <p className="text-sm text-muted-foreground">
-        {text || 'No description provided'}
-      </p>
+      <div className="space-y-1">
+        <p className="text-sm text-muted-foreground">
+          {expanded ? text : `${text.slice(0, maxChars)}...`}
+        </p>
+
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="text-xs font-medium text-primary hover:underline"
+        >
+          {expanded ? 'Read less' : 'Read more'}
+        </button>
+      </div>
     )
   }
-
-  return (
-    <div className="space-y-1">
-      <p className="text-sm text-muted-foreground">
-        {expanded ? text : `${text.slice(0, maxChars)}...`}
-      </p>
-
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="text-xs font-medium text-primary hover:underline"
-      >
-        {expanded ? 'Read less' : 'Read more'}
-      </button>
-    </div>
-  )
-}
 
 
   const emptyState = (
@@ -862,14 +888,14 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                   hover:border-primary/30 transition
                   dark:bg-gradient-to-b dark:from-[#0c1b33] dark:to-[#081425]
                 "
-                >
+            >
               {/* HEADER */}
               <CardHeader className="pb-3 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <CardTitle className="text-lg font-semibold leading-tight">
                     {challenge.name}
                   </CardTitle>
-                  {statusBadge(challenge.status, isAdmin)}
+                  {statusBadge(challenge.status)}
                 </div>
 
                 <CardDescription>
@@ -928,9 +954,17 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                     size="sm"
                     variant="secondary"
                     onClick={() => handleOpenSubmit(challenge)}
-                    disabled={['draft', 'scheduled', 'submission_closed', 'published', 'closed'].includes(challenge.status)}
+                    disabled={
+                      challenge.status === 'draft' ||
+                      challenge.status === 'scheduled' ||
+                      challenge.status === 'published' ||
+                      challenge.status === 'closed' ||
+                      (challenge.status === 'submission_closed' && challenge.my_submission?.status !== 'rejected') ||
+                      (challenge.my_submission && challenge.my_submission.status !== 'rejected') ||
+                      false
+                    }
                   >
-                    Submit Proof
+                    {challenge.my_submission?.status === 'rejected' ? 'Resubmit Proof' : 'Submit Proof'}
                   </Button>
 
                   {challenge.status === 'active' && (
@@ -957,8 +991,8 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                         size="sm"
                         variant="outline"
                         onClick={() => handleOpenReview(challenge)}
-                        disabled={challenge.status !== 'submission_closed'}
-                        title={challenge.status !== 'submission_closed' ? 'Reviews open after submissions close' : ''}
+                        disabled={challenge.status !== 'submission_closed' && challenge.status !== 'published'}
+                        title={['submission_closed', 'published'].includes(challenge.status) ? '' : 'Reviews open after submissions close'}
                         className="ml-auto"
                       >
                         Review
@@ -972,7 +1006,19 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                       onClick={() => handlePublish(challenge)}
                       disabled={publishingId === challenge.id || (challenge.stats?.pending ?? 0) > 0}
                     >
-                      {publishingId === challenge.id ? 'Publishing...' : 'Publish Scores & Close'}
+                      {publishingId === challenge.id ? 'Publishing...' : 'Publish Scores'}
+                    </Button>
+                  )}
+
+                  {isAdmin && challenge.status === 'published' && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleCloseChallenge(challenge)}
+                      disabled={closingId === challenge.id}
+                      className="ml-2"
+                    >
+                      Finalize & Close Challenge
                     </Button>
                   )}
                 </div>
@@ -1008,7 +1054,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
           ))}
         </div>
       </div>
-      
+
       {/* Create Challenge Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-lg">
@@ -1293,40 +1339,46 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <a
-                          href={s.proof_url}
-                          className="text-primary text-sm underline"
-                          target="_blank"
-                          rel="noreferrer"
+                        <Button
+                          variant="link"
+                          className="h-auto p-0 text-primary underline"
+                          onClick={() => {
+                            setViewProofUrl(s.proof_url);
+                            setViewProofOpen(true);
+                          }}
                         >
                           View Proof
-                        </a>
-                        {isAdmin && s.status === 'pending' && (
+                        </Button>
+                        {isAdmin && (
                           <div className="flex gap-2 ml-auto items-center">
-                            <Input
-                              type="number"
-                              min={0}
-                              placeholder="Points"
-                              value={reviewAwardedPoints[s.id] ?? ''}
-                              onChange={(e) =>
-                                setReviewAwardedPoints((p) => ({ ...p, [s.id]: e.target.value === '' ? '' : Number(e.target.value) }))
-                              }
-                              className="w-28"
-                            />
+                            {(s.status === 'pending' || s.status === 'approved') && (
+                              <Input
+                                type="number"
+                                min={0}
+                                max={reviewChallenge?.total_points}
+                                placeholder="Points"
+                                value={reviewAwardedPoints[s.id] ?? s.awarded_points ?? ''}
+                                onChange={(e) =>
+                                  setReviewAwardedPoints((p) => ({ ...p, [s.id]: e.target.value === '' ? '' : Number(e.target.value) }))
+                                }
+                                className="w-28"
+                              />
+                            )}
                             <Button
                               size="sm"
                               variant="outline"
                               disabled={validatingId === s.id}
                               onClick={() => handleValidate(s.id, 'rejected', null)}
+                              className={s.status === 'rejected' ? 'bg-red-50 text-red-600 border-red-200' : ''}
                             >
-                              Reject
+                              {s.status === 'rejected' ? 'Rejected' : 'Reject'}
                             </Button>
                             <Button
                               size="sm"
                               disabled={validatingId === s.id}
                               onClick={() => handleValidate(s.id, 'approved', reviewAwardedPoints[s.id] === '' ? undefined : (reviewAwardedPoints[s.id] as number))}
                             >
-                              Approve
+                              {s.status === 'approved' ? 'Update' : 'Approve'}
                             </Button>
                           </div>
                         )}
@@ -1512,6 +1564,25 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* View Proof Dialog */}
+      <Dialog open={viewProofOpen} onOpenChange={setViewProofOpen}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Submission Proof</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center p-2">
+            {viewProofUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={viewProofUrl}
+                alt="Proof"
+                className="max-w-full max-h-[70vh] rounded-md object-contain"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
