@@ -149,9 +149,17 @@ export default function SubmitActivityPage({
     if (activeLeague.status === 'completed') return true;
     if (activeLeague.end_date) {
       try {
-        const end = new Date(activeLeague.end_date);
+        // Parse end date as UTC midnight
+        // Ensure we handle ISO strings by taking only the 'YYYY-MM-DD' portion
+        const [y, m, d] = String(activeLeague.end_date).slice(0, 10).split('-').map(Number);
+        const cutoff = new Date(Date.UTC(y, m - 1, d));
+
+        // Add 1 day + 9 hours = 33 hours
+        cutoff.setHours(cutoff.getHours() + 33);
+        cutoff.setMinutes(0); // Reset minutes to 0 for exactly 9:00 AM
+
         const now = new Date();
-        return end < now;
+        return now > cutoff;
       } catch {
         return false;
       }
@@ -980,6 +988,7 @@ export default function SubmitActivityPage({
                                 selected={activityDate}
                                 onSelect={(date) => date && setActivityDate(date)}
                                 disabled={(date) => date > new Date()}
+                                // Users can select past dates (e.g. League End Date) for late submission
                                 initialFocus
                               />
                             </PopoverContent>
