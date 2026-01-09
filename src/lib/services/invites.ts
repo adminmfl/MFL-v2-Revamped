@@ -4,6 +4,7 @@
  */
 
 import { getSupabaseServiceRole } from '@/lib/supabase/client';
+import { deriveLeagueStatus } from './leagues';
 
 // ============================================================================
 // Types
@@ -98,13 +99,21 @@ export async function validateInviteCode(code: string): Promise<LeagueInviteInfo
 
     const currentCount = memberCount || 0;
     const isFull = currentCount >= leagueCapacity;
-    const canJoin = league.status !== 'completed' && !isFull;
+    
+    // Use deriveLeagueStatus for consistent status checking
+    const { derivedStatus } = deriveLeagueStatus({
+      status: league.status,
+      start_date: league.start_date,
+      end_date: league.end_date,
+    });
+    
+    const canJoin = derivedStatus !== 'completed' && !isFull;
 
     return {
       league_id: league.league_id,
       league_name: league.league_name,
       description: league.description,
-      status: league.status,
+      status: derivedStatus, // Return derived status for UI consistency
       start_date: league.start_date,
       end_date: league.end_date,
       num_teams: league.num_teams || 4,
@@ -328,7 +337,15 @@ export async function validateTeamInviteCode(code: string): Promise<TeamInviteIn
     const teamMaxCapacity = 5;
     const currentTeamCount = teamMemberCount || 0;
     const isTeamFull = currentTeamCount >= teamMaxCapacity;
-    const canJoin = league.status !== 'completed' && !isTeamFull;
+    
+    // Use deriveLeagueStatus for consistent status checking
+    const { derivedStatus } = deriveLeagueStatus({
+      status: league.status,
+      start_date: league.start_date,
+      end_date: league.end_date,
+    });
+    
+    const canJoin = derivedStatus !== 'completed' && !isTeamFull;
 
     return {
       team_id: team.team_id,

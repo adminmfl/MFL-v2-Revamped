@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/config';
 import { getSupabaseServiceRole } from '@/lib/supabase/client';
+import { deriveLeagueStatus } from '@/lib/services/leagues';
 // Note: we insert membership using service role to bypass RLS for invited users
 
 export async function POST(request: NextRequest) {
@@ -38,8 +39,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if league is open for joining (draft or launched)
-    if (league.status === 'completed') {
+    // Check if league is open for joining using deriveLeagueStatus
+    const { derivedStatus } = deriveLeagueStatus({
+      status: league.status,
+      start_date: league.start_date,
+      end_date: league.end_date,
+    });
+
+    if (derivedStatus === 'completed') {
       return NextResponse.json(
         { error: 'This league has ended' },
         { status: 400 }
