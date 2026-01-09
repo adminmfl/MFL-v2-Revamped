@@ -51,59 +51,63 @@ function mapLeagueInputToDbUpdates(input: Partial<LeagueInput>): Record<string, 
  * Returns the derived status plus a flag indicating if we should persist it
  * back to the DB (we only persist when transitioning to 'completed').
  */
-// Use current timestamp for precise cutoff check
-const now = new Date();
+export function deriveLeagueStatus(
+  league: { status?: string | null; start_date?: string | null; end_date?: string | null }
+): { derivedStatus: string; shouldPersist: boolean } {
+  // Use current timestamp for precise cutoff check
+  const now = new Date();
 
-// Parse dates as UTC midnight to match the logic used in submission/upsert
-const parseUtcMidnight = (ymd?: string | null): Date | null => {
-  if (!ymd) return null;
-  const m = /^\d{4}-\d{2}-\d{2}$/.exec(String(ymd));
-  if (!m) return null;
-  const [y, mo, d] = String(ymd).split('-').map((p) => Number(p));
-  if (!y || !mo || !d) return null;
-  return new Date(Date.UTC(y, mo - 1, d));
-};
+  // Parse dates as UTC midnight to match the logic used in submission/upsert
+  const parseUtcMidnight = (ymd?: string | null): Date | null => {
+    if (!ymd) return null;
+    const m = /^\d{4}-\d{2}-\d{2}$/.exec(String(ymd));
+    if (!m) return null;
+    const [y, mo, d] = String(ymd).split('-').map((p) => Number(p));
+    if (!y || !mo || !d) return null;
+    return new Date(Date.UTC(y, mo - 1, d));
+  };
 
-const startDt = parseUtcMidnight(league?.start_date || null);
-const endDt = parseUtcMidnight(league?.end_date || null);
+  const startDt = parseUtcMidnight(league?.start_date || null);
+  const endDt = parseUtcMidnight(league?.end_date || null);
 
-const rawStatus = String(league?.status || 'draft').toLowerCase();
-let derivedStatus = rawStatus;
+  const rawStatus = String(league?.status || 'draft').toLowerCase();
+  let derivedStatus = rawStatus;
 
-if (derivedStatus !== 'draft') {
-  if (startDt && endDt) {
-    // Calculate Cutoff: UTC Midnight of EndDate + 33 hours (Grace period)
-    // This matches the logic in /api/entries/upsert/route.ts
-    const cutoff = new Date(endDt);
-    cutoff.setHours(cutoff.getHours() + 33);
+  if (derivedStatus !== 'draft') {
+    if (startDt && endDt) {
+      // Calculate Cutoff: UTC Midnight of EndDate + 33 hours (Grace period)
+      // This matches the logic in /api/entries/upsert/route.ts
+      const cutoff = new Date(endDt);
+      cutoff.setHours(cutoff.getHours() + 33);
 
-    if (now.getTime() > cutoff.getTime()) {
-      derivedStatus = 'completed';
-    } else if (now.getTime() >= startDt.getTime() && now.getTime() <= cutoff.getTime()) {
-      // Active if within start and cutoff
-      derivedStatus = 'active';
-    } else if (now.getTime() < startDt.getTime()) {
-      if (derivedStatus === 'scheduled' || derivedStatus === 'payment_pending') derivedStatus = 'launched';
-    }
-  } else if (endDt) {
-    // Legacy check or missing start date?
-    const cutoff = new Date(endDt);
-    cutoff.setHours(cutoff.getHours() + 33);
-    if (now.getTime() > cutoff.getTime()) {
-      derivedStatus = 'completed';
+      if (now.getTime() > cutoff.getTime()) {
+        derivedStatus = 'completed';
+      } else if (now.getTime() >= startDt.getTime() && now.getTime() <= cutoff.getTime()) {
+        // Active if within start and cutoff
+        derivedStatus = 'active';
+      } else if (now.getTime() < startDt.getTime()) {
+        if (derivedStatus === 'scheduled' || derivedStatus === 'payment_pending') derivedStatus = 'launched';
+      }
+    } else if (endDt) {
+      // Legacy check or missing start date?
+      const cutoff = new Date(endDt);
+      cutoff.setHours(cutoff.getHours() + 33);
+      if (now.getTime() > cutoff.getTime()) {
+        derivedStatus = 'completed';
+      }
     }
   }
-}
 
-if (!['draft', 'launched', 'active', 'completed', 'scheduled', 'payment_pending'].includes(derivedStatus)) {
-  // Basic normalization
-  if (derivedStatus === 'ended') derivedStatus = 'completed';
-}
+  if (!['draft', 'launched', 'active', 'completed', 'scheduled', 'payment_pending'].includes(derivedStatus)) {
+    // Basic normalization
+    if (derivedStatus === 'ended') derivedStatus = 'completed';
+  }
 
-return {
-  derivedStatus,
-  shouldPersist: derivedStatus === 'completed' && rawStatus !== 'completed',
-};
+  return {
+    derivedStatus,
+    shouldPersist: derivedStatus === 'completed' && rawStatus !== 'completed',
+  };
+}
 
 
 /**
