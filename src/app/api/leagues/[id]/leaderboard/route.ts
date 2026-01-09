@@ -150,10 +150,10 @@ export async function GET(
       tzOffsetMinutes: typeof tzOffsetMinutes === 'number' && Number.isFinite(tzOffsetMinutes) ? tzOffsetMinutes : null,
     });
 
-    // Verify league exists and get its date range
+    // Verify league exists and get its date range and status
     const { data: league, error: leagueError } = await supabase
       .from('leagues')
-      .select('league_id, league_name, start_date, end_date')
+      .select('league_id, league_name, start_date, end_date, status')
       .eq('league_id', leagueId)
       .single();
 
@@ -167,28 +167,40 @@ export async function GET(
     const filterStartDate = startDate || league.start_date;
     const filterEndDate = endDate || league.end_date;
 
-    // Apply a 2-day delay before scores appear on the leaderboard.
-    // Example: a submission dated today will not count today or tomorrow,
-    // and will start counting on the 3rd day.
-    // Cutoff: effective end date is today's date in user's timezone minus 2 days
-    const cutoff = (() => {
-      const [y, m, d] = todayYmd.split('-').map((p) => Number(p));
-      const dt = new Date(y, m - 1, d);
-      dt.setDate(dt.getDate() - 2);
-      return formatDateYYYYMMDD(dt);
-    })();
-    const effectiveEndDate = minDateString(String(filterEndDate), cutoff);
+    let effectiveEndDate: string;
+    let pendingWindowDates: string[] = [];
 
-    // Compute pending window using today's date in user's timezone
-    const todayYYYYMMDD = todayYmd;
-    const pendingWindowEnd = minDateString(String(filterEndDate), todayYYYYMMDD);
-    const pendingWindowStart = addDaysYYYYMMDD(pendingWindowEnd, -1);
-    const pendingWindowDates = uniqueStringsPreserveOrder([
-      pendingWindowEnd,
-      pendingWindowStart,
-    ])
-      .filter((d) => d >= filterStartDate && d <= String(filterEndDate))
-      .filter((d) => d > effectiveEndDate);
+    // Check if league is completed.
+    // If completed, we show ALL data immediately (no 2-day delay, no pending window).
+    if (league.status === 'completed') {
+      effectiveEndDate = String(filterEndDate);
+      pendingWindowDates = [];
+    } else {
+      // LEAGUE ACTIVE/LAUNCHED: Apply a 2-day delay mechanism.
+      // 1. Main Leaderboard shows points up to (Today - 2 days).
+      // 2. Real-Time Scoreboard shows points for Today and Yesterday.
+
+      // Cutoff: effective end date is today's date in user's timezone minus 2 days
+      const cutoff = (() => {
+        const [y, m, d] = todayYmd.split('-').map((p) => Number(p));
+        const dt = new Date(y, m - 1, d);
+        dt.setDate(dt.getDate() - 2);
+        return formatDateYYYYMMDD(dt);
+      })();
+      effectiveEndDate = minDateString(String(filterEndDate), cutoff);
+
+      // Compute pending window using today's date in user's timezone
+      const todayYYYYMMDD = todayYmd;
+      const pendingWindowEnd = minDateString(String(filterEndDate), todayYYYYMMDD);
+      const pendingWindowStart = addDaysYYYYMMDD(pendingWindowEnd, -1);
+
+      pendingWindowDates = uniqueStringsPreserveOrder([
+        pendingWindowEnd,
+        pendingWindowStart,
+      ])
+        .filter((d) => d >= filterStartDate && d <= String(filterEndDate))
+        .filter((d) => d > effectiveEndDate);
+    }
 
     // =========================================================================
     // Get all teams in the league via teamleagues
@@ -368,7 +380,7 @@ export async function GET(
         return;
       }
       console.debug(`[Leaderboard] Including challenge submission ${sub.id} with ${points} points for member ${sub.league_member_id}`);
-      
+
 
       // Only individual challenges contribute to the individual leaderboard.
       // Team/sub_team challenges contribute to team totals, not to the submitting member.
