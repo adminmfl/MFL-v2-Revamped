@@ -12,6 +12,7 @@ import { getSupabaseServiceRole } from '@/lib/supabase/client';
 import { getLeagueReportData } from '@/lib/services/league-report';
 import { renderToBuffer } from '@react-pdf/renderer';
 import { LeagueReportPDF } from '@/lib/pdf/league-report-pdf';
+import { deriveLeagueStatus } from '@/lib/services/leagues';
 import React from 'react';
 
 export async function GET(
@@ -32,7 +33,7 @@ export async function GET(
         // Verify league exists and is completed
         const { data: league, error: leagueError } = await supabase
             .from('leagues')
-            .select('league_id, status, end_date')
+            .select('league_id, status, start_date, end_date')
             .eq('league_id', leagueId)
             .single();
 
@@ -40,15 +41,14 @@ export async function GET(
             return NextResponse.json({ error: 'League not found' }, { status: 404 });
         }
 
-        // Check if league is completed (either status is 'completed' or end_date has passed)
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const endDate = new Date(league.end_date);
-        endDate.setHours(0, 0, 0, 0);
+        // Use deriveLeagueStatus for consistent completion check
+        const { derivedStatus } = deriveLeagueStatus({
+            status: league.status,
+            start_date: league.start_date,
+            end_date: league.end_date,
+        });
 
-        const isCompleted = league.status === 'completed' || today > endDate;
-
-        if (!isCompleted) {
+        if (derivedStatus !== 'completed') {
             return NextResponse.json(
                 { error: 'Reports are only available for completed leagues' },
                 { status: 400 }

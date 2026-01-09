@@ -50,40 +50,55 @@ function mapLeagueInputToDbUpdates(input: Partial<LeagueInput>): Record<string, 
  * Derive a UI-friendly status from stored status and schedule dates.
  * Returns the derived status plus a flag indicating if we should persist it
  * back to the DB (we only persist when transitioning to 'completed').
+ * 
+ * TIMEZONE HANDLING:
+ * - All date comparisons use UTC to ensure consistent behavior across timezones
+ * - start_date: League becomes active at 00:00:00 UTC on this date
+ * - end_date: League remains active until 23:59:59 UTC on this date
+ * - Submissions are allowed throughout the entire end_date day (UTC)
+ * - Status transitions to 'completed' only AFTER end_date has fully passed in UTC
  */
 export function deriveLeagueStatus(
   league: { status?: string | null; start_date?: string | null; end_date?: string | null }
 ): { derivedStatus: string; shouldPersist: boolean } {
-  const parseYmd = (ymd?: string | null): Date | null => {
+  const parseYmdUtc = (ymd?: string | null): Date | null => {
     if (!ymd) return null;
     const m = /^\d{4}-\d{2}-\d{2}$/.exec(String(ymd));
     if (!m) return null;
     const [y, mo, d] = String(ymd).split('-').map((p) => Number(p));
     if (!y || !mo || !d) return null;
-    const dt = new Date(y, mo - 1, d);
-    dt.setHours(0, 0, 0, 0);
+    // Use Date.UTC to create a date in UTC timezone
+    const dt = new Date(Date.UTC(y, mo - 1, d, 0, 0, 0, 0));
     return isNaN(dt.getTime()) ? null : dt;
   };
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Get current UTC date at start of day (00:00:00 UTC)
+  const nowUtc = new Date();
+  const todayUtc = new Date(Date.UTC(
+    nowUtc.getUTCFullYear(),
+    nowUtc.getUTCMonth(),
+    nowUtc.getUTCDate(),
+    0, 0, 0, 0
+  ));
 
-  const startDt = parseYmd(league?.start_date || null);
-  const endDt = parseYmd(league?.end_date || null);
+  const startDt = parseYmdUtc(league?.start_date || null);
+  const endDt = parseYmdUtc(league?.end_date || null);
 
   const rawStatus = String(league?.status || 'draft').toLowerCase();
   let derivedStatus = rawStatus;
 
   if (derivedStatus !== 'draft') {
     if (startDt && endDt) {
-      if (today.getTime() > endDt.getTime()) {
+      // League is completed only AFTER the end_date has fully passed (after 23:59:59 UTC)
+      // This means we need to check if today > end_date (not >=)
+      if (todayUtc.getTime() > endDt.getTime()) {
         derivedStatus = 'completed';
-      } else if (today.getTime() >= startDt.getTime() && today.getTime() <= endDt.getTime()) {
+      } else if (todayUtc.getTime() >= startDt.getTime() && todayUtc.getTime() <= endDt.getTime()) {
         derivedStatus = 'active';
-      } else if (today.getTime() < startDt.getTime()) {
+      } else if (todayUtc.getTime() < startDt.getTime()) {
         if (derivedStatus === 'scheduled' || derivedStatus === 'payment_pending') derivedStatus = 'launched';
       }
-    } else if (endDt && today.getTime() > endDt.getTime()) {
+    } else if (endDt && todayUtc.getTime() > endDt.getTime()) {
       derivedStatus = 'completed';
     }
   }

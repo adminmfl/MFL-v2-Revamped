@@ -9,6 +9,7 @@ import { getSupabaseServiceRole } from "@/lib/supabase/client";
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/config';
 import { getUserLocalDateYMD } from '@/lib/utils/timezone';
+import { deriveLeagueStatus } from '@/lib/services/leagues';
 
 // ============================================================================
 // Types
@@ -82,10 +83,11 @@ export async function POST(req: NextRequest) {
       legacyTimezoneOffset: typeof timezone_offset === 'number' && Number.isFinite(timezone_offset) ? timezone_offset : null,
     });
 
-    // Block submissions entirely if the league has completed
+    // Block submissions if the league has completed
+    // Use deriveLeagueStatus for consistent status calculation across the app
     const { data: leagueRow, error: leagueRowError } = await supabase
       .from('leagues')
-      .select('league_id, end_date, status')
+      .select('league_id, end_date, start_date, status')
       .eq('league_id', league_id)
       .single();
 
@@ -94,10 +96,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'League not found' }, { status: 404 });
     }
 
-    const leagueEnd = (leagueRow as any).end_date || null;
-    const leagueStatus = (leagueRow as any).status || null;
+    // Derive the league status using the same logic as everywhere else in the app
+    // This ensures consistency between dashboard display and submission cutoff
+    const { derivedStatus } = deriveLeagueStatus({
+      status: (leagueRow as any).status,
+      start_date: (leagueRow as any).start_date,
+      end_date: (leagueRow as any).end_date,
+    });
 
-    if (leagueStatus === 'completed' || (leagueEnd && normalizeDateOnly(leagueEnd) && normalizeDateOnly(leagueEnd) < todayYmd)) {
+    if (derivedStatus === 'completed') {
       return NextResponse.json({ error: 'League has completed. Submissions are closed.' }, { status: 400 });
     }
 

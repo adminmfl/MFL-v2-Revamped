@@ -144,14 +144,31 @@ export default function SubmitActivityPage({
   const [submissionType, setSubmissionType] = React.useState<'workout' | 'rest'>('workout');
 
   // Whether the active league has completed
+  // Use the same logic as deriveLeagueStatus to ensure consistency
   const isLeagueCompleted = React.useMemo(() => {
     if (!activeLeague) return false;
     if (activeLeague.status === 'completed') return true;
+    
+    // League remains active through the entire end_date day (UTC)
+    // Only becomes completed AFTER end_date has fully passed
     if (activeLeague.end_date) {
       try {
-        const end = new Date(activeLeague.end_date);
-        const now = new Date();
-        return end < now;
+        // Parse end_date as UTC date at start of day
+        const [y, mo, d] = activeLeague.end_date.split('-').map(Number);
+        const endDateUtc = new Date(Date.UTC(y, mo - 1, d, 0, 0, 0, 0));
+        
+        // Get current UTC date at start of day
+        const nowUtc = new Date();
+        const todayUtc = new Date(Date.UTC(
+          nowUtc.getUTCFullYear(),
+          nowUtc.getUTCMonth(),
+          nowUtc.getUTCDate(),
+          0, 0, 0, 0
+        ));
+        
+        // League is completed only AFTER the end_date has fully passed
+        // This means today > end_date (not >=)
+        return todayUtc.getTime() > endDateUtc.getTime();
       } catch {
         return false;
       }
