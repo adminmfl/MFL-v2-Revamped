@@ -136,6 +136,16 @@ export async function POST(req: NextRequest) {
           );
         }
       }
+
+      // CRITICAL FIX: Ensure the submitted date is not AFTER the league end date.
+      // Even if "today" is valid (e.g. user is submitting on Jan 10 via the grace period),
+      // they should not be able to log a workout FOR Jan 10 if the league ended on Jan 9.
+      if (normalizedDate > dateStr && !reupload_of) {
+         return NextResponse.json(
+          { error: `League ended on ${dateStr}. You cannot submit activities for ${normalizedDate}.` },
+          { status: 400 }
+        );
+      }
     } else {
       // No league end date, standard check
       if (!reupload_of && normalizedDate !== todayYmd) {
