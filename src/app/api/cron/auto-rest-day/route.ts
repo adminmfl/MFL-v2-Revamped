@@ -102,7 +102,7 @@ async function getMemberRestDaysRemaining(
   // Calculate total allowed rest days
   const totalAllowed = totalRestDaysLimit;
 
-  // Count approved rest days
+  // Count approved rest days (auto-calculated from effortentry)
   const { count: approvedRestDays } = await supabase
     .from('effortentry')
     .select('*', { count: 'exact', head: true })
@@ -110,8 +110,34 @@ async function getMemberRestDaysRemaining(
     .eq('type', 'rest')
     .eq('status', 'approved');
 
-  const used = approvedRestDays || 0;
-  return Math.max(0, totalAllowed - used);
+  const autoUsed = approvedRestDays || 0;
+
+  // =========================================================================
+  // REST DAY DONATION ADJUSTMENTS
+  // Formula: final_used = auto + donated - received
+  // =========================================================================
+
+  // Get approved donations received by this member
+  const { data: receivedDonations } = await supabase
+    .from('rest_day_donations')
+    .select('days_transferred')
+    .eq('receiver_member_id', leagueMemberId)
+    .eq('status', 'approved');
+
+  const daysReceived = (receivedDonations || []).reduce((sum: number, d: any) => sum + d.days_transferred, 0);
+
+  // Get approved donations given by this member
+  const { data: donatedDonations } = await supabase
+    .from('rest_day_donations')
+    .select('days_transferred')
+    .eq('donor_member_id', leagueMemberId)
+    .eq('status', 'approved');
+
+  const daysDonated = (donatedDonations || []).reduce((sum: number, d: any) => sum + d.days_transferred, 0);
+
+  // Final calculation with adjustments
+  const finalUsed = autoUsed + daysDonated - daysReceived;
+  return Math.max(0, totalAllowed - finalUsed);
 }
 
 // ============================================================================

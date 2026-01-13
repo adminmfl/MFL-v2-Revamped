@@ -85,19 +85,55 @@ export async function GET(
       .eq('status', 'pending')
       .ilike('notes', '%EXEMPTION_REQUEST%');
 
-    const usedRestDays = approvedRestDays || 0;
-    const remainingRestDays = Math.max(0, totalAllowedRestDays - usedRestDays);
-    const isAtLimit = usedRestDays >= totalAllowedRestDays;
+    const autoRestDays = approvedRestDays || 0;
+
+    // =========================================================================
+    // REST DAY DONATION ADJUSTMENTS
+    // Formula: final_used = auto + donated - received
+    // (donated increases usage because donor gives away allowance)
+    // (received decreases usage because receiver gains allowance)
+    // =========================================================================
+
+    // Get approved donations received by this member
+    const { data: receivedDonations } = await supabase
+      .from('rest_day_donations')
+      .select('days_transferred')
+      .eq('receiver_member_id', membership.league_member_id)
+      .eq('status', 'approved');
+
+    const daysReceived = (receivedDonations || []).reduce((sum, d) => sum + d.days_transferred, 0);
+
+    // Get approved donations given by this member
+    const { data: donatedDonations } = await supabase
+      .from('rest_day_donations')
+      .select('days_transferred')
+      .eq('donor_member_id', membership.league_member_id)
+      .eq('status', 'approved');
+
+    const daysDonated = (donatedDonations || []).reduce((sum, d) => sum + d.days_transferred, 0);
+
+    // Final calculation with adjustments
+    // If you donate, your effective usage increases (less remaining)
+    // If you receive, your effective usage decreases (more remaining)
+    const finalUsedRestDays = autoRestDays + daysDonated - daysReceived;
+    const finalRemainingRestDays = Math.max(0, totalAllowedRestDays - finalUsedRestDays);
+    const isAtLimit = finalUsedRestDays >= totalAllowedRestDays;
 
     return NextResponse.json({
       success: true,
       data: {
         totalAllowed: totalAllowedRestDays,
-        used: usedRestDays,
+        used: finalUsedRestDays,
+        autoUsed: autoRestDays,
         pending: pendingRestDays || 0,
-        remaining: remainingRestDays,
+        remaining: finalRemainingRestDays,
         isAtLimit,
         exemptionsPending: exemptionRequests || 0,
+        // Donation breakdown
+        donations: {
+          received: daysReceived,
+          donated: daysDonated,
+        },
       },
     });
   } catch (error) {
