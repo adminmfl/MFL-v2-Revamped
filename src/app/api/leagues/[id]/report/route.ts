@@ -1,8 +1,11 @@
 /**
- * GET /api/leagues/[id]/report - Generate personalized league report PDF
+ * GET /api/leagues/[id]/report - Generate personalized league report or certificate PDF
  * 
- * Returns a downloadable PDF report for the authenticated user's league journey.
- * Includes caching headers for performance optimization.
+ * Query Parameters:
+ * - type: 'report' (default) | 'certificate' - Which PDF to generate
+ * - format: 'pdf' (default) | 'json' - Response format
+ * 
+ * Returns a downloadable PDF for the authenticated user's league journey.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -12,6 +15,7 @@ import { getSupabaseServiceRole } from '@/lib/supabase/client';
 import { getLeagueReportData } from '@/lib/services/league-report';
 import { renderToBuffer } from '@react-pdf/renderer';
 import { LeagueReportPDF } from '@/lib/pdf/league-report-pdf';
+import { CertificatePDF } from '@/lib/pdf/certificate-pdf';
 import React from 'react';
 
 export async function GET(
@@ -70,9 +74,10 @@ export async function GET(
             );
         }
 
-        // Check format parameter
+        // Check query parameters
         const { searchParams } = new URL(request.url);
         const format = searchParams.get('format') || 'pdf';
+        const type = searchParams.get('type') || 'report'; // 'report' or 'certificate'
 
         // Get report data
         const reportData = await getLeagueReportData(leagueId, userId);
@@ -92,26 +97,33 @@ export async function GET(
             });
         }
 
-        // Generate PDF
-        const pdfBuffer = await renderToBuffer(
-            React.createElement(LeagueReportPDF, { data: reportData })
-        );
+        // Generate appropriate PDF based on type
+        let pdfBuffer: Buffer;
+        let filename: string;
 
-        // Create filename
         const sanitizedLeagueName = reportData.league.name.replace(/[^a-zA-Z0-9]/g, '_');
         const sanitizedUsername = reportData.user.username.replace(/[^a-zA-Z0-9]/g, '_');
-        const filename = `League_Report_${sanitizedLeagueName}_${sanitizedUsername}.pdf`;
 
-        // Return PDF with caching headers
-        return new NextResponse(pdfBuffer, {
+        if (type === 'certificate') {
+            // Generate Certificate PDF
+            pdfBuffer = await renderToBuffer(
+                React.createElement(CertificatePDF, { data: reportData }) as any
+            );
+            filename = `Certificate_${sanitizedLeagueName}_${sanitizedUsername}.pdf`;
+        } else {
+            // Generate League Report PDF (default)
+            pdfBuffer = await renderToBuffer(
+                React.createElement(LeagueReportPDF, { data: reportData }) as any
+            );
+            filename = `League_Report_${sanitizedLeagueName}_${sanitizedUsername}.pdf`;
+        }
+
+        // Return PDF - convert Buffer to Uint8Array for NextResponse
+        return new NextResponse(new Uint8Array(pdfBuffer), {
             status: 200,
             headers: {
                 'Content-Type': 'application/pdf',
                 'Content-Disposition': `attachment; filename="${filename}"`,
-                // Cache for 24 hours (private = only browser can cache, not CDN)
-                'Content-Type': 'application/pdf',
-                'Content-Disposition': `attachment; filename="${filename}"`,
-                // Disable server-side caching (client-side caching handled by download button)
                 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
                 'Pragma': 'no-cache',
                 'Expires': '0',
@@ -125,3 +137,4 @@ export async function GET(
         );
     }
 }
+

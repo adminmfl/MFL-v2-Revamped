@@ -129,7 +129,7 @@ export async function getLeagueReportData(
     // 3. Get league info
     const { data: league, error: leagueError } = await supabase
         .from('leagues')
-        .select('league_id, league_name, start_date, end_date, logo_url, normalize_points_by_capacity')
+        .select('league_id, league_name, start_date, end_date, logo_url, normalize_points_by_team_size')
         .eq('league_id', leagueId)
         .single();
 
@@ -188,7 +188,7 @@ export async function getLeagueReportData(
         leagueId,
         userId,
         leagueMember.team_id,
-        (league as any).normalize_points_by_capacity || false
+        (league as any).normalize_points_by_team_size || false
     );
 
     // 10. Calculate performance summary
