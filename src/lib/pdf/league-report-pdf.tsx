@@ -553,6 +553,10 @@ export function LeagueReportPDF({ data }: LeagueReportPDFProps) {
                             {formatDate(data.league.startDate)} — {formatDate(data.league.endDate)}
                         </Text>
                     </View>
+                    <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Average RR:</Text>
+                        <Text style={styles.infoValue}>{data.averageRR}</Text>
+                    </View>
                     <View style={styles.scoreRow}>
                         <Text style={styles.finalScoreLabel}>Final Individual Score:</Text>
                         <Text style={styles.finalScoreValue}>{data.finalIndividualScore} Points</Text>
@@ -734,6 +738,14 @@ export function LeagueReportPDF({ data }: LeagueReportPDFProps) {
                     <View style={styles.statBox}>
                         <Text style={styles.statBoxLabel}>Missed Days</Text>
                         <Text style={styles.statBoxValue}>{data.performance.totalMissedDays}</Text>
+                    </View>
+                </View>
+
+                {/* Avg RR Block - Add this before Challenge Points */}
+                <View style={[styles.statsGrid, { marginBottom: 30 }]}>
+                    <View style={[styles.statBoxMiddle, { width: 140, backgroundColor: theme.blueDark }]}>
+                        <Text style={styles.statBoxLabel}>Average RR</Text>
+                        <Text style={styles.statBoxValue}>{data.averageRR}</Text>
                     </View>
                 </View>
 

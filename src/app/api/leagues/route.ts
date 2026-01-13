@@ -16,7 +16,7 @@ const createLeagueSchema = z.object({
   tier_id: z.string().optional(),
   num_teams: z.number().int().positive().optional(),
   max_participants: z.number().int().positive().optional(),
-  rest_days: z.number().int().min(0).max(7).optional(),
+  rest_days: z.number().int().min(0).optional(),
   is_public: z.boolean().optional(),
   is_exclusive: z.boolean().optional(),
 });

@@ -86,7 +86,7 @@ function parseTimezoneOffset(tzString: string | null): number {
 async function getMemberRestDaysRemaining(
   leagueMemberId: string,
   leagueId: string,
-  restDaysPerWeek: number
+  totalRestDaysLimit: number
 ): Promise<number> {
   const supabase = getSupabaseServiceRole();
 
@@ -100,10 +100,7 @@ async function getMemberRestDaysRemaining(
   if (!league) return 0;
 
   // Calculate total allowed rest days
-  const startDate = new Date(league.start_date);
-  const endDate = new Date(league.end_date);
-  const weeks = Math.ceil((endDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
-  const totalAllowed = weeks * restDaysPerWeek;
+  const totalAllowed = totalRestDaysLimit;
 
   // Count approved rest days
   const { count: approvedRestDays } = await supabase

@@ -132,6 +132,16 @@ export function getSidebarNavItems(
         url: '/payments',
         icon: CreditCard,
       },
+      {
+        title: 'Join League',
+        url: '/leagues/join',
+        icon: Search,
+      },
+      {
+        title: 'Create League',
+        url: '/leagues/create',
+        icon: Plus,
+      },
     ],
   });
 

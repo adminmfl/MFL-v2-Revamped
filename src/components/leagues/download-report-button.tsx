@@ -4,112 +4,13 @@
  * Download League Report Button
  * 
  * A button component that downloads the user's personalized league report PDF.
- * Features:
- * - IndexedDB caching for instant re-access
- * - Loading state during first-time generation
- * - Automatic download trigger
+ * DIRECT DOWNLOAD - No caching (removed per user request).
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { IconDownload, IconLoader2, IconFileText } from '@tabler/icons-react';
+import { IconDownload, IconLoader2 } from '@tabler/icons-react';
 import { toast } from 'sonner';
-
-// ============================================================================
-// IndexedDB Cache Helpers
-// ============================================================================
-
-const DB_NAME = 'LeagueReportCache';
-const STORE_NAME = 'reports';
-const DB_VERSION = 1;
-
-interface CachedReport {
-    leagueId: string;
-    userId: string;
-    blob: Blob;
-    filename: string;
-    cachedAt: number;
-}
-
-async function openDB(): Promise<IDBDatabase> {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
-
-        request.onupgradeneeded = (event) => {
-            const db = (event.target as IDBOpenDBRequest).result;
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                const store = db.createObjectStore(STORE_NAME, { keyPath: 'cacheKey' });
-                store.createIndex('cachedAt', 'cachedAt', { unique: false });
-            }
-        };
-    });
-}
-
-async function getCachedReport(leagueId: string, userId: string): Promise<CachedReport | null> {
-    try {
-        const db = await openDB();
-        const transaction = db.transaction(STORE_NAME, 'readonly');
-        const store = transaction.objectStore(STORE_NAME);
-        const cacheKey = `${leagueId}-${userId}`;
-
-        return new Promise((resolve, reject) => {
-            const request = store.get(cacheKey);
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => {
-                const result = request.result;
-                if (result) {
-                    // Check if cache is still valid (24 hours)
-                    const now = Date.now();
-                    const cacheAge = now - result.cachedAt;
-                    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-
-                    if (cacheAge < maxAge) {
-                        resolve(result);
-                    } else {
-                        resolve(null); // Cache expired
-                    }
-                } else {
-                    resolve(null);
-                }
-            };
-        });
-    } catch (error) {
-        console.error('Error reading from cache:', error);
-        return null;
-    }
-}
-
-async function setCachedReport(
-    leagueId: string,
-    userId: string,
-    blob: Blob,
-    filename: string
-): Promise<void> {
-    try {
-        const db = await openDB();
-        const transaction = db.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        const cacheKey = `${leagueId}-${userId}`;
-
-        await new Promise<void>((resolve, reject) => {
-            const request = store.put({
-                cacheKey,
-                leagueId,
-                userId,
-                blob,
-                filename,
-                cachedAt: Date.now(),
-            });
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve();
-        });
-    } catch (error) {
-        console.error('Error writing to cache:', error);
-    }
-}
 
 // ============================================================================
 // Download Helper
@@ -148,32 +49,11 @@ export function DownloadReportButton({
     className,
 }: DownloadReportButtonProps) {
     const [isLoading, setIsLoading] = useState(false);
-    const [hasCached, setHasCached] = useState(false);
-
-    // Check if we have a cached version
-    useEffect(() => {
-        async function checkCache() {
-            const cached = await getCachedReport(leagueId, userId);
-            setHasCached(!!cached);
-        }
-        checkCache();
-    }, [leagueId, userId]);
 
     const handleDownload = useCallback(async () => {
         setIsLoading(true);
 
         try {
-            // First, check cache
-            const cached = await getCachedReport(leagueId, userId);
-
-            if (cached) {
-                // Use cached version
-                downloadBlob(cached.blob, cached.filename);
-                toast.success('Report downloaded!');
-                setIsLoading(false);
-                return;
-            }
-
             // Fetch from API
             const response = await fetch(`/api/leagues/${leagueId}/report`);
 
@@ -194,11 +74,7 @@ export function DownloadReportButton({
 
             const blob = await response.blob();
 
-            // Cache the result
-            await setCachedReport(leagueId, userId, blob, filename);
-            setHasCached(true);
-
-            // Download
+            // Download directly
             downloadBlob(blob, filename);
             toast.success('Report downloaded!');
         } catch (error) {
@@ -228,11 +104,6 @@ export function DownloadReportButton({
                 <>
                     <IconLoader2 className="h-4 w-4 mr-2 animate-spin" />
                     Generating...
-                </>
-            ) : hasCached ? (
-                <>
-                    <IconFileText className="h-4 w-4 mr-2" />
-                    Download Report
                 </>
             ) : (
                 <>

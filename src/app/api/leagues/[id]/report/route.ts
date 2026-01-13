@@ -109,9 +109,12 @@ export async function GET(
                 'Content-Type': 'application/pdf',
                 'Content-Disposition': `attachment; filename="${filename}"`,
                 // Cache for 24 hours (private = only browser can cache, not CDN)
-                'Cache-Control': 'private, max-age=86400',
-                // ETag for conditional requests
-                'ETag': `"${leagueId}-${userId}-${reportData.generatedAt}"`,
+                'Content-Type': 'application/pdf',
+                'Content-Disposition': `attachment; filename="${filename}"`,
+                // Disable server-side caching (client-side caching handled by download button)
+                'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0',
             },
         });
     } catch (error) {

@@ -382,13 +382,11 @@ export async function GET(
       console.debug(`[Leaderboard] Including challenge submission ${sub.id} with ${points} points for member ${sub.league_member_id}`);
 
 
-      // Only individual challenges contribute to the individual leaderboard.
-      // Team/sub_team challenges contribute to team totals, not to the submitting member.
-      if (challenge.challenge_type === 'individual') {
-        const memberKey = sub.league_member_id as string;
-        const current = memberChallengePoints.get(memberKey) || 0;
-        memberChallengePoints.set(memberKey, current + points);
-      }
+      // UPDATED LOGIC: All challenge submissions (Individual, Team, Sub-team) contribute to the submitting member's
+      // individual score, in addition to their team/sub-team scores.
+      const memberKey = sub.league_member_id as string;
+      const current = memberChallengePoints.get(memberKey) || 0;
+      memberChallengePoints.set(memberKey, current + points);
 
       // Handle team aggregation based on challenge type
       // All challenges (individual, team, sub_team) contribute to team scores

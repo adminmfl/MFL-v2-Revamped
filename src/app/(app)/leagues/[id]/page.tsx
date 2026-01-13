@@ -1185,7 +1185,7 @@ export default function LeagueDashboardPage({
 
                 <span className="text-sm text-muted-foreground">Rest Days</span>
                 <Badge variant="outline">
-                  {league.rest_days} per week
+                  {league.rest_days} total
                 </Badge>
               </div>
               <div className="flex flex-col gap-1 md:flex-col md:items-start min-w-0">

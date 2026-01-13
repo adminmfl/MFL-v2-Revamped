@@ -47,12 +47,8 @@ export async function GET(
       return NextResponse.json({ error: 'Not a member of this league' }, { status: 403 });
     }
 
-    // Calculate total allowed rest days based on league duration and rest_days per week
-    const startDate = parseISO(league.start_date);
-    const endDate = parseISO(league.end_date);
-    const totalWeeks = Math.ceil(differenceInWeeks(endDate, startDate)) + 1;
-    const restDaysPerWeek = league.rest_days || 1;
-    const totalAllowedRestDays = totalWeeks * restDaysPerWeek;
+    // Treat rest_days as total allowed rest days (previously per-week)
+    const totalAllowedRestDays = league.rest_days ?? 1;
 
     // Count rest days used (approved only)
     const { count: approvedRestDays, error: approvedError } = await supabase
@@ -102,8 +98,6 @@ export async function GET(
         remaining: remainingRestDays,
         isAtLimit,
         exemptionsPending: exemptionRequests || 0,
-        restDaysPerWeek,
-        leagueWeeks: totalWeeks,
       },
     });
   } catch (error) {

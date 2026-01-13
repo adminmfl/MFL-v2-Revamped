@@ -76,8 +76,6 @@ interface RestDayStats {
   remaining: number;
   isAtLimit: boolean;
   exemptionsPending: number;
-  restDaysPerWeek: number;
-  leagueWeeks: number;
 }
 
 // ============================================================================
@@ -1288,11 +1286,11 @@ export default function SubmitActivityPage({
                         </div>
 
                         {/* Info */}
+                        {/* Info */}
                         <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
                           <Info className="size-4 mt-0.5 shrink-0" />
                           <div>
-                            <span className="font-medium">{restDayStats.restDaysPerWeek} rest day{restDayStats.restDaysPerWeek > 1 ? 's' : ''} per week</span>
-                            {' '}× {restDayStats.leagueWeeks} weeks = {restDayStats.totalAllowed} total rest days allowed
+                            <span className="font-medium">{restDayStats.totalAllowed} Total Rest Days Allowed</span>
                           </div>
                         </div>
 

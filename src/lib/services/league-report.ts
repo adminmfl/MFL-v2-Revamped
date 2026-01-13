@@ -80,6 +80,7 @@ export interface LeagueReportData {
 
     // Metadata
     generatedAt: string;
+    averageRR: number;
 }
 
 // ============================================================================
@@ -128,7 +129,7 @@ export async function getLeagueReportData(
     // 3. Get league info
     const { data: league, error: leagueError } = await supabase
         .from('leagues')
-        .select('league_id, league_name, start_date, end_date, logo_url')
+        .select('league_id, league_name, start_date, end_date, logo_url, normalize_points_by_capacity')
         .eq('league_id', leagueId)
         .single();
 
@@ -182,7 +183,13 @@ export async function getLeagueReportData(
     const challenges = await getChallengesSummary(supabase, leagueId, leagueMemberId, leagueMember.team_id);
 
     // 9. Get rankings
-    const rankings = await getRankings(supabase, leagueId, userId, leagueMember.team_id);
+    const rankings = await getRankings(
+        supabase,
+        leagueId,
+        userId,
+        leagueMember.team_id,
+        (league as any).normalize_points_by_capacity || false
+    );
 
     // 10. Calculate performance summary
     const workoutEntries = allEntries.filter(e => e.type === 'workout');
@@ -214,6 +221,20 @@ export async function getLeagueReportData(
         finalLeagueScore: rankings.userTotalPoints,
     };
 
+    // Calculate Average RR
+    // Average of rr_value from all approved workout entries
+    let totalRR = 0;
+    let rrCount = 0;
+
+    for (const entry of workoutEntries) {
+        if (entry.rr_value) {
+            totalRR += parseFloat(String(entry.rr_value));
+            rrCount++;
+        }
+    }
+
+    const averageRR = rrCount > 0 ? Number((totalRR / rrCount).toFixed(2)) : 0;
+
     return {
         user: {
             userId: user.user_id,
@@ -235,6 +256,7 @@ export async function getLeagueReportData(
         rankings,
         performance,
         generatedAt: new Date().toISOString(),
+        averageRR,
     };
 }
 
@@ -351,7 +373,8 @@ async function getRankings(
     supabase: ReturnType<typeof getSupabaseServiceRole>,
     leagueId: string,
     userId: string,
-    teamId: string | null
+    teamId: string | null,
+    normalizePoints: boolean = false
 ): Promise<RankingsSummary> {
     // Get all members with their points for ranking calculation
     const { data: allMembers } = await supabase
@@ -376,17 +399,19 @@ async function getRankings(
     const memberIds = allMembers.map(m => m.league_member_id);
 
     // Get all approved entries for scoring
+    // LOGIC MATCH: Same as /api/leagues/[id]/leaderboard
+    // 1 point per approved entry
     const { data: allEntries } = await supabase
         .from('effortentry')
         .select('league_member_id, rr_value')
         .eq('status', 'approved')
         .in('league_member_id', memberIds);
 
-    // Calculate points per member
+    // Calculate points per member (1 point per entry)
     const memberPoints = new Map<string, number>();
     for (const entry of (allEntries || [])) {
         const current = memberPoints.get(entry.league_member_id) || 0;
-        memberPoints.set(entry.league_member_id, current + (parseFloat(entry.rr_value) || 0));
+        memberPoints.set(entry.league_member_id, current + 1); // 1 point per approved entry
     }
 
     // Map user_id to points
@@ -396,19 +421,34 @@ async function getRankings(
         userPointsMap.set(member.user_id, points);
     }
 
-    // Get challenge bonus points
+    // Get challenge bonus points - including challenge type to filter correct scoring
     const { data: challengeSubs } = await supabase
         .from('challenge_submissions')
-        .select('league_member_id, awarded_points, status')
+        .select(`
+            league_member_id, 
+            awarded_points, 
+            status,
+            leagueschallenges!inner (
+                challenge_type,
+                total_points
+            )
+        `)
         .eq('status', 'approved')
         .in('league_member_id', memberIds);
 
-    // Add challenge points to member totals
+    // UPDATED LOGIC: Add ALL challenge points to member totals (Individual, Team, Sub-team)
+    // As per user request: submitter gets points for any approved submission they made
     for (const sub of (challengeSubs || [])) {
+        const challenge = sub.leagueschallenges as any;
+
         const member = allMembers.find(m => m.league_member_id === sub.league_member_id);
         if (member) {
             const current = userPointsMap.get(member.user_id) || 0;
-            userPointsMap.set(member.user_id, current + (sub.awarded_points || 0));
+
+            // Logic matching Leaderboard: use awarded if present, else default to total
+            const points = sub.awarded_points !== null ? sub.awarded_points : (challenge.total_points || 0);
+
+            userPointsMap.set(member.user_id, current + points);
         }
     }
 
@@ -429,6 +469,19 @@ async function getRankings(
         userRankInTeam = teamMemberPoints.indexOf(userPoints) + 1;
         teamTotalPoints = teamMemberPoints.reduce((sum, p) => sum + p, 0);
 
+        // Calculate normalization if enabled
+        let teamSizes = new Map<string, number>();
+        let maxTeamSize = 0;
+
+        if (normalizePoints) {
+            for (const member of allMembers) {
+                if (member.team_id) {
+                    teamSizes.set(member.team_id, (teamSizes.get(member.team_id) || 0) + 1);
+                }
+            }
+            maxTeamSize = Math.max(...Array.from(teamSizes.values()));
+        }
+
         // Calculate team ranks across all teams
         const teamScores = new Map<string, number>();
         for (const member of allMembers) {
@@ -437,7 +490,27 @@ async function getRankings(
                 teamScores.set(member.team_id, current + (userPointsMap.get(member.user_id) || 0));
             }
         }
+
+        // Apply normalization
+        if (normalizePoints && maxTeamSize > 0) {
+            for (const [tId, rawScore] of teamScores.entries()) {
+                const size = teamSizes.get(tId) || 1;
+                // Formula: (raw / size) * max
+                const normalized = Math.round(rawScore * (maxTeamSize / size));
+                teamScores.set(tId, normalized);
+            }
+        }
+
         const allTeamScores = Array.from(teamScores.values()).sort((a, b) => b - a);
+
+        // Update teamTotalPoints to use the normalized score if applicable
+        if (normalizePoints && teamId) {
+            teamTotalPoints = teamScores.get(teamId) || 0;
+        } else if (teamId && !normalizePoints) {
+            // Re-fetch strictly from map to be safe, though accumulator loop above should equal it
+            teamTotalPoints = teamScores.get(teamId) || 0;
+        }
+
         teamRankInLeague = allTeamScores.indexOf(teamTotalPoints) + 1;
     }
 

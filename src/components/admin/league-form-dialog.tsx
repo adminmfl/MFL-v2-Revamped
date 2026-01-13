@@ -82,7 +82,7 @@ export function LeagueFormDialog({
     start_date: "",
     end_date: "",
     num_teams: 4,
-    rest_days: 1,
+    rest_days: 18,
     auto_rest_day_enabled: false,
     is_public: false,
     is_exclusive: true,
@@ -113,7 +113,7 @@ export function LeagueFormDialog({
         start_date: "",
         end_date: "",
         num_teams: 4,
-        rest_days: 1,
+        rest_days: 18,
         auto_rest_day_enabled: false,
         is_public: false,
         is_exclusive: true,
@@ -211,15 +211,14 @@ export function LeagueFormDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="rest_days">Rest Days</Label>
+              <Label htmlFor="rest_days">Total Rest Days</Label>
               <Input
                 id="rest_days"
                 type="number"
                 min={0}
-                max={7}
                 value={formData.rest_days}
                 onChange={(e) =>
-                  setFormData({ ...formData, rest_days: parseInt(e.target.value) || 1 })
+                  setFormData({ ...formData, rest_days: parseInt(e.target.value) || 0 })
                 }
               />
             </div>
