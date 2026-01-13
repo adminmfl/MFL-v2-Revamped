@@ -1,10 +1,8 @@
 /**
- * League Report PDF Template
+ * League Report PDF Template - 2 Page Version
  * 
- * Styled according to user design reference:
- * Page 1: Summary, Activity, Rest Days
- * Page 2: Challenges, Leaderboard
- * Page 3: Final Performance, Celebration
+ * Page 1: Summary with performance overview, challenges, points, team info
+ * Page 2: Detailed activity breakdown with distances/durations, rest day dates
  */
 
 import React from 'react';
@@ -15,26 +13,27 @@ import {
     View,
     Image,
     StyleSheet,
-    Font,
     Svg,
     Path,
     Circle,
-    Polygon,
 } from '@react-pdf/renderer';
 import type { LeagueReportData } from '@/lib/services/league-report';
 
 // ============================================================================
-// Styles
+// Theme & Styles
 // ============================================================================
 
 const theme = {
-    blueDark: '#1E3A8A', // Navy blue
+    blueDark: '#1E3A8A',
     bluePrimary: '#2563EB',
     blueLight: '#EFF6FF',
     grayText: '#374151',
     grayLight: '#F3F4F6',
+    grayMuted: '#9CA3AF',
     white: '#FFFFFF',
-    accent: '#F59E0B', // Gold/Amber for trophies
+    accent: '#F59E0B',
+    green: '#10B981',
+    orange: '#F97316',
 };
 
 const styles = StyleSheet.create({
@@ -49,11 +48,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
-        borderBottomWidth: 2,
+        marginBottom: 16,
+        paddingBottom: 12,
+        borderBottomWidth: 4,
         borderBottomColor: theme.blueDark,
-        paddingBottom: 10,
-        height: 70, // Fixed height for alignment
     },
     headerLogoBox: {
         width: 60,
@@ -67,364 +65,276 @@ const styles = StyleSheet.create({
         objectFit: 'contain',
     },
     logoPlaceholder: {
-        width: 50,
-        height: 50,
+        width: 55,
+        height: 55,
         backgroundColor: theme.grayLight,
-        borderRadius: 25,
+        borderRadius: 8,
         justifyContent: 'center',
         alignItems: 'center',
     },
     logoPlaceholderText: {
         fontSize: 8,
         color: theme.grayText,
+        fontWeight: 'bold',
     },
     headerTitleContainer: {
         flex: 1,
         alignItems: 'center',
+        paddingHorizontal: 15,
     },
     reportTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: theme.blueDark,
-        marginBottom: 5,
-        textTransform: 'uppercase',
-    },
-    userName: {
-        fontSize: 22,
-        fontWeight: 'normal',
-        color: theme.bluePrimary,
-    },
-
-    // Info Block (Page 1)
-    infoBlock: {
-        backgroundColor: theme.blueLight,
-        padding: 15,
-        borderRadius: 8,
-        marginBottom: 25,
-        borderLeftWidth: 4,
-        borderLeftColor: theme.blueDark,
-    },
-    infoRow: {
-        flexDirection: 'row',
-        marginBottom: 8,
-    },
-    infoLabel: {
-        width: 140,
-        fontSize: 10,
-        fontWeight: 'bold',
-        color: theme.blueDark,
-    },
-    infoValue: {
-        flex: 1,
-        fontSize: 10,
-        color: theme.grayText,
-    },
-    scoreRow: {
-        flexDirection: 'row',
-        marginTop: 8,
-        paddingTop: 8,
-        borderTopWidth: 1,
-        borderTopColor: '#DBEAFE',
-    },
-    finalScoreLabel: {
-        fontSize: 11,
-        fontWeight: 'bold',
-        color: theme.blueDark,
-        width: 140,
-    },
-    finalScoreValue: {
-        fontSize: 11,
-        fontWeight: 'bold',
-        color: theme.bluePrimary,
-    },
-
-    // Sections
-    section: {
-        marginBottom: 25,
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 10,
-    },
-    sectionTitle: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: theme.blueDark,
-        textTransform: 'uppercase',
-        paddingHorizontal: 10,
-    },
-    sectionLine: {
-        flex: 1,
-        height: 1,
-        backgroundColor: theme.blueDark,
-        opacity: 0.3,
-    },
-
-    // Activity Table
-    table: {
-        width: '100%',
-        borderRadius: 6,
-        overflow: 'hidden',
-    },
-    tableHeader: {
-        flexDirection: 'row',
-        backgroundColor: theme.blueDark,
-        paddingVertical: 8,
-        paddingHorizontal: 8,
-    },
-    tableHeaderCell: {
-        color: theme.white,
-        fontSize: 9,
-        fontWeight: 'bold',
-        textAlign: 'center',
-    },
-    tableRow: {
-        flexDirection: 'row',
-        borderBottomWidth: 1,
-        borderBottomColor: theme.grayLight,
-        paddingVertical: 8,
-        paddingHorizontal: 8,
-        backgroundColor: theme.blueLight,
-    },
-    tableRowAlt: {
-        backgroundColor: theme.white,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.grayLight,
-        paddingVertical: 8,
-        paddingHorizontal: 8,
-        flexDirection: 'row',
-    },
-    tableCell: {
-        fontSize: 9,
-        color: theme.grayText,
-        textAlign: 'center',
-    },
-    activityNameCell: {
-        textAlign: 'left',
-        fontWeight: 'bold',
-        color: theme.blueDark,
-    },
-
-    // Rest Days
-    restDayBlock: {
-        padding: 15,
-        borderRadius: 8,
-        backgroundColor: theme.grayLight,
-    },
-    restDayCount: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: theme.blueDark,
-        marginBottom: 8,
-    },
-    restDayList: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    restDayItem: {
-        fontSize: 9,
-        color: theme.grayText,
-        backgroundColor: theme.white,
-        paddingVertical: 3,
-        paddingHorizontal: 6,
-        borderRadius: 4,
-    },
-
-    // Challenges (Page 2)
-    challengeRow: {
-        flexDirection: 'row',
-        paddingVertical: 10,
-        paddingHorizontal: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.grayLight,
-        alignItems: 'center',
-    },
-    challengeCellName: {
-        flex: 3,
-        fontSize: 10,
-        fontWeight: 'bold',
-        color: theme.blueDark,
-    },
-    challengeCellType: {
-        flex: 1,
-        fontSize: 9,
-        color: theme.grayText,
-    },
-    challengeCellStatus: {
-        flex: 1.5,
-        fontSize: 9,
-        textAlign: 'center',
-    },
-    challengeCellPoints: {
-        flex: 1,
-        fontSize: 10,
-        fontWeight: 'bold',
-        color: theme.blueDark,
-        textAlign: 'right',
-    },
-
-    // Leaderboard (Page 2)
-    rankingContainer: {
-        marginTop: 10,
-        backgroundColor: theme.blueLight,
-        borderRadius: 8,
-        padding: 20,
-    },
-    rankingRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: '#DBEAFE',
-        paddingBottom: 5,
-    },
-    rankingLabel: {
-        fontSize: 12,
-        color: theme.grayText,
-    },
-    rankingValue: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: theme.blueDark,
-    },
-    ordinalSuffix: {
-        fontSize: 10,
-    },
-
-    // Performance (Page 3)
-    perfHeader: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: theme.blueDark,
-        textAlign: 'center',
-        marginBottom: 30,
-        marginTop: 20,
-        textTransform: 'uppercase',
-    },
-    statsGrid: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        marginBottom: 30,
-        gap: 2,
-    },
-    statBox: {
-        width: 100,
-        backgroundColor: theme.blueDark,
-        paddingVertical: 15,
-        alignItems: 'center',
-    },
-    statBoxMiddle: {
-        width: 100,
-        backgroundColor: theme.bluePrimary,
-        paddingVertical: 15,
-        alignItems: 'center',
-    },
-    statBoxLabel: {
-        fontSize: 9,
-        color: theme.white,
-        marginBottom: 5,
-        opacity: 0.9,
-    },
-    statBoxValue: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: theme.white,
-    },
-    challengePointsBlock: {
-        backgroundColor: theme.grayLight,
-        padding: 20,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginBottom: 30,
-    },
-    cpLabel: {
-        fontSize: 12,
-        color: theme.blueDark,
-        marginBottom: 5,
-        fontWeight: 'bold',
-    },
-    cpValue: {
-        fontSize: 36,
-        fontWeight: 'bold',
-        color: theme.bluePrimary,
-    },
-
-    finalRankBlock: {
-        alignItems: 'center',
-        marginBottom: 20,
-        paddingVertical: 15,
-        borderTopWidth: 1,
-        borderBottomWidth: 1,
-        borderColor: theme.grayLight,
-    },
-    finalRankLabel: {
-        fontSize: 12,
-        color: theme.grayText,
-        marginBottom: 5,
-    },
-    finalRankValue: {
         fontSize: 20,
         fontWeight: 'bold',
         color: theme.blueDark,
     },
+    reportSubtitle: {
+        fontSize: 11,
+        color: theme.grayMuted,
+        marginTop: 4,
+    },
 
-    finalScoresRow: {
+    // User Info Row
+    userInfoRow: {
         flexDirection: 'row',
-        justifyContent: 'center',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: theme.blueLight,
+        padding: 14,
+        borderRadius: 8,
+        marginBottom: 16,
+        borderLeftWidth: 5,
+        borderLeftColor: theme.blueDark,
+    },
+    userName: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: theme.blueDark,
+    },
+    teamName: {
+        fontSize: 12,
+        color: theme.bluePrimary,
+        marginLeft: 8,
+    },
+    statsHighlight: {
+        flexDirection: 'row',
         gap: 20,
-        marginBottom: 40,
     },
-    finalScoreText: {
-        fontSize: 14,
-        color: theme.grayText,
+    statItem: {
+        alignItems: 'center',
     },
-    finalScoreHighlight: {
-        fontSize: 16,
+    statLabel: {
+        fontSize: 9,
+        color: theme.grayMuted,
+    },
+    statValue: {
+        fontSize: 18,
         fontWeight: 'bold',
         color: theme.blueDark,
     },
 
-    celebration: {
-        alignItems: 'center',
-        marginTop: 20,
+    // Two Column Layout
+    columnsContainer: {
+        flexDirection: 'row',
+        gap: 16,
+        flex: 1,
     },
+    column: {
+        flex: 1,
+        gap: 14,
+    },
+
+    // Section Styling
+    section: {
+        backgroundColor: theme.white,
+        borderRadius: 8,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: theme.grayLight,
+    },
+    sectionHeader: {
+        backgroundColor: theme.blueDark,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+    },
+    sectionTitle: {
+        fontSize: 11,
+        fontWeight: 'bold',
+        color: theme.white,
+        textTransform: 'uppercase',
+    },
+    sectionContent: {
+        padding: 12,
+    },
+
+    // Metric Row
+    metricRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingVertical: 6,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.grayLight,
+    },
+    metricRowLast: {
+        borderBottomWidth: 0,
+    },
+    metricLabel: {
+        fontSize: 11,
+        color: theme.grayText,
+    },
+    metricValue: {
+        fontSize: 11,
+        fontWeight: 'bold',
+        color: theme.blueDark,
+    },
+
+    // Challenges Badges Row
     badgesRow: {
         flexDirection: 'row',
-        gap: 20,
-        marginBottom: 20,
+        justifyContent: 'space-around',
+        paddingVertical: 12,
+    },
+    badge: {
+        alignItems: 'center',
+        width: 70,
     },
     badgeCircle: {
         width: 50,
         height: 50,
         borderRadius: 25,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 6,
+    },
+    badgeNumber: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: theme.white,
+    },
+    badgeLabel: {
+        fontSize: 9,
+        color: theme.grayText,
+        textAlign: 'center',
+    },
+
+    // Progress Bar
+    progressBarContainer: {
+        height: 12,
+        backgroundColor: theme.grayLight,
+        borderRadius: 6,
+        marginTop: 4,
+        marginBottom: 4,
+        overflow: 'hidden',
+    },
+    progressBar: {
+        height: '100%',
+        borderRadius: 6,
+    },
+    progressLabel: {
+        fontSize: 10,
+        color: theme.grayMuted,
+        marginBottom: 2,
+    },
+
+    // Final Standing
+    finalStandingContainer: {
+        alignItems: 'center',
+        paddingVertical: 16,
+    },
+    trophyCircle: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
         backgroundColor: theme.accent,
         justifyContent: 'center',
         alignItems: 'center',
+        marginBottom: 10,
     },
-    celebrationText: {
-        fontSize: 14,
-        color: theme.blueDark,
+    finalRankText: {
+        fontSize: 16,
         fontWeight: 'bold',
-        fontStyle: 'italic',
+        color: theme.blueDark,
+    },
+    finalPointsText: {
+        fontSize: 11,
+        color: theme.grayMuted,
+        marginTop: 4,
     },
 
+    // Footer
     footer: {
-        position: 'absolute',
-        bottom: 20,
-        left: 30,
-        right: 30,
         textAlign: 'center',
+        paddingTop: 12,
         borderTopWidth: 1,
         borderTopColor: theme.grayLight,
-        paddingTop: 10,
+        marginTop: 'auto',
     },
     footerText: {
-        fontSize: 8,
-        color: '#9CA3AF',
-    }
+        fontSize: 9,
+        color: theme.grayMuted,
+    },
+
+    // Page 2 - Table styles
+    table: {
+        width: '100%',
+        marginBottom: 20,
+    },
+    tableHeader: {
+        flexDirection: 'row',
+        backgroundColor: theme.blueDark,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+    },
+    tableHeaderCell: {
+        color: theme.white,
+        fontSize: 10,
+        fontWeight: 'bold',
+    },
+    tableRow: {
+        flexDirection: 'row',
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.grayLight,
+    },
+    tableRowAlt: {
+        backgroundColor: theme.blueLight,
+    },
+    tableCell: {
+        fontSize: 10,
+        color: theme.grayText,
+    },
+    tableCellBold: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: theme.blueDark,
+    },
+
+    // Rest days list
+    restDaysList: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 8,
+    },
+    restDayChip: {
+        backgroundColor: theme.blueLight,
+        paddingVertical: 4,
+        paddingHorizontal: 10,
+        borderRadius: 4,
+    },
+    restDayChipText: {
+        fontSize: 9,
+        color: theme.blueDark,
+    },
+
+    // Page 2 title
+    pageTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: theme.blueDark,
+        marginBottom: 20,
+        textAlign: 'center',
+    },
 });
 
 // ============================================================================
@@ -441,14 +351,23 @@ function formatDate(dateString: string): string {
     });
 }
 
+function formatDateShort(dateString: string): string {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+    });
+}
+
 function formatDuration(minutes: number | null): string {
-    if (!minutes) return '0 min';
+    if (!minutes) return '-';
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     if (hours > 0) {
-        return `${hours} hr ${mins} min`;
+        return `${hours}h ${mins}m`;
     }
-    return `${mins} min`;
+    return `${mins}m`;
 }
 
 function getOrdinal(n: number): string {
@@ -461,46 +380,19 @@ function getOrdinal(n: number): string {
 // SVG Icons
 // ============================================================================
 
-const StarIcon = ({ size = 32 }: { size?: number }) => (
+const TrophyIcon = ({ size = 28 }: { size?: number }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24">
         <Path
             fill="#FFFFFF"
-            d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"
+            d="M20.2 2H3.8c-1.1 0-2 .9-2 2v3.5c0 1.9 1.5 3.5 3.4 3.5h.3c1 2.3 3.3 3.9 6 3.9s5-1.6 6-3.9h.3c1.9 0 3.4-1.6 3.4-3.5V4c0-1.1-.9-2-2-2z"
         />
-    </Svg>
-);
-
-const TrophyIcon = ({ size = 36 }: { size?: number }) => (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-        <Path
-            fill="#FFFFFF"
-            d="M20.2 2H3.8c-1.1 0-2 .9-2 2v3.5c0 1.9 1.5 3.5 3.4 3.5h.3c1 2.3 3.3 3.9 6 3.9s5-1.6 6-3.9h.3c1.9 0 3.4-1.6 3.4-3.5V4c0-1.1-.9-2-2-2zM5.2 7.5V4h2.1v3.5H5.2zm13.6 0H16.7V4h2.1v3.5zM12 14c-1.8 0-3.3-1.2-3.8-2.8h7.6c-.5 1.6-2 2.8-3.8 2.8z"
-        />
-        <Path
-            fill="#FFFFFF"
-            d="M10 16h4v2h-4zM7 19h10v3H7z"
-        />
-    </Svg>
-);
-
-const MedalIcon = ({ size = 32 }: { size?: number }) => (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-        <Circle cx="12" cy="12" r="8" fill="#F59E0B" />
-        <Path fill="#FFFFFF" d="M12 6l1.5 4.5h4.5L14.25 13l1.5 4.5L12 15l-3.75 2.5 1.5-4.5L6 10.5h4.5z" />
+        <Path fill="#FFFFFF" d="M10 16h4v2h-4zM7 19h10v3H7z" />
     </Svg>
 );
 
 // ============================================================================
-// Individual Components
+// Component: Logo
 // ============================================================================
-
-const SectionHeader = ({ title }: { title: string }) => (
-    <View style={styles.sectionHeader}>
-        <View style={styles.sectionLine} />
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <View style={styles.sectionLine} />
-    </View>
-);
 
 const Logo = ({ src, placeholderText }: { src: string | null, placeholderText: string }) => (
     <View style={styles.headerLogoBox}>
@@ -515,6 +407,32 @@ const Logo = ({ src, placeholderText }: { src: string | null, placeholderText: s
 );
 
 // ============================================================================
+// Component: Section
+// ============================================================================
+
+const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{title}</Text>
+        </View>
+        <View style={styles.sectionContent}>
+            {children}
+        </View>
+    </View>
+);
+
+// ============================================================================
+// Component: MetricRow
+// ============================================================================
+
+const MetricRow = ({ label, value, isLast = false }: { label: string; value: string | number; isLast?: boolean }) => (
+    <View style={[styles.metricRow, isLast && styles.metricRowLast]}>
+        <Text style={styles.metricLabel}>{label}:</Text>
+        <Text style={styles.metricValue}>{value}</Text>
+    </View>
+);
+
+// ============================================================================
 // Main PDF Component
 // ============================================================================
 
@@ -523,278 +441,255 @@ interface LeagueReportPDFProps {
 }
 
 export function LeagueReportPDF({ data }: LeagueReportPDFProps) {
+    // Count challenges by type
+    const individualChallenges = data.challenges.filter(c => c.type === 'individual' && c.status === 'Completed').length;
+    const teamChallenges = data.challenges.filter(c => c.type === 'team' && c.status === 'Completed').length;
+    const subTeamChallenges = data.challenges.filter(c => c.type === 'sub_team' && c.status === 'Completed').length;
+
+    // Calculate best streak (simplified - based on active days)
+    const bestStreak = data.performance.totalActiveDays;
+
+    // Points breakdown
+    const workoutPoints = data.performance.totalActivities;
+    const challengePointsTotal = data.performance.totalChallengePoints;
+    const totalPoints = data.finalIndividualScore;
+
     return (
         <Document>
-            {/* PAGE 1: Summary, Activity, Rest Days */}
+            {/* PAGE 1: Summary */}
             <Page size="A4" style={styles.page}>
                 {/* Header */}
                 <View style={styles.headerContainer}>
                     <Logo src={data.league.logoUrl} placeholderText="LEAGUE" />
                     <View style={styles.headerTitleContainer}>
-                        <Text style={styles.reportTitle}>League Summary Report</Text>
-                        <Text style={styles.userName}>{data.user.username}</Text>
+                        <Text style={styles.reportTitle}>{data.league.name} Summary Report</Text>
+                        <Text style={styles.reportSubtitle}>
+                            {formatDate(data.league.startDate)} - {formatDate(data.league.endDate)}
+                        </Text>
                     </View>
                     <Logo src={data.team?.logoUrl || null} placeholderText="TEAM" />
                 </View>
 
-                {/* Info Block */}
-                <View style={styles.infoBlock}>
-                    <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>League:</Text>
-                        <Text style={styles.infoValue}>{data.league.name}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Team:</Text>
-                        <Text style={styles.infoValue}>{data.team?.name || 'No Team'}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>League Duration:</Text>
-                        <Text style={styles.infoValue}>
-                            {formatDate(data.league.startDate)} — {formatDate(data.league.endDate)}
-                        </Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Average RR:</Text>
-                        <Text style={styles.infoValue}>{data.averageRR}</Text>
-                    </View>
-                    <View style={styles.scoreRow}>
-                        <Text style={styles.finalScoreLabel}>Final Individual Score:</Text>
-                        <Text style={styles.finalScoreValue}>{data.finalIndividualScore} Points</Text>
-                    </View>
-                    <View style={[styles.infoRow, { marginBottom: 0 }]}>
-                        <Text style={styles.finalScoreLabel}>Final Team Score:</Text>
-                        <Text style={styles.finalScoreValue}>{data.finalTeamScore} Points</Text>
-                    </View>
-                </View>
-
-                {/* Activity Summary */}
-                <View style={styles.section}>
-                    <SectionHeader title="Activity Summary" />
-                    <View style={styles.table}>
-                        <View style={styles.tableHeader}>
-                            <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'left' }]}>Activity</Text>
-                            <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Sessions</Text>
-                            <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Distance/Count</Text>
-                            <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Duration</Text>
-                        </View>
-                        {data.activities.length > 0 ? (
-                            data.activities.map((activity, index) => (
-                                <View key={index} style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                                    <Text style={[styles.tableCell, styles.activityNameCell, { flex: 2 }]}>
-                                        {activity.activityName}
-                                    </Text>
-                                    <Text style={[styles.tableCell, { flex: 1 }]}>
-                                        {activity.sessionCount} Sessions
-                                    </Text>
-                                    <Text style={[styles.tableCell, { flex: 1.5 }]}>
-                                        {activity.totalDistance ? `${activity.totalDistance.toFixed(1)} km` :
-                                            activity.totalSteps ? `${activity.totalSteps.toLocaleString()}` :
-                                                activity.totalHoles ? `${activity.totalHoles} holes` : '-'}
-                                    </Text>
-                                    <Text style={[styles.tableCell, { flex: 1.5 }]}>
-                                        {formatDuration(activity.totalDuration)}
-                                    </Text>
-                                </View>
-                            ))
-                        ) : (
-                            <View style={styles.tableRow}>
-                                <Text style={[styles.tableCell, { flex: 1, padding: 20 }]}>No activities recorded.</Text>
-                            </View>
+                {/* User Info Row */}
+                <View style={styles.userInfoRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={styles.userName}>{data.user.username}</Text>
+                        {data.team && (
+                            <Text style={styles.teamName}>| {data.team.name}</Text>
                         )}
                     </View>
-                </View>
-
-                {/* Rest Days */}
-                <View style={styles.section}>
-                    <SectionHeader title="Rest Days" />
-                    <View style={styles.restDayBlock}>
-                        <Text style={styles.restDayCount}>Total Rest Days: {data.restDays.total} Days</Text>
-                        <View style={styles.restDayList}>
-                            {data.restDays.dates.length > 0 ? (
-                                <>
-                                    <Text style={{ fontSize: 10, color: theme.blueDark, marginRight: 5 }}>Rest Dates:</Text>
-                                    {data.restDays.dates.map((date, index) => (
-                                        <Text key={index} style={styles.restDayItem}>
-                                            {formatDate(date)}
-                                        </Text>
-                                    ))}
-                                </>
-                            ) : (
-                                <Text style={{ fontSize: 10, color: theme.grayText }}>No rest days taken.</Text>
-                            )}
+                    <View style={styles.statsHighlight}>
+                        <View style={styles.statItem}>
+                            <Text style={styles.statLabel}>Total Points</Text>
+                            <Text style={styles.statValue}>{totalPoints}</Text>
+                        </View>
+                        <View style={styles.statItem}>
+                            <Text style={styles.statLabel}>Challenge Pts</Text>
+                            <Text style={styles.statValue}>{challengePointsTotal}</Text>
+                        </View>
+                        <View style={styles.statItem}>
+                            <Text style={styles.statLabel}>Avg RR</Text>
+                            <Text style={styles.statValue}>{data.averageRR}</Text>
                         </View>
                     </View>
                 </View>
 
+                {/* Two Column Layout */}
+                <View style={styles.columnsContainer}>
+                    {/* Left Column */}
+                    <View style={styles.column}>
+                        {/* Performance Overview */}
+                        <Section title="Performance Overview">
+                            <MetricRow label="Workouts Completed" value={data.performance.totalActivities} />
+                            <MetricRow label="Rest Days Taken" value={data.restDays.total} />
+                            <MetricRow label="Active Days" value={data.performance.totalActiveDays} />
+                            <MetricRow label="Missed Days" value={data.performance.totalMissedDays} />
+                            <MetricRow label="Best Streak" value={`${bestStreak} Days`} isLast />
+                        </Section>
+
+                        {/* Challenges Completed */}
+                        <Section title="Challenges Completed">
+                            <View style={styles.badgesRow}>
+                                <View style={styles.badge}>
+                                    <View style={[styles.badgeCircle, { backgroundColor: theme.bluePrimary }]}>
+                                        <Text style={styles.badgeNumber}>{individualChallenges}</Text>
+                                    </View>
+                                    <Text style={styles.badgeLabel}>Individual</Text>
+                                </View>
+                                <View style={styles.badge}>
+                                    <View style={[styles.badgeCircle, { backgroundColor: theme.green }]}>
+                                        <Text style={styles.badgeNumber}>{teamChallenges}</Text>
+                                    </View>
+                                    <Text style={styles.badgeLabel}>Team</Text>
+                                </View>
+                                <View style={styles.badge}>
+                                    <View style={[styles.badgeCircle, { backgroundColor: theme.orange }]}>
+                                        <Text style={styles.badgeNumber}>{subTeamChallenges}</Text>
+                                    </View>
+                                    <Text style={styles.badgeLabel}>Sub-Team</Text>
+                                </View>
+                            </View>
+                        </Section>
+
+                        {/* Final Standing */}
+                        <Section title="Final Standing">
+                            <View style={styles.finalStandingContainer}>
+                                <View style={styles.trophyCircle}>
+                                    <TrophyIcon size={32} />
+                                </View>
+                                <Text style={styles.finalRankText}>
+                                    #{data.rankings.userRankInLeague} in League
+                                </Text>
+                                <Text style={styles.finalPointsText}>
+                                    {totalPoints} Total Points
+                                </Text>
+                            </View>
+                        </Section>
+                    </View>
+
+                    {/* Right Column */}
+                    <View style={styles.column}>
+                        {/* Points Breakdown */}
+                        <Section title="Points Breakdown">
+                            <View style={{ marginBottom: 10 }}>
+                                <Text style={styles.progressLabel}>Workouts: {workoutPoints} pts</Text>
+                                <View style={styles.progressBarContainer}>
+                                    <View
+                                        style={[
+                                            styles.progressBar,
+                                            {
+                                                width: `${totalPoints > 0 ? (workoutPoints / totalPoints) * 100 : 0}%`,
+                                                backgroundColor: theme.bluePrimary
+                                            }
+                                        ]}
+                                    />
+                                </View>
+                            </View>
+                            <View style={{ marginBottom: 10 }}>
+                                <Text style={styles.progressLabel}>Challenges: {challengePointsTotal} pts</Text>
+                                <View style={styles.progressBarContainer}>
+                                    <View
+                                        style={[
+                                            styles.progressBar,
+                                            {
+                                                width: `${totalPoints > 0 ? (challengePointsTotal / totalPoints) * 100 : 0}%`,
+                                                backgroundColor: theme.orange
+                                            }
+                                        ]}
+                                    />
+                                </View>
+                            </View>
+                            <MetricRow label="Total Points" value={totalPoints} isLast />
+                        </Section>
+
+                        {/* Team Info */}
+                        {data.team && (
+                            <Section title={data.team.name}>
+                                <MetricRow label="Team Rank" value={`${data.rankings.teamRankInLeague}${getOrdinal(data.rankings.teamRankInLeague)} Place`} />
+                                <MetricRow label="Your Rank in Team" value={`${data.rankings.userRankInTeam}${getOrdinal(data.rankings.userRankInTeam)} Place`} />
+                                <MetricRow label="Team Score" value={`${data.finalTeamScore} Points`} isLast />
+                            </Section>
+                        )}
+
+                        {/* Milestones */}
+                        <Section title="Milestones">
+                            <MetricRow label="Longest Streak" value={`${bestStreak} Days`} />
+                            <MetricRow label="Average RR" value={data.averageRR > 0 ? data.averageRR.toFixed(2) : '-'} />
+                            <MetricRow label="League Rank" value={`${data.rankings.userRankInLeague}${getOrdinal(data.rankings.userRankInLeague)} Place`} isLast />
+                        </Section>
+                    </View>
+                </View>
+
+                {/* Footer */}
                 <View style={styles.footer}>
-                    <Text style={styles.footerText}>Page 1 of 3 • MyFitnessLeague Report</Text>
+                    <Text style={styles.footerText}>
+                        Page 1 of 2 • Generated on {formatDate(data.generatedAt)} • MyFitnessLeague
+                    </Text>
                 </View>
             </Page>
 
-            {/* PAGE 2: Challenges & Leaderboard */}
+            {/* PAGE 2: Activity Details & Rest Days */}
             <Page size="A4" style={styles.page}>
-                <View style={{ marginBottom: 30 }}>
-                    <Text style={styles.reportTitle}>CHALLENGES SUMMARY</Text>
-                    <View style={{ height: 2, backgroundColor: theme.blueDark, width: 60, marginTop: 5 }} />
-                </View>
+                <Text style={styles.pageTitle}>Activity Details</Text>
 
-                {/* Challenges Table */}
-                <View style={styles.section}>
-                    <View style={[styles.tableHeader, { marginBottom: 0, borderTopLeftRadius: 6, borderTopRightRadius: 6 }]}>
-                        <Text style={[styles.tableHeaderCell, { flex: 3, textAlign: 'left' }]}>Challenges Summary</Text>
-                        <Text style={[styles.tableHeaderCell, { flex: 1, opacity: 0 }]}></Text>
-                        <Text style={[styles.tableHeaderCell, { flex: 1.5, opacity: 0 }]}></Text>
-                        <Text style={[styles.tableHeaderCell, { flex: 1, opacity: 0 }]}></Text>
+                {/* Activity Breakdown Table */}
+                <View style={styles.table}>
+                    <View style={styles.tableHeader}>
+                        <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Activity</Text>
+                        <Text style={[styles.tableHeaderCell, { flex: 1, textAlign: 'center' }]}>Sessions</Text>
+                        <Text style={[styles.tableHeaderCell, { flex: 1.5, textAlign: 'center' }]}>Distance</Text>
+                        <Text style={[styles.tableHeaderCell, { flex: 1.5, textAlign: 'center' }]}>Duration</Text>
                     </View>
-
-                    {data.challenges.length > 0 ? (
-                        data.challenges.map((c, i) => (
-                            <View key={i} style={styles.challengeRow}>
-                                <Text style={styles.challengeCellName}>{c.name}</Text>
-                                <Text style={styles.challengeCellType}>{c.type === 'sub_team' ? 'Sub Team' : c.type.charAt(0).toUpperCase() + c.type.slice(1)}</Text>
-                                <Text style={[styles.challengeCellStatus, {
-                                    color: c.status === 'Completed' ? theme.bluePrimary : theme.grayText
-                                }]}>
-                                    {c.status}
+                    {data.activities.length > 0 ? (
+                        data.activities.map((activity, index) => (
+                            <View
+                                key={index}
+                                style={[
+                                    styles.tableRow,
+                                    index % 2 === 1 && styles.tableRowAlt
+                                ]}
+                            >
+                                <Text style={[styles.tableCellBold, { flex: 2 }]}>
+                                    {activity.activityName}
                                 </Text>
-                                <Text style={styles.challengeCellPoints}>{c.pointsEarned} Points</Text>
+                                <Text style={[styles.tableCell, { flex: 1, textAlign: 'center' }]}>
+                                    {activity.sessionCount}
+                                </Text>
+                                <Text style={[styles.tableCell, { flex: 1.5, textAlign: 'center' }]}>
+                                    {activity.totalDistance ? `${activity.totalDistance.toFixed(1)} km` :
+                                        activity.totalSteps ? `${activity.totalSteps.toLocaleString()} steps` :
+                                            activity.totalHoles ? `${activity.totalHoles} holes` : '-'}
+                                </Text>
+                                <Text style={[styles.tableCell, { flex: 1.5, textAlign: 'center' }]}>
+                                    {formatDuration(activity.totalDuration)}
+                                </Text>
                             </View>
                         ))
                     ) : (
-                        <View style={[styles.challengeRow, { padding: 20, justifyContent: 'center' }]}>
-                            <Text style={{ fontSize: 10, color: theme.grayText }}>No challenges participated.</Text>
+                        <View style={styles.tableRow}>
+                            <Text style={[styles.tableCell, { flex: 1 }]}>No activities recorded</Text>
                         </View>
                     )}
                 </View>
 
-                {/* Leaderboard */}
-                <View style={[styles.section, { marginTop: 40 }]}>
-                    <View style={[styles.tableHeader, { marginBottom: 0, borderTopLeftRadius: 6, borderTopRightRadius: 6 }]}>
-                        <Text style={[styles.tableHeaderCell, { flex: 1, textAlign: 'left' }]}>LEADERBOARD & RANKINGS</Text>
-                    </View>
-                    <View style={styles.rankingContainer}>
-                        {data.team && (
-                            <View style={styles.rankingRow}>
-                                <Text style={styles.rankingLabel}>Your Team Rank:</Text>
-                                <View style={{ flexDirection: 'row' }}>
-                                    <Text style={styles.rankingValue}>{data.rankings.userRankInTeam}</Text>
-                                    <Text style={[styles.rankingValue, styles.ordinalSuffix]}>{getOrdinal(data.rankings.userRankInTeam)}</Text>
-                                    <Text style={styles.rankingValue}> Place</Text>
+                {/* Rest Days Section */}
+                <Section title={`Rest Days (${data.restDays.total} Total)`}>
+                    {data.restDays.dates.length > 0 ? (
+                        <View style={styles.restDaysList}>
+                            {data.restDays.dates.map((date, index) => (
+                                <View key={index} style={styles.restDayChip}>
+                                    <Text style={styles.restDayChipText}>{formatDateShort(date)}</Text>
                                 </View>
+                            ))}
+                        </View>
+                    ) : (
+                        <Text style={{ fontSize: 10, color: theme.grayMuted, padding: 8 }}>
+                            No rest days taken during this league.
+                        </Text>
+                    )}
+                </Section>
+
+                {/* Summary Stats */}
+                <View style={{ marginTop: 20 }}>
+                    <Section title="Summary Statistics">
+                        <View style={{ flexDirection: 'row', gap: 20 }}>
+                            <View style={{ flex: 1 }}>
+                                <MetricRow label="Total Activities" value={data.activities.length} />
+                                <MetricRow label="Total Sessions" value={data.performance.totalActivities} />
                             </View>
-                        )}
-                        <View style={styles.rankingRow}>
-                            <Text style={styles.rankingLabel}>Your Individual Rank:</Text>
-                            <View style={{ flexDirection: 'row' }}>
-                                <Text style={styles.rankingValue}>{data.rankings.userRankInLeague}</Text>
-                                <Text style={[styles.rankingValue, styles.ordinalSuffix]}>{getOrdinal(data.rankings.userRankInLeague)}</Text>
-                                <Text style={styles.rankingValue}> Place</Text>
+                            <View style={{ flex: 1 }}>
+                                <MetricRow label="Rest Days" value={data.restDays.total} />
+                                <MetricRow label="Active Days" value={data.performance.totalActiveDays} isLast />
                             </View>
                         </View>
-                        {data.team && (
-                            <View style={[styles.rankingRow, { borderBottomWidth: 0 }]}>
-                                <Text style={styles.rankingLabel}>Overall Team Rank:</Text>
-                                <View style={{ flexDirection: 'row' }}>
-                                    <Text style={styles.rankingValue}>{data.rankings.teamRankInLeague}</Text>
-                                    <Text style={[styles.rankingValue, styles.ordinalSuffix]}>{getOrdinal(data.rankings.teamRankInLeague)}</Text>
-                                    <Text style={styles.rankingValue}> Place</Text>
-                                </View>
-                            </View>
-                        )}
-                    </View>
-                    <View style={{ alignItems: 'center', marginTop: 10 }}>
-                        <Text style={{ fontSize: 10, color: theme.grayText }}>
-                            Total Points: <Text style={{ fontFamily: 'Helvetica-Bold' }}>{data.finalIndividualScore}</Text> (Personal)
-                            {data.team && (
-                                <Text>, <Text style={{ fontFamily: 'Helvetica-Bold' }}>{data.finalTeamScore}</Text> (Team)</Text>
-                            )}
-                        </Text>
-                    </View>
+                    </Section>
                 </View>
 
+                {/* Footer */}
                 <View style={styles.footer}>
-                    <Text style={styles.footerText}>Page 2 of 3 • MyFitnessLeague Report</Text>
-                </View>
-            </Page>
-
-            {/* PAGE 3: Performance Summary */}
-            <Page size="A4" style={styles.page}>
-                <Text style={styles.perfHeader}>Final Performance Summary</Text>
-
-                {/* Stats Grid */}
-                <View style={styles.statsGrid}>
-                    <View style={styles.statBox}>
-                        <Text style={styles.statBoxLabel}>Total Activities</Text>
-                        <Text style={styles.statBoxValue}>{data.performance.totalActivities}</Text>
-                    </View>
-                    <View style={styles.statBoxMiddle}>
-                        <Text style={styles.statBoxLabel}>Active Days</Text>
-                        <Text style={styles.statBoxValue}>{data.performance.totalActiveDays}</Text>
-                    </View>
-                    <View style={styles.statBoxMiddle}>
-                        <Text style={styles.statBoxLabel}>Rest Days</Text>
-                        <Text style={styles.statBoxValue}>{data.performance.totalRestDays}</Text>
-                    </View>
-                    <View style={styles.statBox}>
-                        <Text style={styles.statBoxLabel}>Missed Days</Text>
-                        <Text style={styles.statBoxValue}>{data.performance.totalMissedDays}</Text>
-                    </View>
-                </View>
-
-                {/* Avg RR Block - Add this before Challenge Points */}
-                <View style={[styles.statsGrid, { marginBottom: 30 }]}>
-                    <View style={[styles.statBoxMiddle, { width: 140, backgroundColor: theme.blueDark }]}>
-                        <Text style={styles.statBoxLabel}>Average RR</Text>
-                        <Text style={styles.statBoxValue}>{data.averageRR}</Text>
-                    </View>
-                </View>
-
-                {/* Challenge Points */}
-                <View style={styles.challengePointsBlock}>
-                    <Text style={styles.cpLabel}>Challenge Points Scored</Text>
-                    <Text style={styles.cpValue}>{data.performance.totalChallengePoints}</Text>
-                </View>
-
-                {/* Final Ranks & Scores */}
-                <View style={styles.finalRankBlock}>
-                    <Text style={styles.finalRankLabel}>Overall League Rank:</Text>
-                    <View style={{ flexDirection: 'row' }}>
-                        <Text style={styles.finalRankValue}>{data.rankings.userRankInLeague}</Text>
-                        <Text style={[styles.finalRankValue, styles.ordinalSuffix, { fontSize: 12, marginTop: 0 }]}>{getOrdinal(data.rankings.userRankInLeague)}</Text>
-                        <Text style={styles.finalRankValue}> Place</Text>
-                    </View>
-                </View>
-
-                <View style={styles.finalScoresRow}>
-                    <Text style={styles.finalScoreText}>
-                        Total Points Scored: <Text style={styles.finalScoreHighlight}>{data.finalIndividualScore}</Text> Personal
+                    <Text style={styles.footerText}>
+                        Page 2 of 2 • Generated on {formatDate(data.generatedAt)} • MyFitnessLeague
                     </Text>
-                    {data.team && (
-                        <Text style={styles.finalScoreText}>
-                            |   <Text style={styles.finalScoreHighlight}>{data.finalTeamScore}</Text> Team
-                        </Text>
-                    )}
-                </View>
-
-                {/* Celebration */}
-                <View style={styles.celebration}>
-                    <View style={styles.badgesRow}>
-                        {/* Visual badges/icons using pure CSS shapes for now as we lack images */}
-                        <View style={[styles.badgeCircle, { backgroundColor: '#FCD34D' }]}>
-                            <StarIcon />
-                        </View>
-                        <View style={[styles.badgeCircle, { backgroundColor: '#F59E0B', width: 60, height: 60, borderRadius: 30, marginTop: -10 }]}>
-                            <TrophyIcon />
-                        </View>
-                        <View style={[styles.badgeCircle, { backgroundColor: '#FCD34D' }]}>
-                            <MedalIcon />
-                        </View>
-                    </View>
-                    <Text style={styles.celebrationText}>Congratulations on a great season!</Text>
-                </View>
-
-                <View style={styles.footer}>
-                    <Text style={styles.footerText}>Page 3 of 3 • MyFitnessLeague Report</Text>
                 </View>
             </Page>
         </Document>
