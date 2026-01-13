@@ -335,6 +335,15 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         textAlign: 'center',
     },
+    brandText: {
+        fontSize: 11,
+        fontFamily: 'Helvetica-Bold',
+        color: theme.blueDark,
+        letterSpacing: 1.5,
+        marginTop: 6,
+        marginBottom: 4,
+    },
+    
 });
 
 // ============================================================================
@@ -462,6 +471,7 @@ export function LeagueReportPDF({ data }: LeagueReportPDFProps) {
                 <View style={styles.headerContainer}>
                     <Logo src={data.league.logoUrl} placeholderText="LEAGUE" />
                     <View style={styles.headerTitleContainer}>
+                    <Text style={styles.brandText}>MY FITNESS LEAGUE</Text>
                         <Text style={styles.reportTitle}>{data.league.name} Summary Report</Text>
                         <Text style={styles.reportSubtitle}>
                             {formatDate(data.league.startDate)} - {formatDate(data.league.endDate)}

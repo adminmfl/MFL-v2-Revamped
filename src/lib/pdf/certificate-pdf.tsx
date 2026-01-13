@@ -1,13 +1,6 @@
 /**
  * Certificate of Completion PDF
- * 
- * Elegant certificate design for league completion.
- * Features:
- * - Decorative corner elements
- * - User name prominently displayed
- * - League name and dates
- * - Winner badge/seal
- * - Clean, professional styling
+ * FINAL – single page, no overlap, react-pdf safe
  */
 
 import React from 'react';
@@ -21,14 +14,11 @@ import {
     Path,
     Circle,
     G,
-    Defs,
-    LinearGradient,
-    Stop,
 } from '@react-pdf/renderer';
 import type { LeagueReportData } from '@/lib/services/league-report';
 
 // ============================================================================
-// Theme & Color Palette
+// Theme
 // ============================================================================
 
 const theme = {
@@ -43,134 +33,141 @@ const theme = {
 };
 
 // ============================================================================
-// Styles
+// Styles (STRICTLY react-pdf SAFE)
 // ============================================================================
 
 const styles = StyleSheet.create({
     page: {
-        padding: 40,
-        fontFamily: 'Helvetica',
+        padding: 28,
         backgroundColor: theme.cream,
-        flexDirection: 'column',
-        alignItems: 'center',
+        fontFamily: 'Helvetica',
         justifyContent: 'center',
     },
+
     certificate: {
-        width: '100%',
-        height: '100%',
         backgroundColor: theme.white,
         borderWidth: 3,
         borderColor: theme.gold,
-        padding: 30,
+        padding: 20,
         position: 'relative',
     },
+
     innerBorder: {
-        width: '100%',
-        height: '100%',
         borderWidth: 1,
         borderColor: theme.goldLight,
-        padding: 20,
+        padding: 18,
         alignItems: 'center',
     },
-    // Corner Decorations
-    cornerTL: {
-        position: 'absolute',
-        top: 10,
-        left: 10,
-    },
-    cornerTR: {
-        position: 'absolute',
-        top: 10,
-        right: 10,
-    },
-    cornerBL: {
-        position: 'absolute',
-        bottom: 10,
-        left: 10,
-    },
-    cornerBR: {
-        position: 'absolute',
-        bottom: 10,
-        right: 10,
-    },
-    // Title
+
+    /* Corners */
+    cornerTL: { position: 'absolute', top: 8, left: 8 },
+    cornerTR: { position: 'absolute', top: 8, right: 8 },
+    cornerBL: { position: 'absolute', bottom: 8, left: 8 },
+    cornerBR: { position: 'absolute', bottom: 8, right: 8 },
+
+    /* Title */
     titleContainer: {
-        marginTop: 20,
-        marginBottom: 30,
         alignItems: 'center',
+        marginBottom: 24,
     },
-    mainTitle: {
-        fontSize: 36,
-        color: theme.gold,
-        fontFamily: 'Times-Italic',
-        textAlign: 'center',
-    },
-    subtitle: {
-        fontSize: 12,
-        color: theme.textMuted,
-        marginTop: 25,
-        letterSpacing: 3,
-        textTransform: 'uppercase',
-    },
-    // Recipient
-    recipientContainer: {
-        marginVertical: 20,
-        alignItems: 'center',
-    },
-    recipientName: {
-        fontSize: 32,
-        color: theme.navy,
-        fontFamily: 'Times-Bold',
-        textAlign: 'center',
-        marginVertical: 10,
-        marginBottom: 20,
-    },
-    recipientText: {
-        fontSize: 14,
-        color: theme.textDark,
-        textAlign: 'center',
-        fontFamily: 'Times-Roman',
-    },
-    // League Info
-    leagueContainer: {
-        marginVertical: 15,
-        alignItems: 'center',
-    },
-    leagueName: {
-        fontSize: 24,
-        color: theme.navy,
+
+    brandText: {
+        fontSize: 13,
         fontFamily: 'Helvetica-Bold',
-        textAlign: 'center',
-        marginBottom: 15,
+        color: theme.goldDark,
+        marginBottom: 6,
     },
-    leagueDates: {
+
+    brandDivider: {
+        width: 90,
+        height: 2,
+        backgroundColor: theme.goldLight,
+        marginBottom: 14,
+    },
+
+    mainTitle: {
+        fontSize: 32,
+        fontFamily: 'Times-Italic',
+        color: theme.gold,
+        marginBottom: 6,
+        textAlign: 'center',
+    },
+
+    subtitle: {
         fontSize: 11,
         color: theme.textMuted,
+    },
+
+    /* Recipient */
+    recipientContainer: {
+        alignItems: 'center',
+        marginVertical: 18,
+    },
+
+    recipientName: {
+        fontSize: 30,
+        fontFamily: 'Times-Bold',
+        color: theme.navy,
+        marginBottom: 10,
+    },
+
+    recipientText: {
+        fontSize: 13,
+        fontFamily: 'Times-Roman',
+        color: theme.textDark,
+    },
+
+    /* League */
+    leagueContainer: {
+        alignItems: 'center',
+        marginVertical: 14,
+    },
+
+    leagueName: {
+        fontSize: 22,
+        fontFamily: 'Helvetica-Bold',
+        color: theme.navy,
+        marginBottom: 6,
+    },
+
+    leagueDates: {
+        fontSize: 11,
         fontFamily: 'Times-Italic',
-        textAlign: 'center',
+        color: theme.textMuted,
     },
-    // Badge/Seal
+
+    /* Winner */
     sealContainer: {
-        marginTop: 25,
-        marginBottom: 15,
         alignItems: 'center',
+        marginTop: 18,
+        marginBottom: 18,
     },
-    sealText: {
+
+    winnerBadge: {
         marginTop: 8,
+        paddingVertical: 6,
+        paddingHorizontal: 16,
+        borderWidth: 1,
+        borderColor: theme.goldLight,
+    },
+
+    sealText: {
         fontSize: 10,
-        color: theme.gold,
-        fontWeight: 'bold',
-        letterSpacing: 2,
+        fontFamily: 'Helvetica-Bold',
+        color: theme.goldDark,
     },
-    // Date
+
+    /* Footer */
     dateContainer: {
-        marginTop: 'auto',
         alignItems: 'center',
+        marginTop: 12,
     },
+
     dateText: {
         fontSize: 10,
         color: theme.textMuted,
     },
+
     dateValue: {
         fontSize: 12,
         color: theme.textDark,
@@ -179,63 +176,44 @@ const styles = StyleSheet.create({
 });
 
 // ============================================================================
-// Helper Functions
+// Helpers
 // ============================================================================
 
-function formatDate(dateString: string): string {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-    });
-}
+const formatDate = (date?: string) =>
+    date
+        ? new Date(date).toLocaleDateString('en-US', {
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric',
+          })
+        : '-';
 
-function formatDateShort(dateString: string): string {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-    });
-}
-
-function getOrdinal(n: number): string {
-    const s = ['th', 'st', 'nd', 'rd'];
-    const v = n % 100;
-    return s[(v - 20) % 10] || s[v] || s[0];
-}
+const formatDateShort = (date?: string) =>
+    date
+        ? new Date(date).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+          })
+        : '-';
 
 // ============================================================================
 // SVG Components
 // ============================================================================
 
-// Corner flourish decoration
 const CornerFlourish = ({ rotation = 0 }: { rotation?: number }) => (
-    <Svg width={60} height={60} viewBox="0 0 60 60" style={{ transform: `rotate(${rotation}deg)` }}>
+    <Svg width={56} height={56} viewBox="0 0 60 60" style={{ transform: `rotate(${rotation}deg)` }}>
         <G>
-            {/* Main curved flourish */}
             <Path
                 d="M5 5 Q 30 5 55 30 Q 55 50 40 55"
                 stroke={theme.gold}
                 strokeWidth={2}
                 fill="none"
             />
-            <Path
-                d="M10 5 Q 25 10 40 30"
-                stroke={theme.goldLight}
-                strokeWidth={1}
-                fill="none"
-            />
-            {/* Small decorative circle */}
             <Circle cx={8} cy={8} r={3} fill={theme.gold} />
-            <Circle cx={15} cy={5} r={2} fill={theme.goldLight} />
         </G>
     </Svg>
 );
 
-// Winner seal/badge
 const WinnerSeal = () => (
     <Svg width={100} height={100} viewBox="0 0 100 100">
         {/* Outer decorative ring */}
@@ -276,7 +254,7 @@ const WinnerSeal = () => (
 );
 
 // ============================================================================
-// Main Component
+// MAIN COMPONENT (NAMED EXPORT – REQUIRED)
 // ============================================================================
 
 interface CertificatePDFProps {
@@ -285,64 +263,77 @@ interface CertificatePDFProps {
 
 export function CertificatePDF({ data }: CertificatePDFProps) {
     const issueDate = formatDate(data.generatedAt);
-    const leagueDates = `Held from ${formatDateShort(data.league.startDate)} to ${formatDateShort(data.league.endDate)}, ${new Date(data.league.endDate).getFullYear()}`;
+    const leagueDates = `Held from ${formatDateShort(
+        data.league.startDate
+    )} to ${formatDateShort(data.league.endDate)}, ${new Date(
+        data.league.endDate
+    ).getFullYear()}`;
 
     return (
         <Document>
-            <Page size="A4" orientation="landscape" style={styles.page}>
-                <View style={styles.certificate}>
-                    {/* Corner Decorations */}
-                    <View style={styles.cornerTL}>
-                        <CornerFlourish rotation={0} />
-                    </View>
-                    <View style={styles.cornerTR}>
-                        <CornerFlourish rotation={90} />
-                    </View>
-                    <View style={styles.cornerBL}>
-                        <CornerFlourish rotation={270} />
-                    </View>
-                    <View style={styles.cornerBR}>
-                        <CornerFlourish rotation={180} />
-                    </View>
+            <Page
+                size="A4"
+                orientation="landscape"
+                style={styles.page}
+                wrap={false}
+            >
+                <View style={styles.certificate} wrap={false}>
 
-                    {/* Inner Border Container */}
-                    <View style={styles.innerBorder}>
-                        {/* Title Section */}
+                    {/* Corners */}
+                    <View style={styles.cornerTL}><CornerFlourish /></View>
+                    <View style={styles.cornerTR}><CornerFlourish rotation={90} /></View>
+                    <View style={styles.cornerBL}><CornerFlourish rotation={270} /></View>
+                    <View style={styles.cornerBR}><CornerFlourish rotation={180} /></View>
+
+                    <View style={styles.innerBorder} wrap={false}>
+
+                        {/* Title */}
                         <View style={styles.titleContainer}>
+                            <Text style={styles.brandText}>MY FITNESS LEAGUE</Text>
+                            <View style={styles.brandDivider} />
                             <Text style={styles.mainTitle}>Certificate of Completion</Text>
                             <Text style={styles.subtitle}>This is to certify that</Text>
                         </View>
 
-                        {/* Recipient Section */}
+                        {/* Recipient */}
                         <View style={styles.recipientContainer}>
-                            <Text style={styles.recipientName}>{data.user.username}</Text>
-                            <Text style={styles.recipientText}>has successfully completed the</Text>
-                        </View>
-
-                        {/* League Info */}
-                        <View style={styles.leagueContainer}>
-                            <Text style={styles.leagueName}>{data.league.name}</Text>
-                            <Text style={styles.leagueDates}>{leagueDates}</Text>
-                        </View>
-
-                        {/* Winner Seal */}
-                        <View style={styles.sealContainer}>
-                            <WinnerSeal />
-                            <Text style={styles.sealText}>
-                                #{data.rankings.userRankInLeague} PLACE • {data.finalIndividualScore} POINTS
+                            <Text style={styles.recipientName}>
+                                {data.user.username}
+                            </Text>
+                            <Text style={styles.recipientText}>
+                                has successfully completed the
                             </Text>
                         </View>
 
-                        {/* Issue Date */}
+                        {/* League */}
+                        <View style={styles.leagueContainer}>
+                            <Text style={styles.leagueName}>
+                                {data.league.name}
+                            </Text>
+                            <Text style={styles.leagueDates}>
+                                {leagueDates}
+                            </Text>
+                        </View>
+
+                        {/* Winner */}
+                        <View style={styles.sealContainer}>
+                            <WinnerSeal />
+                            <View style={styles.winnerBadge}>
+                                <Text style={styles.sealText}>
+                                    #{data.rankings.userRankInLeague} PLACE • {data.finalIndividualScore} POINTS
+                                </Text>
+                            </View>
+                        </View>
+
+                        {/* Date */}
                         <View style={styles.dateContainer}>
                             <Text style={styles.dateText}>Issue Date</Text>
                             <Text style={styles.dateValue}>{issueDate}</Text>
                         </View>
+
                     </View>
                 </View>
             </Page>
         </Document>
     );
 }
-
-export default CertificatePDF;
