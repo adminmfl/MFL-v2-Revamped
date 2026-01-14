@@ -1,0 +1,524 @@
+/**
+ * League Report Service
+ * 
+ * Aggregates all data needed for generating a personalized PDF report
+ * for a league member's journey in a league.
+ */
+
+import { getSupabaseServiceRole } from '@/lib/supabase/client';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface ActivitySummary {
+    activityName: string;
+    sessionCount: number;
+    totalDuration: number | null;  // minutes
+    totalDistance: number | null;  // km
+    totalSteps: number | null;
+    totalHoles: number | null;
+}
+
+export interface RestDaysSummary {
+    total: number;
+    dates: string[];  // ISO date strings (YYYY-MM-DD)
+}
+
+export interface ChallengeSummary {
+    name: string;
+    type: 'individual' | 'team' | 'sub_team';
+    status: 'Completed' | 'Not completed';
+    pointsEarned: number;
+    totalPoints: number;
+}
+
+export interface RankingsSummary {
+    userRankInTeam: number;
+    userRankInLeague: number;
+    teamRankInLeague: number;
+    userTotalPoints: number;
+    teamTotalPoints: number;
+}
+
+export interface PerformanceSummary {
+    totalActivities: number;
+    totalActiveDays: number;
+    totalRestDays: number;
+    totalChallengePoints: number;
+    finalLeagueScore: number;
+    totalMissedDays: number;
+}
+
+export interface LeagueReportData {
+    // User & League Overview
+    user: {
+        userId: string;
+        username: string;
+    };
+    league: {
+        leagueId: string;
+        name: string;
+        startDate: string;
+        endDate: string;
+        logoUrl: string | null;
+    };
+    team: {
+        teamId: string;
+        name: string;
+        logoUrl: string | null;
+    } | null;
+    finalIndividualScore: number;
+    finalTeamScore: number;
+
+    // Summaries
+    activities: ActivitySummary[];
+    restDays: RestDaysSummary;
+    challenges: ChallengeSummary[];
+    rankings: RankingsSummary;
+    performance: PerformanceSummary;
+
+    // Metadata
+    generatedAt: string;
+    averageRR: number;
+}
+
+// ============================================================================
+// Main Function
+// ============================================================================
+
+/**
+ * Get all data needed for a league member's personalized report
+ * @param leagueId - The league ID
+ * @param userId - The user ID to generate the report for
+ * @returns LeagueReportData or null if user is not a member
+ */
+export async function getLeagueReportData(
+    leagueId: string,
+    userId: string
+): Promise<LeagueReportData | null> {
+    const supabase = getSupabaseServiceRole();
+
+    // 1. Get league member info
+    const { data: leagueMember, error: memberError } = await supabase
+        .from('leaguemembers')
+        .select('league_member_id, team_id')
+        .eq('user_id', userId)
+        .eq('league_id', leagueId)
+        .maybeSingle();
+
+    if (memberError || !leagueMember) {
+        console.error('League member not found:', memberError);
+        return null;
+    }
+
+    const leagueMemberId = leagueMember.league_member_id;
+
+    // 2. Get user info
+    const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('user_id, username')
+        .eq('user_id', userId)
+        .single();
+
+    if (userError || !user) {
+        console.error('User not found:', userError);
+        return null;
+    }
+
+    // 3. Get league info
+    const { data: league, error: leagueError } = await supabase
+        .from('leagues')
+        .select('league_id, league_name, start_date, end_date, logo_url, normalize_points_by_team_size')
+        .eq('league_id', leagueId)
+        .single();
+
+    if (leagueError || !league) {
+        console.error('League not found:', leagueError);
+        return null;
+    }
+
+    // 4. Get team info (with logo from teamleagues)
+    let teamInfo: { teamId: string; name: string; logoUrl: string | null } | null = null;
+    if (leagueMember.team_id) {
+        const { data: team } = await supabase
+            .from('teams')
+            .select('team_id, team_name')
+            .eq('team_id', leagueMember.team_id)
+            .single();
+
+        if (team) {
+            // Get team logo from teamleagues junction table
+            const { data: teamLeague } = await supabase
+                .from('teamleagues')
+                .select('logo_url')
+                .eq('team_id', leagueMember.team_id)
+                .eq('league_id', leagueId)
+                .maybeSingle();
+
+            teamInfo = {
+                teamId: team.team_id,
+                name: team.team_name,
+                logoUrl: teamLeague?.logo_url || null,
+            };
+        }
+    }
+
+    // 5. Get all effort entries for this member (approved only for scoring)
+    const { data: entries } = await supabase
+        .from('effortentry')
+        .select('*')
+        .eq('league_member_id', leagueMemberId)
+        .eq('status', 'approved');
+
+    const allEntries = entries || [];
+
+    // 6. Aggregate activity data
+    const activities = aggregateActivities(allEntries);
+
+    // 7. Get rest days
+    const restDays = aggregateRestDays(allEntries);
+
+    // 8. Get challenge data
+    const challenges = await getChallengesSummary(supabase, leagueId, leagueMemberId, leagueMember.team_id);
+
+    // 9. Get rankings
+    const rankings = await getRankings(
+        supabase,
+        leagueId,
+        userId,
+        leagueMember.team_id,
+        (league as any).normalize_points_by_team_size || false
+    );
+
+    // 10. Calculate performance summary
+    const workoutEntries = allEntries.filter(e => e.type === 'workout');
+    const totalChallengePoints = challenges.reduce((sum, c) => sum + c.pointsEarned, 0);
+    const activeDatesSet = new Set(workoutEntries.map(e => e.date));
+
+    // Calculate missed days
+    // Total league duration in days
+    const start = new Date(league.start_date);
+    const end = new Date(league.end_date);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const totalLeagueDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+    // Union of active and rest dates to avoid double counting if any overlap (though unlikely)
+    const allLoggedDates = new Set([
+        ...Array.from(activeDatesSet),
+        ...restDays.dates
+    ]);
+
+    // Ensure we don't return negative missed days if data is weird or extra entries
+    const totalMissedDays = Math.max(0, totalLeagueDays - allLoggedDates.size);
+
+    const performance: PerformanceSummary = {
+        totalActivities: workoutEntries.length,
+        totalActiveDays: activeDatesSet.size,
+        totalRestDays: restDays.total,
+        totalMissedDays,
+        totalChallengePoints,
+        finalLeagueScore: rankings.userTotalPoints,
+    };
+
+    // Calculate Average RR
+    // Average of rr_value from all approved workout entries
+    let totalRR = 0;
+    let rrCount = 0;
+
+    for (const entry of workoutEntries) {
+        if (entry.rr_value) {
+            totalRR += parseFloat(String(entry.rr_value));
+            rrCount++;
+        }
+    }
+
+    const averageRR = rrCount > 0 ? Number((totalRR / rrCount).toFixed(2)) : 0;
+
+    return {
+        user: {
+            userId: user.user_id,
+            username: user.username,
+        },
+        league: {
+            leagueId: league.league_id,
+            name: league.league_name,
+            startDate: league.start_date,
+            endDate: league.end_date,
+            logoUrl: league.logo_url,
+        },
+        team: teamInfo,
+        finalIndividualScore: rankings.userTotalPoints,
+        finalTeamScore: rankings.teamTotalPoints,
+        activities,
+        restDays,
+        challenges,
+        rankings,
+        performance,
+        generatedAt: new Date().toISOString(),
+        averageRR,
+    };
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+function aggregateActivities(entries: any[]): ActivitySummary[] {
+    const workoutEntries = entries.filter(e => e.type === 'workout');
+
+    const activityMap = new Map<string, {
+        count: number;
+        totalDuration: number;
+        totalDistance: number;
+        totalSteps: number;
+        totalHoles: number;
+    }>();
+
+    for (const entry of workoutEntries) {
+        const activityName = entry.workout_type || 'Unknown Activity';
+        const existing = activityMap.get(activityName) || {
+            count: 0,
+            totalDuration: 0,
+            totalDistance: 0,
+            totalSteps: 0,
+            totalHoles: 0,
+        };
+
+        existing.count += 1;
+        existing.totalDuration += entry.duration || 0;
+        existing.totalDistance += parseFloat(entry.distance) || 0;
+        existing.totalSteps += entry.steps || 0;
+        existing.totalHoles += entry.holes || 0;
+
+        activityMap.set(activityName, existing);
+    }
+
+    return Array.from(activityMap.entries()).map(([name, data]) => ({
+        activityName: name,
+        sessionCount: data.count,
+        totalDuration: data.totalDuration > 0 ? data.totalDuration : null,
+        totalDistance: data.totalDistance > 0 ? data.totalDistance : null,
+        totalSteps: data.totalSteps > 0 ? data.totalSteps : null,
+        totalHoles: data.totalHoles > 0 ? data.totalHoles : null,
+    }));
+}
+
+function aggregateRestDays(entries: any[]): RestDaysSummary {
+    const restEntries = entries.filter(e => e.type === 'rest');
+    const dates = restEntries.map(e => e.date).sort();
+
+    return {
+        total: restEntries.length,
+        dates,
+    };
+}
+
+async function getChallengesSummary(
+    supabase: ReturnType<typeof getSupabaseServiceRole>,
+    leagueId: string,
+    leagueMemberId: string,
+    teamId: string | null
+): Promise<ChallengeSummary[]> {
+    // Get all challenges for this league that are closed/published
+    const { data: leagueChallenges } = await supabase
+        .from('leagueschallenges')
+        .select(`
+      id,
+      name,
+      challenge_type,
+      total_points,
+      status
+    `)
+        .eq('league_id', leagueId)
+        .in('status', ['published', 'closed']);
+
+    if (!leagueChallenges || leagueChallenges.length === 0) {
+        return [];
+    }
+
+    const challengeIds = leagueChallenges.map(c => c.id);
+
+    // Get user's submissions for these challenges
+    const { data: submissions } = await supabase
+        .from('challenge_submissions')
+        .select('league_challenge_id, status, awarded_points')
+        .eq('league_member_id', leagueMemberId)
+        .in('league_challenge_id', challengeIds);
+
+    const submissionMap = new Map<string, { status: string; points: number }>();
+    for (const sub of (submissions || [])) {
+        submissionMap.set(sub.league_challenge_id, {
+            status: sub.status,
+            points: sub.awarded_points || 0,
+        });
+    }
+
+    return leagueChallenges.map(challenge => {
+        const submission = submissionMap.get(challenge.id);
+        const isCompleted = submission?.status === 'approved';
+        const pointsEarned = submission?.points || 0;
+
+        return {
+            name: challenge.name || 'Unnamed Challenge',
+            type: challenge.challenge_type as 'individual' | 'team' | 'sub_team',
+            status: isCompleted ? 'Completed' : 'Not completed',
+            pointsEarned,
+            totalPoints: challenge.total_points || 0,
+        };
+    });
+}
+
+async function getRankings(
+    supabase: ReturnType<typeof getSupabaseServiceRole>,
+    leagueId: string,
+    userId: string,
+    teamId: string | null,
+    normalizePoints: boolean = false
+): Promise<RankingsSummary> {
+    // Get all members with their points for ranking calculation
+    const { data: allMembers } = await supabase
+        .from('leaguemembers')
+        .select(`
+      league_member_id,
+      user_id,
+      team_id
+    `)
+        .eq('league_id', leagueId);
+
+    if (!allMembers || allMembers.length === 0) {
+        return {
+            userRankInTeam: 0,
+            userRankInLeague: 0,
+            teamRankInLeague: 0,
+            userTotalPoints: 0,
+            teamTotalPoints: 0,
+        };
+    }
+
+    const memberIds = allMembers.map(m => m.league_member_id);
+
+    // Get all approved entries for scoring
+    // LOGIC MATCH: Same as /api/leagues/[id]/leaderboard
+    // 1 point per approved entry
+    const { data: allEntries } = await supabase
+        .from('effortentry')
+        .select('league_member_id, rr_value')
+        .eq('status', 'approved')
+        .in('league_member_id', memberIds);
+
+    // Calculate points per member (1 point per entry)
+    const memberPoints = new Map<string, number>();
+    for (const entry of (allEntries || [])) {
+        const current = memberPoints.get(entry.league_member_id) || 0;
+        memberPoints.set(entry.league_member_id, current + 1); // 1 point per approved entry
+    }
+
+    // Map user_id to points
+    const userPointsMap = new Map<string, number>();
+    for (const member of allMembers) {
+        const points = memberPoints.get(member.league_member_id) || 0;
+        userPointsMap.set(member.user_id, points);
+    }
+
+    // Get challenge bonus points - including challenge type to filter correct scoring
+    const { data: challengeSubs } = await supabase
+        .from('challenge_submissions')
+        .select(`
+            league_member_id, 
+            awarded_points, 
+            status,
+            leagueschallenges!inner (
+                challenge_type,
+                total_points
+            )
+        `)
+        .eq('status', 'approved')
+        .in('league_member_id', memberIds);
+
+    // UPDATED LOGIC: Add ALL challenge points to member totals (Individual, Team, Sub-team)
+    // As per user request: submitter gets points for any approved submission they made
+    for (const sub of (challengeSubs || [])) {
+        const challenge = sub.leagueschallenges as any;
+
+        const member = allMembers.find(m => m.league_member_id === sub.league_member_id);
+        if (member) {
+            const current = userPointsMap.get(member.user_id) || 0;
+
+            // Logic matching Leaderboard: use awarded if present, else default to total
+            const points = sub.awarded_points !== null ? sub.awarded_points : (challenge.total_points || 0);
+
+            userPointsMap.set(member.user_id, current + points);
+        }
+    }
+
+    const userPoints = userPointsMap.get(userId) || 0;
+
+    // Calculate league rank
+    const allPoints = Array.from(userPointsMap.values()).sort((a, b) => b - a);
+    const userRankInLeague = allPoints.indexOf(userPoints) + 1;
+
+    // Calculate team rankings
+    let userRankInTeam = 0;
+    let teamTotalPoints = 0;
+    let teamRankInLeague = 0;
+
+    if (teamId) {
+        const teamMembers = allMembers.filter(m => m.team_id === teamId);
+        const teamMemberPoints = teamMembers.map(m => userPointsMap.get(m.user_id) || 0).sort((a, b) => b - a);
+        userRankInTeam = teamMemberPoints.indexOf(userPoints) + 1;
+        teamTotalPoints = teamMemberPoints.reduce((sum, p) => sum + p, 0);
+
+        // Calculate normalization if enabled
+        let teamSizes = new Map<string, number>();
+        let maxTeamSize = 0;
+
+        if (normalizePoints) {
+            for (const member of allMembers) {
+                if (member.team_id) {
+                    teamSizes.set(member.team_id, (teamSizes.get(member.team_id) || 0) + 1);
+                }
+            }
+            maxTeamSize = Math.max(...Array.from(teamSizes.values()));
+        }
+
+        // Calculate team ranks across all teams
+        const teamScores = new Map<string, number>();
+        for (const member of allMembers) {
+            if (member.team_id) {
+                const current = teamScores.get(member.team_id) || 0;
+                teamScores.set(member.team_id, current + (userPointsMap.get(member.user_id) || 0));
+            }
+        }
+
+        // Apply normalization
+        if (normalizePoints && maxTeamSize > 0) {
+            for (const [tId, rawScore] of teamScores.entries()) {
+                const size = teamSizes.get(tId) || 1;
+                // Formula: (raw / size) * max
+                const normalized = Math.round(rawScore * (maxTeamSize / size));
+                teamScores.set(tId, normalized);
+            }
+        }
+
+        const allTeamScores = Array.from(teamScores.values()).sort((a, b) => b - a);
+
+        // Update teamTotalPoints to use the normalized score if applicable
+        if (normalizePoints && teamId) {
+            teamTotalPoints = teamScores.get(teamId) || 0;
+        } else if (teamId && !normalizePoints) {
+            // Re-fetch strictly from map to be safe, though accumulator loop above should equal it
+            teamTotalPoints = teamScores.get(teamId) || 0;
+        }
+
+        teamRankInLeague = allTeamScores.indexOf(teamTotalPoints) + 1;
+    }
+
+    return {
+        userRankInTeam,
+        userRankInLeague,
+        teamRankInLeague,
+        userTotalPoints: Math.round(userPoints * 100) / 100,
+        teamTotalPoints: Math.round(teamTotalPoints * 100) / 100,
+    };
+}

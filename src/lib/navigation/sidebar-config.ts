@@ -16,6 +16,8 @@ import {
   Activity,
   UserCheck,
   Eye,
+  Gift,
+  HeartHandshake,
   LucideIcon,
 } from 'lucide-react';
 
@@ -132,6 +134,16 @@ export function getSidebarNavItems(
         url: '/payments',
         icon: CreditCard,
       },
+      {
+        title: 'Join League',
+        url: '/leagues/join',
+        icon: Search,
+      },
+      {
+        title: 'Create League',
+        url: '/leagues/create',
+        icon: Plus,
+      },
     ],
   });
 
@@ -164,6 +176,11 @@ export function getSidebarNavItems(
           title: 'My Team',
           url: leagueUrl('/my-team-view'),
           icon: Eye,
+        },
+        {
+          title: 'Donate Rest Days',
+          url: leagueUrl('/rest-day-donations'),
+          icon: Gift,
         },
       ],
     });
@@ -241,6 +258,11 @@ export function getSidebarNavItems(
           title: 'Manual Workout Entry',
           url: leagueUrl('/manual-entry'),
           icon: UserCheck,
+        },
+        {
+          title: 'Approve Donations',
+          url: leagueUrl('/rest-day-donations'),
+          icon: HeartHandshake,
         },
       ],
     });

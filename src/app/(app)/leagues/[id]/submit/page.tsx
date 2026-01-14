@@ -76,8 +76,6 @@ interface RestDayStats {
   remaining: number;
   isAtLimit: boolean;
   exemptionsPending: number;
-  restDaysPerWeek: number;
-  leagueWeeks: number;
 }
 
 // ============================================================================
@@ -149,15 +147,56 @@ export default function SubmitActivityPage({
     if (activeLeague.status === 'completed') return true;
     if (activeLeague.end_date) {
       try {
-        const end = new Date(activeLeague.end_date);
+        // Parse end date as UTC midnight
+        // Ensure we handle ISO strings by taking only the 'YYYY-MM-DD' portion
+        const [y, m, d] = String(activeLeague.end_date).slice(0, 10).split('-').map(Number);
+        const cutoff = new Date(Date.UTC(y, m - 1, d));
+
+        // Add 1 day + 9 hours = 33 hours
+        cutoff.setHours(cutoff.getHours() + 33);
+        cutoff.setMinutes(0); // Reset minutes to 0 for exactly 9:00 AM
+
         const now = new Date();
-        return end < now;
+        return now > cutoff;
       } catch {
         return false;
       }
     }
     return false;
   }, [activeLeague]);
+
+  // Determine max allowed activity date (League End Date or Today, whichever is earlier)
+  const maxActivityDate = React.useMemo(() => {
+    if (!activeLeague?.end_date) return new Date();
+
+    // Parse end date (safely handle various formats if needed, assuming YYYY-MM-DD or ISO)
+    try {
+      const endString = String(activeLeague.end_date).slice(0, 10);
+      const endDate = parseISO(endString);
+      const today = new Date();
+
+      // If today is BEFORE the end date, use today (can't submit future workouts)
+      // If today is AFTER the end date, use end date (can't submit for days after league ended)
+      if (today < endDate) return today;
+      return endDate;
+    } catch (e) {
+      return new Date();
+    }
+  }, [activeLeague]);
+
+  // Effect to clamp activityDate to maxActivityDate if it exceeds it
+  // This handles the case where "Today" (default) is after the league end date
+  React.useEffect(() => {
+    if (activeLeague?.end_date && maxActivityDate) {
+      const currentYmd = format(activityDate, 'yyyy-MM-dd');
+      const maxYmd = format(maxActivityDate, 'yyyy-MM-dd');
+
+      if (currentYmd > maxYmd) {
+        setActivityDate(maxActivityDate);
+        toast.info(`Date adjusted to League End Date (${maxYmd})`);
+      }
+    }
+  }, [activeLeague?.end_date, maxActivityDate, activityDate]);
 
   // Rest day stats
   const [restDayStats, setRestDayStats] = React.useState<RestDayStats | null>(null);
@@ -979,7 +1018,19 @@ export default function SubmitActivityPage({
                                 mode="single"
                                 selected={activityDate}
                                 onSelect={(date) => date && setActivityDate(date)}
-                                disabled={(date) => date > new Date()}
+                                disabled={(date) => {
+                                  // Disable future dates relative to real-time
+                                  if (date > new Date()) return true;
+                                  // Disable dates after league end date
+                                  if (activeLeague?.end_date) {
+                                    const endString = String(activeLeague.end_date).slice(0, 10);
+                                    // Compare YYYY-MM-DD strings for simplicity/safety
+                                    const dateYmd = format(date, 'yyyy-MM-dd');
+                                    return dateYmd > endString;
+                                  }
+                                  return false;
+                                }}
+                                // Users can select past dates (e.g. League End Date) for late submission
                                 initialFocus
                               />
                             </PopoverContent>
@@ -1235,11 +1286,11 @@ export default function SubmitActivityPage({
                         </div>
 
                         {/* Info */}
+                        {/* Info */}
                         <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
                           <Info className="size-4 mt-0.5 shrink-0" />
                           <div>
-                            <span className="font-medium">{restDayStats.restDaysPerWeek} rest day{restDayStats.restDaysPerWeek > 1 ? 's' : ''} per week</span>
-                            {' '}× {restDayStats.leagueWeeks} weeks = {restDayStats.totalAllowed} total rest days allowed
+                            <span className="font-medium">{restDayStats.totalAllowed} Total Rest Days Allowed</span>
                           </div>
                         </div>
 
@@ -1289,7 +1340,17 @@ export default function SubmitActivityPage({
                             mode="single"
                             selected={activityDate}
                             onSelect={(date) => date && setActivityDate(date)}
-                            disabled={(date) => date > new Date()}
+                            disabled={(date) => {
+                              // Disable future dates relative to real-time
+                              if (date > new Date()) return true;
+                              // Disable dates after league end date
+                              if (activeLeague?.end_date) {
+                                const endString = String(activeLeague.end_date).slice(0, 10);
+                                const dateYmd = format(date, 'yyyy-MM-dd');
+                                return dateYmd > endString;
+                              }
+                              return false;
+                            }}
                             initialFocus
                           />
                         </PopoverContent>

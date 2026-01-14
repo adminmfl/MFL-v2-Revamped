@@ -105,6 +105,7 @@ export default function MyTeamViewPage({
   const [teamRank, setTeamRank] = useState<string>('#--');
   const [teamPoints, setTeamPoints] = useState<string>('--');
   const [teamAvgRR, setTeamAvgRR] = useState<string>('--');
+  const [teamLogoUrl, setTeamLogoUrl] = useState<string | null>(null);
 
   const userTeamId = activeLeague?.team_id;
   const userTeamName = activeLeague?.team_name;
@@ -139,7 +140,7 @@ export default function MyTeamViewPage({
             const lbJson = await lbRes.json();
             if (lbRes.ok && lbJson?.success && lbJson.data?.individuals) {
               console.debug('[MyTeamView] leaderboard individuals count:', lbJson.data.individuals.length);
-              console.debug('[MyTeamView] sample individuals:', lbJson.data.individuals.slice(0,5));
+              console.debug('[MyTeamView] sample individuals:', lbJson.data.individuals.slice(0, 5));
               const pts = new Map<string, number>(
                 lbJson.data.individuals.map((i: any) => [String(i.user_id), Number(i.points || 0)])
               );
@@ -202,9 +203,16 @@ export default function MyTeamViewPage({
     {
       title: 'Team Points',
       value: String(teamPoints),
-      description: 'Total RR',
+      description: 'Total score',
       detail: 'Combined team effort',
       icon: Target,
+    },
+    {
+      title: 'Avg RR',
+      value: parseFloat(teamAvgRR).toFixed(1),
+      description: 'Reward Rate',
+      detail: 'Average per workout',
+      icon: Flame,
     },
   ];
 
@@ -223,6 +231,13 @@ export default function MyTeamViewPage({
             setTeamPoints(String(pts));
             setTeamAvgRR(String(team.avg_rr ?? 0));
           }
+        }
+
+        // Fetch team logo from teamleagues
+        const logoRes = await fetch(`/api/leagues/${leagueId}/teams/${userTeamId}`);
+        const logoJson = await logoRes.json();
+        if (logoRes.ok && logoJson?.success && logoJson.data?.logo_url) {
+          setTeamLogoUrl(logoJson.data.logo_url);
         }
       } catch (err) {
         console.error('Error fetching team leaderboard stats (view):', err);
@@ -277,9 +292,17 @@ export default function MyTeamViewPage({
       {/* Header */}
       <div className="flex flex-col gap-4 px-4 lg:px-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-4">
-          <div className="size-14 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shrink-0 shadow-lg">
-            <Eye className="size-7 text-primary-foreground" />
-          </div>
+          {teamLogoUrl ? (
+            <img
+              src={teamLogoUrl}
+              alt={userTeamName}
+              className="size-14 rounded-xl object-cover shadow-lg"
+            />
+          ) : (
+            <div className="size-14 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shrink-0 shadow-lg">
+              <Users className="size-7 text-primary-foreground" />
+            </div>
+          )}
           <div>
             <h1 className="text-2xl font-bold tracking-tight">{userTeamName}</h1>
             <p className="text-muted-foreground">
@@ -370,7 +393,7 @@ export default function MyTeamViewPage({
                 <TableHead className="w-12">#</TableHead>
                 <TableHead>Member</TableHead>
                 <TableHead>Role</TableHead>
-                  <TableHead className="text-center">Points</TableHead>
+                <TableHead className="text-center">Points</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
