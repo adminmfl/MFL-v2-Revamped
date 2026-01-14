@@ -792,6 +792,47 @@ CREATE POLICY teamleagues_update_host_or_captain ON public.teamleagues
     OR public.is_captain_of_team(auth.uid(), team_id)
   );
 
+-- =====================================================================================
+-- REST DAY DONATIONS
+-- =====================================================================================
+
+CREATE TABLE IF NOT EXISTS public.rest_day_donations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    league_id UUID NOT NULL REFERENCES public.leagues(league_id) ON DELETE CASCADE,
+    donor_member_id UUID NOT NULL REFERENCES public.leaguemembers(league_member_id) ON DELETE CASCADE,
+    receiver_member_id UUID NOT NULL REFERENCES public.leaguemembers(league_member_id) ON DELETE CASCADE,
+    days_transferred INTEGER NOT NULL CHECK (days_transferred > 0),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    approved_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_rest_day_donations_league ON public.rest_day_donations(league_id);
+CREATE INDEX IF NOT EXISTS idx_rest_day_donations_donor ON public.rest_day_donations(donor_member_id);
+CREATE INDEX IF NOT EXISTS idx_rest_day_donations_receiver ON public.rest_day_donations(receiver_member_id);
+CREATE INDEX IF NOT EXISTS idx_rest_day_donations_status ON public.rest_day_donations(status);
+
+COMMENT ON TABLE public.rest_day_donations IS 'Tracks rest day donations between league members, requiring approval';
+COMMENT ON COLUMN public.rest_day_donations.donor_member_id IS 'The member donating rest days';
+COMMENT ON COLUMN public.rest_day_donations.receiver_member_id IS 'The member receiving rest days';
+COMMENT ON COLUMN public.rest_day_donations.status IS 'Donation status: pending → approved/rejected by Governor/Host';
+
+-- Updated_at trigger for rest_day_donations
+CREATE OR REPLACE FUNCTION update_rest_day_donations_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER rest_day_donations_updated_at
+    BEFORE UPDATE ON public.rest_day_donations
+    FOR EACH ROW
+    EXECUTE FUNCTION update_rest_day_donations_updated_at();
+
 
 -- =====================================================================================
 -- END OF SCHEMA

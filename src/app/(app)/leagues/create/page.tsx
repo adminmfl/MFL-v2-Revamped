@@ -16,7 +16,7 @@ import {
   CreditCard,
   IndianRupee,
   CheckCircle2,
-  ArrowLeft, 
+  ArrowLeft,
   Sparkles,
   Info,
   PartyPopper,
@@ -95,7 +95,7 @@ export default function CreateLeaguePage() {
   // Tier state
   const [tiers, setTiers] = React.useState<TierConfig[]>([]);
   const [selectedTierId, setSelectedTierId] = React.useState<string | null>(null);
-  
+
   // Price preview state
   const [pricePreview, setPricePreview] = React.useState<PriceBreakdown | null>(null);
   const [validation, setValidation] = React.useState<TierValidationResult | null>(null);
@@ -107,7 +107,7 @@ export default function CreateLeaguePage() {
     description: '',
     num_teams: '4',
     max_participants: '20',
-    rest_days: '1',
+    rest_days: '18',
     is_public: false,
     is_exclusive: true,
   });
@@ -393,26 +393,26 @@ export default function CreateLeaguePage() {
     const minTeams = 2;
     // Extended standard options to support up to 60 teams
     const standardOptions = [2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20, 24, 30, 32, 40, 48, 50, 60];
-    
+
     // If no tier selected yet, show options up to 10 (basic tier default)
     if (capacity <= 0) {
       return standardOptions.filter(n => n <= 10);
     }
-    
+
     const maxTeams = capacity; // Max teams = tier capacity
     const options: number[] = [];
-    
+
     for (const n of standardOptions) {
       if (n >= minTeams && n <= maxTeams) {
         options.push(n);
       }
     }
-    
+
     // If no standard options fit, at least include minTeams
     if (options.length === 0) {
       options.push(minTeams);
     }
-    
+
     return options;
   }, []);
 
@@ -578,7 +578,7 @@ export default function CreateLeaguePage() {
                             <Check className="size-3 text-primary-foreground" />
                           </div>
                         )}
-                        
+
                         <div className="flex flex-col gap-1 w-full">
                           <span className={cn(
                             'text-base font-semibold',
@@ -586,7 +586,7 @@ export default function CreateLeaguePage() {
                           )}>
                             {tier.display_name}
                           </span>
-                          
+
                           {tier.pricing.pricing_type === 'fixed' && tier.pricing.fixed_price && (
                             <span className={cn(
                               'text-lg font-bold',
@@ -595,13 +595,13 @@ export default function CreateLeaguePage() {
                               ₹{Math.round(tier.pricing.fixed_price)}
                             </span>
                           )}
-                          
+
                           {tier.pricing.pricing_type === 'dynamic' && (
                             <span className="text-sm text-muted-foreground">
                               Custom pricing
                             </span>
                           )}
-                          
+
                           <span className="text-xs text-muted-foreground">
                             Up to {tier.max_days} days
                           </span>
@@ -784,7 +784,7 @@ export default function CreateLeaguePage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="max_participants">
                       Max Participants *
@@ -814,24 +814,18 @@ export default function CreateLeaguePage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                   <div className="space-y-2">
-                    <Label>Rest Days/Week</Label>
-                    <Select
+                    <Label htmlFor="rest_days">Total Rest Days</Label>
+                    <Input
+                      id="rest_days"
+                      type="number"
+                      min="0"
                       value={formData.rest_days}
-                      onValueChange={(v) => handleSelectChange('rest_days', v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[0, 1, 2, 3].map((n) => (
-                          <SelectItem key={n} value={n.toString()}>
-                            {n} {n === 1 ? 'day' : 'days'}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      onChange={handleChange}
+                      name="rest_days"
+                      placeholder="e.g. 18"
+                    />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label>Avg Team Size</Label>
                     <div className="h-10 px-3 flex items-center rounded-md border bg-muted text-sm">
@@ -956,19 +950,19 @@ export default function CreateLeaguePage() {
                           ))}
                         </div>
                       )}
-                      
+
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Subtotal:</span>
                         <span>₹{pricePreview.subtotal.toFixed(2)}</span>
                       </div>
-                      
+
                       <div className="flex justify-between text-sm text-muted-foreground">
                         <span>GST ({pricePreview.pricing_type === 'fixed' && selectedTier?.pricing.gst_percentage ? selectedTier.pricing.gst_percentage : 18}%):</span>
                         <span>₹{pricePreview.gst_amount.toFixed(2)}</span>
                       </div>
-                      
+
                       <Separator />
-                      
+
                       <div className="flex justify-between text-base font-bold">
                         <span>Total:</span>
                         <span className="text-primary flex items-center">

@@ -66,6 +66,15 @@ export async function GET(
       return NextResponse.json({ error: 'Team not found' }, { status: 404 });
     }
 
+    // Get team logo from teamleagues (logo is per-league, not per-team)
+    const supabase = getSupabaseServiceRole();
+    const { data: teamLeague } = await supabase
+      .from('teamleagues')
+      .select('logo_url')
+      .eq('team_id', teamId)
+      .eq('league_id', leagueId)
+      .single();
+
     // Get team members with roles
     const members = await getTeamMembers(teamId, leagueId);
 
@@ -73,6 +82,7 @@ export async function GET(
       success: true,
       data: {
         ...team,
+        logo_url: teamLeague?.logo_url || null,
         members,
         member_count: members.length,
         captain: members.find((m) => m.is_captain) || null,

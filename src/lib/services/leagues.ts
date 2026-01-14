@@ -54,43 +54,53 @@ function mapLeagueInputToDbUpdates(input: Partial<LeagueInput>): Record<string, 
 export function deriveLeagueStatus(
   league: { status?: string | null; start_date?: string | null; end_date?: string | null }
 ): { derivedStatus: string; shouldPersist: boolean } {
-  const parseYmd = (ymd?: string | null): Date | null => {
+  // Use current timestamp for precise cutoff check
+  const now = new Date();
+
+  // Parse dates as UTC midnight to match the logic used in submission/upsert
+  const parseUtcMidnight = (ymd?: string | null): Date | null => {
     if (!ymd) return null;
     const m = /^\d{4}-\d{2}-\d{2}$/.exec(String(ymd));
     if (!m) return null;
     const [y, mo, d] = String(ymd).split('-').map((p) => Number(p));
     if (!y || !mo || !d) return null;
-    const dt = new Date(y, mo - 1, d);
-    dt.setHours(0, 0, 0, 0);
-    return isNaN(dt.getTime()) ? null : dt;
+    return new Date(Date.UTC(y, mo - 1, d));
   };
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const startDt = parseYmd(league?.start_date || null);
-  const endDt = parseYmd(league?.end_date || null);
+  const startDt = parseUtcMidnight(league?.start_date || null);
+  const endDt = parseUtcMidnight(league?.end_date || null);
 
   const rawStatus = String(league?.status || 'draft').toLowerCase();
   let derivedStatus = rawStatus;
 
   if (derivedStatus !== 'draft') {
     if (startDt && endDt) {
-      if (today.getTime() > endDt.getTime()) {
+      // Calculate Cutoff: UTC Midnight of EndDate + 33 hours (Grace period)
+      // This matches the logic in /api/entries/upsert/route.ts
+      const cutoff = new Date(endDt);
+      cutoff.setHours(cutoff.getHours() + 33);
+
+      if (now.getTime() > cutoff.getTime()) {
         derivedStatus = 'completed';
-      } else if (today.getTime() >= startDt.getTime() && today.getTime() <= endDt.getTime()) {
+      } else if (now.getTime() >= startDt.getTime() && now.getTime() <= cutoff.getTime()) {
+        // Active if within start and cutoff
         derivedStatus = 'active';
-      } else if (today.getTime() < startDt.getTime()) {
+      } else if (now.getTime() < startDt.getTime()) {
         if (derivedStatus === 'scheduled' || derivedStatus === 'payment_pending') derivedStatus = 'launched';
       }
-    } else if (endDt && today.getTime() > endDt.getTime()) {
-      derivedStatus = 'completed';
+    } else if (endDt) {
+      // Legacy check or missing start date?
+      const cutoff = new Date(endDt);
+      cutoff.setHours(cutoff.getHours() + 33);
+      if (now.getTime() > cutoff.getTime()) {
+        derivedStatus = 'completed';
+      }
     }
   }
 
-  if (!['draft', 'launched', 'active', 'completed'].includes(derivedStatus)) {
-    if (derivedStatus === 'scheduled') derivedStatus = 'launched';
-    else if (derivedStatus === 'ended') derivedStatus = 'completed';
+  if (!['draft', 'launched', 'active', 'completed', 'scheduled', 'payment_pending'].includes(derivedStatus)) {
+    // Basic normalization
+    if (derivedStatus === 'ended') derivedStatus = 'completed';
   }
 
   return {
@@ -98,6 +108,7 @@ export function deriveLeagueStatus(
     shouldPersist: derivedStatus === 'completed' && rawStatus !== 'completed',
   };
 }
+
 
 /**
  * Persist a derived status back to the DB when appropriate.
@@ -237,7 +248,7 @@ export async function createLeague(userId: string, data: LeagueInput): Promise<L
 export async function getLeagueById(leagueId: string): Promise<League | null> {
   try {
     const supabase = getSupabaseServiceRole();
-    
+
     // Fetch league without embedded join
     const { data, error } = await supabase
       .from('leagues')
@@ -246,7 +257,7 @@ export async function getLeagueById(leagueId: string): Promise<League | null> {
       .single();
 
     if (error || !data) return null;
-    
+
     // Fetch tier capacity separately if tier_id exists
     let leagueCapacity = 20;
     if (data.tier_id) {
@@ -255,17 +266,17 @@ export async function getLeagueById(leagueId: string): Promise<League | null> {
         .select('league_capacity')
         .eq('tier_id', data.tier_id)
         .single();
-      
+
       if (tierData?.league_capacity) {
         leagueCapacity = tierData.league_capacity;
       }
     }
-    
+
     const leagueWithCapacity = {
       ...data,
       league_capacity: leagueCapacity,
     };
-    
+
     // Derive the status for UI and persist completion back to DB when needed.
     const { derivedStatus, shouldPersist } = deriveLeagueStatus(leagueWithCapacity);
 

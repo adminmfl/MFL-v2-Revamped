@@ -97,15 +97,63 @@ export async function POST(req: NextRequest) {
     const leagueEnd = (leagueRow as any).end_date || null;
     const leagueStatus = (leagueRow as any).status || null;
 
-    if (leagueStatus === 'completed' || (leagueEnd && normalizeDateOnly(leagueEnd) && normalizeDateOnly(leagueEnd) < todayYmd)) {
+    // Check league completion status and date
+    // Logic update: Allow submissions until 08:30 UTC the day AFTER the end date.
+    // This handles timezone differences by giving a generous grace period.
+    if (leagueStatus === 'completed') {
       return NextResponse.json({ error: 'League has completed. Submissions are closed.' }, { status: 400 });
     }
 
-    if (!reupload_of && normalizedDate !== todayYmd) {
-      return NextResponse.json(
-        { error: 'You can only submit for today. Use the resubmit flow for rejected entries.' },
-        { status: 400 }
-      );
+    if (leagueEnd) {
+      // Calculate Cutoff: UTC Midnight of EndDate + 1 day + 9 hours (33 hours grace)
+
+      // Ensure we treat the string strictly as UTC midnight YYYY-MM-DD
+      const dateStr = String(leagueEnd).slice(0, 10);
+      const [y, m, d] = dateStr.split('-').map(Number);
+
+      const cutoff = new Date(Date.UTC(y, m - 1, d)); // Midnight UTC on End Date
+
+      // Add 1 day (24h) + 9 hours = 33 hours
+      cutoff.setHours(cutoff.getHours() + 33);
+
+      const nowUtc = new Date();
+
+      // Strict cutoff check
+      if (nowUtc > cutoff) {
+        return NextResponse.json({ error: 'League has completed. Submissions are closed.' }, { status: 400 });
+      }
+
+      // Exception: Allow submitting for League End Date if within grace period
+      // If the submission is for the league end date, and we are within the grace period (checked above), it's allowed.
+      // We only throw the "today only" error if it's NOT a reupload AND NOT a valid late submission for end date.
+      if (!reupload_of && normalizedDate !== todayYmd) {
+        const isValidLateSubmission = normalizedDate === dateStr; // dateStr is leagueEnd (YYYY-MM-DD)
+
+        if (!isValidLateSubmission) {
+          return NextResponse.json(
+            { error: 'You can only submit for today. Use the resubmit flow for rejected entries.' },
+            { status: 400 }
+          );
+        }
+      }
+
+      // CRITICAL FIX: Ensure the submitted date is not AFTER the league end date.
+      // Even if "today" is valid (e.g. user is submitting on Jan 10 via the grace period),
+      // they should not be able to log a workout FOR Jan 10 if the league ended on Jan 9.
+      if (normalizedDate > dateStr && !reupload_of) {
+         return NextResponse.json(
+          { error: `League ended on ${dateStr}. You cannot submit activities for ${normalizedDate}.` },
+          { status: 400 }
+        );
+      }
+    } else {
+      // No league end date, standard check
+      if (!reupload_of && normalizedDate !== todayYmd) {
+        return NextResponse.json(
+          { error: 'You can only submit for today. Use the resubmit flow for rejected entries.' },
+          { status: 400 }
+        );
+      }
     }
 
     if (!type || !['workout', 'rest'].includes(type)) {

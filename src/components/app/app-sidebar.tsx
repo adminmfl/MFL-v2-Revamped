@@ -44,6 +44,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from '@/components/ui/sidebar';
 
 // ============================================================================
@@ -66,6 +67,8 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
   const pathname = usePathname();
   const { activeLeague } = useLeague();
   const { activeRole, isAlsoPlayer } = useRole();
+  const { state } = useSidebar();
+  const isCollapsed = state === 'collapsed';
 
   // Get navigation items based on current context
   const navSections = getSidebarNavItems(
@@ -78,24 +81,28 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
     <Sidebar collapsible="icon" {...props}>
       {/* Header - Logo + League Switcher */}
       <SidebarHeader>
-        <div className="flex items-center gap-3 md:justify-start py-2">
-          <Link href="#" className="flex items-center gap-3 font-semibold">
-            <div className="bg-primary text-primary-foreground flex size-10 items-center justify-center rounded-md shadow-sm">
+        <div className={`flex items-center py-2 ${isCollapsed ? 'justify-center' : 'gap-3 md:justify-start'}`}>
+          <Link href="#" className={`flex items-center font-semibold ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
+            <div className="bg-primary text-primary-foreground flex size-10 items-center justify-center rounded-md shadow-sm shrink-0">
               <Dumbbell className="size-6" />
             </div>
-            <div className="flex flex-col leading-tight min-w-0">
-              <span className="text-lg truncate">My Fitness League</span>
-              {activeLeague && (
-                <span className="text-xs text-muted-foreground truncate">
-                  {activeRole ? `Viewing ${activeLeague.name} as ${activeRole}` : activeLeague.name}
-                </span>
-              )}
-            </div>
+            {!isCollapsed && (
+              <div className="flex flex-col leading-tight min-w-0">
+                <span className="text-lg truncate">My Fitness League</span>
+                {activeLeague && (
+                  <span className="text-xs text-muted-foreground truncate">
+                    {activeRole ? `Viewing ${activeLeague.name} as ${activeRole}` : activeLeague.name}
+                  </span>
+                )}
+              </div>
+            )}
           </Link>
         </div>
-        <div className="mt-2">
-          <LeagueSwitcher />
-        </div>
+        {!isCollapsed && (
+          <div className="mt-2">
+            <LeagueSwitcher />
+          </div>
+        )}
       </SidebarHeader>
 
       {/* Content - Dynamic Navigation */}

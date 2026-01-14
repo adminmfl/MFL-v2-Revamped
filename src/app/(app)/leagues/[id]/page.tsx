@@ -46,6 +46,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { getClientCache, setClientCache, invalidateClientCache } from '@/lib/client-cache';
+import { DownloadReportButton, DownloadCertificateButton } from '@/components/leagues/download-report-button';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -641,18 +642,14 @@ export default function LeagueDashboardPage({
         icon: TrendingUp,
       },
       {
-        title: 'Rest Days Used',
-        value: mySummary.restUsed.toLocaleString(),
-        changeLabel: 'So far',
-        description: 'Approved rest days',
+        title: 'Rest Days',
+        value: `${mySummary.restUsed.toLocaleString()} / ${(mySummary.restUsed + (mySummary.restUnused ?? 0)).toLocaleString()}`,
+        changeLabel: 'Used / Total',
+        description: `${mySummary.restUnused !== null ? mySummary.restUnused.toLocaleString() : '—'} remaining`,
         icon: Timer,
-      },
-      {
-        title: 'Rest Days Unused',
-        value: mySummary.restUnused !== null ? mySummary.restUnused.toLocaleString() : '—',
-        changeLabel: 'Remaining',
-        description: 'From league allowance',
-        icon: Shield,
+        isCombined: true,
+        restUsed: mySummary.restUsed,
+        restUnused: mySummary.restUnused,
       },
       {
         title: 'Days Missed',
@@ -736,6 +733,24 @@ export default function LeagueDashboardPage({
               </Link>
             </Button>
           )}
+          {user && (
+            <>
+              <DownloadReportButton
+                leagueId={id}
+                userId={user.id}
+                leagueStatus={league.status}
+                variant="outline"
+                size="sm"
+              />
+              <DownloadCertificateButton
+                leagueId={id}
+                userId={user.id}
+                leagueStatus={league.status}
+                variant="outline"
+                size="sm"
+              />
+            </>
+          )}
         </div>
       </div>
 
@@ -745,8 +760,8 @@ export default function LeagueDashboardPage({
             <h2 className="text-lg font-semibold">My Summary</h2>
             <p className="text-sm text-muted-foreground">Your approved performance in this league.</p>
           </div>
-          <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-2 gap-3 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-5">
-            {[1, 2, 3, 4, 5].map((index) => (
+          <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-2 gap-3 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+            {[1, 2, 3, 4].map((index) => (
               <Card key={index} className="@container/card p-3 sm:p-6">
                 <CardHeader className="p-0 sm:p-6 sm:pb-2">
                   <CardDescription className="flex items-center gap-2 text-xs sm:text-sm">
@@ -788,9 +803,48 @@ export default function LeagueDashboardPage({
             <h2 className="text-lg font-semibold">My Summary</h2>
             <p className="text-sm text-muted-foreground">Your approved performance in this league.</p>
           </div>
-          <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-2 gap-3 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-5">
+          <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-2 gap-3 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
             {mySummaryStats.map((stat, index) => {
               const StatIcon = stat.icon;
+              const isCombined = (stat as any).isCombined;
+              
+              if (isCombined) {
+                const restUsed = (stat as any).restUsed ?? 0;
+                const restUnused = (stat as any).restUnused ?? 0;
+                const total = restUsed + restUnused;
+                
+                return (
+                  <Card key={index} className="@container/card p-3 sm:p-6">
+                    <CardHeader className="p-0 sm:p-6 sm:pb-2">
+                      <CardDescription className="flex items-center gap-2 text-xs sm:text-sm">
+                        <StatIcon className="size-3 sm:size-4" />
+                        {stat.title}
+                      </CardDescription>
+                      <CardTitle className="text-xl sm:text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                        {stat.value}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardFooter className="flex-col items-start gap-2 p-0 pt-2 sm:p-6 sm:pt-0">
+                      <div className="flex flex-col gap-2 w-full">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs sm:text-sm">
+                          <div className="flex items-center gap-2">
+                            <Timer className="size-3 sm:size-4 text-muted-foreground" />
+                            <span className="font-medium">Used: {restUsed.toLocaleString()}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Shield className="size-3 sm:size-4 text-muted-foreground" />
+                            <span className="font-medium">Remaining: {restUnused !== null ? restUnused.toLocaleString() : '—'}</span>
+                          </div>
+                        </div>
+                        <div className="text-muted-foreground text-[10px] sm:text-xs">
+                          {total > 0 ? `Total allowance: ${total.toLocaleString()} rest days` : 'No rest days allocated'}
+                        </div>
+                      </div>
+                    </CardFooter>
+                  </Card>
+                );
+              }
+              
               return (
                 <Card key={index} className="@container/card p-3 sm:p-6">
                   <CardHeader className="p-0 sm:p-6 sm:pb-2">
@@ -1175,7 +1229,7 @@ export default function LeagueDashboardPage({
 
                 <span className="text-sm text-muted-foreground">Rest Days</span>
                 <Badge variant="outline">
-                  {league.rest_days} per week
+                  {league.rest_days} total
                 </Badge>
               </div>
               <div className="flex flex-col gap-1 md:flex-col md:items-start min-w-0">

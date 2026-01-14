@@ -302,17 +302,17 @@ export default function LeagueSettingsPage({
 
       // Show specific toast for each setting changed
       const messages: string[] = [];
-      
+
       if (payload.auto_rest_day_enabled !== undefined) {
         const status = payload.auto_rest_day_enabled ? 'enabled' : 'disabled';
         messages.push(`Auto rest day ${status}`);
       }
-      
+
       if (payload.normalize_points_by_team_size !== undefined) {
         const status = payload.normalize_points_by_team_size ? 'enabled' : 'disabled';
         messages.push(`Point normalization ${status}`);
       }
-      
+
       if (messages.length > 0) {
         toast.success(messages.join('. ') + '.');
       } else {
@@ -448,80 +448,80 @@ export default function LeagueSettingsPage({
               </CardContent>
             </Card>
 
-              {/* Branding / Logo */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Shield className="size-5 text-primary" />
-                    League Branding
-                  </CardTitle>
-                  <CardDescription>
-                    Upload a square logo (PNG/JPEG/WebP, max 2MB)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 rounded-xl border bg-muted overflow-hidden flex items-center justify-center">
-                      {logoUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={logoUrl} alt="League logo" className="h-full w-full object-cover" />
-                      ) : (
-                        <span className="text-sm text-muted-foreground">No logo</span>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        Recommended: 512×512px. Transparent PNG or WebP looks best.
-                      </p>
-                      <div className="flex flex-wrap gap-2">
+            {/* Branding / Logo */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Shield className="size-5 text-primary" />
+                  League Branding
+                </CardTitle>
+                <CardDescription>
+                  Upload a square logo (PNG/JPEG/WebP, max 2MB)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-16 rounded-xl border bg-muted overflow-hidden flex items-center justify-center">
+                    {logoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={logoUrl} alt="League logo" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-sm text-muted-foreground">No logo</span>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Recommended: 512×512px. Transparent PNG or WebP looks best.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={logoUploading}
+                      >
+                        {logoUploading ? (
+                          <>
+                            <Loader2 className="mr-2 size-4 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="mr-2 size-4" />
+                            Upload Logo
+                          </>
+                        )}
+                      </Button>
+                      {logoUrl && (
                         <Button
-                          variant="outline"
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={logoUploading}
+                          variant="secondary"
+                          onClick={handleLogoDelete}
+                          disabled={logoDeleting}
                         >
-                          {logoUploading ? (
+                          {logoDeleting ? (
                             <>
                               <Loader2 className="mr-2 size-4 animate-spin" />
-                              Uploading...
+                              Removing...
                             </>
                           ) : (
                             <>
-                              <Save className="mr-2 size-4" />
-                              Upload Logo
+                              <Trash2 className="mr-2 size-4" />
+                              Remove Logo
                             </>
                           )}
                         </Button>
-                        {logoUrl && (
-                          <Button
-                            variant="secondary"
-                            onClick={handleLogoDelete}
-                            disabled={logoDeleting}
-                          >
-                            {logoDeleting ? (
-                              <>
-                                <Loader2 className="mr-2 size-4 animate-spin" />
-                                Removing...
-                              </>
-                            ) : (
-                              <>
-                                <Trash2 className="mr-2 size-4" />
-                                Remove Logo
-                              </>
-                            )}
-                          </Button>
-                        )}
-                      </div>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        className="hidden"
-                        accept="image/png,image/jpeg,image/webp"
-                        onChange={handleLogoFileChange}
-                      />
+                      )}
                     </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      className="hidden"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={handleLogoFileChange}
+                    />
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Team Configuration Card */}
             <Card>
@@ -559,24 +559,17 @@ export default function LeagueSettingsPage({
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Rest Days/Week</Label>
-                    <Select
+                    <Label htmlFor="rest_days">Total Rest Days</Label>
+                    <Input
+                      id="rest_days"
+                      type="number"
+                      min="0"
                       value={formData.rest_days}
-                      onValueChange={(v) =>
-                        setFormData((prev) => ({ ...prev, rest_days: v }))
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, rest_days: e.target.value }))
                       }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[0, 1, 2, 3].map((n) => (
-                          <SelectItem key={n} value={n.toString()}>
-                            {n} {n === 1 ? 'day' : 'days'}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="e.g. 18"
+                    />
                   </div>
                 </div>
 
@@ -783,7 +776,7 @@ export default function LeagueSettingsPage({
                     <span className="font-medium">{formData.num_teams}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Rest Days/Week</span>
+                    <span className="text-muted-foreground">Total Rest Days</span>
                     <span className="font-medium">{formData.rest_days}</span>
                   </div>
                   <div className="flex justify-between">
