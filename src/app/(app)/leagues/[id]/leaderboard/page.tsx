@@ -1,6 +1,6 @@
 /**
- * League Leaderboard Page
- * Displays team and individual rankings with live data from the API.
+ * League Leaderboard Page - Redesigned
+ * Clean, compact layout with tabbed leaderboards and collapsible filters.
  */
 'use client';
 
@@ -10,32 +10,32 @@ import {
   RefreshCw,
   AlertCircle,
   Calendar,
+  ChevronDown,
+  ChevronUp,
+  Trophy,
+  Users,
+  User,
+  Flag,
   Info,
 } from 'lucide-react';
 
-import {
-  Card,
-  CardContent,
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 import { useLeagueLeaderboard } from '@/hooks/use-league-leaderboard';
 import {
@@ -45,6 +45,7 @@ import {
   ChallengeSpecificLeaderboard,
   RealTimeScoreboardTable,
 } from '@/components/leaderboard';
+import { DynamicReportDialog } from '@/components/leagues/dynamic-report-dialog';
 
 // ============================================================================
 // Loading Skeleton
@@ -52,129 +53,10 @@ import {
 
 function LoadingSkeleton() {
   return (
-    <div className="@container/main flex flex-1 flex-col gap-4 lg:gap-6">
-      <div className="px-4 lg:px-6">
-        <Skeleton className="h-8 w-48 mb-2" />
-        <Skeleton className="h-4 w-64" />
-      </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 px-4 lg:px-6">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-24" />
-        ))}
-      </div>
-      <div className="px-4 lg:px-6 grid grid-cols-3 gap-4">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-40" />
-        ))}
-      </div>
-      <div className="px-4 lg:px-6">
-        <Skeleton className="h-[400px]" />
-      </div>
-    </div>
-  );
-}
-
-// ============================================================================
-// Top 3 Podium Component
-// ============================================================================
-
-interface PodiumProps {
-  teams: Array<{
-    rank: number;
-    team_name: string;
-    total_points: number;
-  }>;
-}
-
-function TopPodium({ teams }: PodiumProps) {
-  if (teams.length === 0) return null;
-
-  const first = teams[0];
-  const second = teams[1];
-  const third = teams[2];
-
-  const renderTeamAvatar = (
-    team: PodiumProps['teams'][number] | undefined,
-    theme: 'gold' | 'silver' | 'bronze'
-  ) => {
-    if (!team) return null;
-    const initials = team.team_name?.slice(0, 2)?.toUpperCase() || 'TM';
-    const themeClasses =
-      theme === 'gold'
-        ? 'bg-card text-amber-700 dark:text-amber-200 ring-4 ring-amber-200 dark:ring-amber-700/70'
-        : theme === 'silver'
-          ? 'bg-card text-gray-700 dark:text-gray-200 ring-4 ring-gray-300 dark:ring-gray-600'
-          : 'bg-card text-amber-800 dark:text-amber-100 ring-4 ring-amber-300/80 dark:ring-amber-800/70';
-
-    return (
-      <Avatar className={`size-16 mx-auto rounded-full ${themeClasses} flex items-center justify-center mb-3 overflow-hidden`}>
-        {team.logo_url ? (
-          <AvatarImage src={team.logo_url} alt={`${team.team_name} logo`} />
-        ) : (
-          <AvatarFallback className="rounded-full font-semibold">{initials}</AvatarFallback>
-        )}
-      </Avatar>
-    );
-  };
-
-  return (
-    <div className="grid grid-cols-3 gap-4">
-      {/* 2nd Place */}
-      <Card className="text-center pt-6 bg-gradient-to-t from-gray-500/5 to-transparent">
-        <CardContent className="p-4">
-          {second ? (
-            <>
-              {renderTeamAvatar(second, 'silver')}
-              <Badge className="bg-gray-400 text-white border-0 mb-2">2nd Place</Badge>
-              <p className="font-semibold truncate">{second.team_name}</p>
-              <p className="text-2xl font-bold text-muted-foreground tabular-nums">
-                {second.total_points.toLocaleString()}
-              </p>
-              <p className="text-xs text-muted-foreground">points</p>
-            </>
-          ) : (
-            <div className="py-4 text-muted-foreground">-</div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* 1st Place */}
-      <Card className="text-center bg-gradient-to-t from-amber-500/10 to-transparent border-amber-200 dark:border-amber-800">
-        <CardContent className="p-4">
-          {first ? (
-            <>
-              {renderTeamAvatar(first, 'gold')}
-              <Badge className="bg-amber-500 text-white border-0 mb-2">1st Place</Badge>
-              <p className="font-bold text-lg truncate">{first.team_name}</p>
-              <p className="text-3xl font-bold text-amber-600 dark:text-amber-400 tabular-nums">
-                {first.total_points.toLocaleString()}
-              </p>
-              <p className="text-xs text-muted-foreground">points</p>
-            </>
-          ) : (
-            <div className="py-4 text-muted-foreground">No data yet</div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* 3rd Place */}
-      <Card className="text-center pt-6 bg-gradient-to-t from-amber-700/5 to-transparent">
-        <CardContent className="p-4">
-          {third ? (
-            <>
-              {renderTeamAvatar(third, 'bronze')}
-              <Badge className="bg-amber-700 text-white border-0 mb-2">3rd Place</Badge>
-              <p className="font-semibold truncate">{third.team_name}</p>
-              <p className="text-2xl font-bold text-muted-foreground tabular-nums">
-                {third.total_points.toLocaleString()}
-              </p>
-              <p className="text-xs text-muted-foreground">points</p>
-            </>
-          ) : (
-            <div className="py-4 text-muted-foreground">-</div>
-          )}
-        </CardContent>
-      </Card>
+    <div className="@container/main flex flex-1 flex-col gap-4 p-4 lg:p-6">
+      <Skeleton className="h-8 w-48 mb-2" />
+      <Skeleton className="h-12 w-full" />
+      <Skeleton className="h-[400px]" />
     </div>
   );
 }
@@ -189,6 +71,8 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
   const [roles, setRoles] = useState<string[]>([]);
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('teams');
 
   // Fetch leaderboard data
   const {
@@ -200,7 +84,8 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
     refetch,
     setDateRange,
   } = useLeagueLeaderboard(leagueId);
-  // Fetch user roles to decide toggle permission
+
+  // Fetch user roles
   React.useEffect(() => {
     const fetchRoles = async () => {
       try {
@@ -212,24 +97,26 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
           const roleNames = arr.map((x: any) => typeof x === 'string' ? x : (x?.role_name || x));
           setRoles(roleNames.filter(Boolean));
         }
-      } catch {}
+      } catch { }
     };
     if (leagueId) fetchRoles();
   }, [leagueId]);
+
   const canToggleRaw = roles.includes('host') || roles.includes('governor');
 
-  // Handle date range change
   const handleApplyDateRange = () => {
     setDateRange(
       startDate ? format(startDate, 'yyyy-MM-dd') : null,
       endDate ? format(endDate, 'yyyy-MM-dd') : null
     );
+    setFilterOpen(false);
   };
 
   const handleResetDateRange = () => {
     setStartDate(undefined);
     setEndDate(undefined);
     setDateRange(null, null);
+    setFilterOpen(false);
   };
 
   if (isLoading) {
@@ -238,7 +125,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
 
   if (error) {
     return (
-      <div className="@container/main flex flex-1 flex-col gap-4 lg:gap-6 p-4 lg:p-6">
+      <div className="@container/main flex flex-1 flex-col gap-4 p-4 lg:p-6">
         <Alert variant="destructive">
           <AlertCircle className="size-4" />
           <AlertTitle>Error Loading Leaderboard</AlertTitle>
@@ -255,7 +142,6 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
   }
 
   const normalizationActive = Boolean(data?.normalization?.active);
-  const normalizationInfo = data?.normalization;
   const teams = (viewRawTotals && canToggleRaw && rawTeams) ? rawTeams : (data?.teams || []);
   const individuals = data?.individuals || [];
   const stats = data?.stats || { total_submissions: 0, approved: 0, pending: 0, rejected: 0, total_rr: 0 };
@@ -263,205 +149,175 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
   const league = data?.league;
   const pendingWindow = (viewRawTotals && canToggleRaw && rawPendingWindow) ? rawPendingWindow : data?.pendingWindow;
 
+  const displayDateRange = dateRange
+    ? `${format(parseISO(dateRange.startDate), 'MMM d')} – ${format(parseISO(dateRange.endDate), 'MMM d')}`
+    : league?.start_date
+      ? `${format(parseISO(league.start_date), 'MMM d')} – ${format(parseISO(league.end_date), 'MMM d')}`
+      : 'All time';
+
   return (
-    <div className="@container/main flex flex-1 flex-col gap-4 lg:gap-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 px-4 lg:px-6 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Leaderboard</h1>
-          <p className="text-muted-foreground">
-            {league?.league_name ? `Rankings for ${league.league_name}` : 'See how teams and individuals are performing'}
-          </p>
-          {normalizationActive && (
-            <div className="mt-1">
-              <Badge variant="secondary">Points Normalized</Badge>
-            </div>
-          )}
+    <div className="@container/main flex flex-1 flex-col gap-3 lg:gap-4">
+      {/* Compact Header */}
+      <div className="flex flex-col gap-2 px-4 lg:px-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">Leaderboard</h1>
+            <p className="text-sm text-muted-foreground">
+              {league?.league_name || 'Rankings'}
+              {normalizationActive && (
+                <Badge variant="secondary" className="ml-2 text-xs">Normalized</Badge>
+              )}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
+          {league?.start_date && league?.end_date && league?.status !== 'completed' && (
+            <DynamicReportDialog
+              leagueId={leagueId}
+              leagueStartDate={league.start_date}
+              leagueEndDate={league.end_date}
+            />
+          )}
           <Button variant="outline" size="sm" onClick={refetch}>
-            <RefreshCw className="size-4 mr-2" />
-            Refresh
+            <RefreshCw className="size-4" />
           </Button>
           {normalizationActive && canToggleRaw && (
             <Button variant="ghost" size="sm" onClick={() => setViewRawTotals(v => !v)}>
-              {viewRawTotals ? 'View Normalized' : 'View Raw Totals'}
+              {viewRawTotals ? 'Normalized' : 'Raw'}
             </Button>
           )}
         </div>
       </div>
 
-      {/* Date Range Filter */}
-      <div className="px-4 lg:px-6">
-        <div className="flex flex-wrap items-center gap-4 p-4 rounded-lg border bg-muted/30">
-          <div className="flex items-center gap-2">
-            <Calendar className="size-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Date Range:</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn(!startDate && 'text-muted-foreground')}>
-                  {startDate ? format(startDate, 'MMM d, yyyy') : 'Start date'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <CalendarComponent
-                  mode="single"
-                  selected={startDate}
-                  onSelect={setStartDate}
-                  disabled={(date) => endDate ? date > endDate : false}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-
-            <span className="text-muted-foreground">to</span>
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn(!endDate && 'text-muted-foreground')}>
-                  {endDate ? format(endDate, 'MMM d, yyyy') : 'End date'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <CalendarComponent
-                  mode="single"
-                  selected={endDate}
-                  onSelect={setEndDate}
-                  disabled={(date) => startDate ? date < startDate : false}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button size="sm" onClick={handleApplyDateRange}>
-              Apply
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleResetDateRange}>
-              Reset to Overall
-            </Button>
-          </div>
-
-          {dateRange && (
-            <Badge variant="secondary" className="ml-auto">
-              Showing: {dateRange.startDate} to {dateRange.endDate}
-            </Badge>
-          )}
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="px-4 lg:px-6">
+      {/* Stats Bar + Collapsible Filter */}
+      <div className="px-4 lg:px-6 space-y-2">
         <LeaderboardStats stats={stats} />
-      </div>
 
-      {/* Top 3 Podium */}
-      <div className="px-4 lg:px-6">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold">Top Performers</h2>
-          <p className="text-sm text-muted-foreground">Leading teams in the competition</p>
-        </div>
-        <TopPodium teams={teams.slice(0, 3)} />
-      </div>
-
-      {/* Overall Leaderboard Tables */}
-      <div className="px-4 lg:px-6 py-4 border border-border rounded-lg">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold">Overall Leaderboard</h2>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>
-              Combined scores from workouts and challenges
-              {dateRange?.endDate ? (
-                <> • As of {format(parseISO(dateRange.endDate), 'MMM d')}</>
-              ) : null}
-            </span>
-            {dateRange?.endDate ? (
+        {/* Collapsible Date Filter */}
+        <Collapsible open={filterOpen} onOpenChange={setFilterOpen}>
+          <div className="flex items-center justify-between">
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-sm text-muted-foreground">
+                <Calendar className="size-4 mr-2" />
+                {displayDateRange}
+                {filterOpen ? <ChevronUp className="size-4 ml-2" /> : <ChevronDown className="size-4 ml-2" />}
+              </Button>
+            </CollapsibleTrigger>
+          </div>
+          <CollapsibleContent className="pt-3">
+            <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg border bg-muted/30">
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-muted-foreground"
-                    aria-label="About the delayed leaderboard"
-                  >
-                    <Info className="size-4" />
+                  <Button variant="outline" size="sm" className={cn(!startDate && 'text-muted-foreground')}>
+                    {startDate ? format(startDate, 'MMM d, yyyy') : 'Start date'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="max-w-sm" align="start">
-                  <div className="space-y-3">
-                    <p>
-                      This table shows the official standings as of{' '}
-                      {format(parseISO(dateRange.endDate), 'MMM d')}. Final points are submitted and cannot be changed.
-                    </p>
-                    <p className="text-muted-foreground">
-                      For real-time scores from today and yesterday, check the table below.
-                    </p>
-                  </div>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={startDate}
+                    onSelect={setStartDate}
+                    disabled={(date) => endDate ? date > endDate : false}
+                    initialFocus
+                  />
                 </PopoverContent>
               </Popover>
-            ) : null}
-          </div>
-        </div>
-        <div className="mt-4">
-          <LeagueTeamsTable teams={teams} showAvgRR={true} />
-        </div>
-      </div>
-
-      {/* Real-time (2-day delay window) */}
-      {pendingWindow?.dates?.length ? (
-        <div className="px-4 lg:px-6 py-4 border border-border rounded-lg">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold">Real-time Scoreboard</h2>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>Today’s and yesterday’s scores</span>
+              <span className="text-muted-foreground">to</span>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-muted-foreground"
-                    aria-label="About the real-time scoreboard"
-                  >
-                    <Info className="size-4" />
+                  <Button variant="outline" size="sm" className={cn(!endDate && 'text-muted-foreground')}>
+                    {endDate ? format(endDate, 'MMM d, yyyy') : 'End date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={endDate}
+                    onSelect={setEndDate}
+                    disabled={(date) => startDate ? date < startDate : false}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              <Button size="sm" onClick={handleApplyDateRange}>Apply</Button>
+              <Button variant="ghost" size="sm" onClick={handleResetDateRange}>Reset</Button>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+
+      {/* Tabbed Leaderboards */}
+      <div className="px-4 lg:px-6 flex-1">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="teams" className="gap-2">
+              <Trophy className="size-4" />
+              <span>Teams</span>
+            </TabsTrigger>
+            <TabsTrigger value="individual" className="gap-2">
+              <User className="size-4" />
+              <span>Individual</span>
+            </TabsTrigger>
+            <TabsTrigger value="challenges" className="gap-2">
+              <Flag className="size-4" />
+              <span>Challenges</span>
+            </TabsTrigger>
+          </TabsList>
+
+
+          {/* Teams Leaderboard (Main) */}
+          <TabsContent value="teams" className="mt-0">
+            <div className="rounded-lg border p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold">Team Rankings</h2>
+                  <p className="text-sm text-muted-foreground">Overall standings</p>
+                </div>
+              </div>
+              <LeagueTeamsTable teams={teams} showAvgRR={true} />
+            </div>
+          </TabsContent>
+
+          {/* Individual Leaderboard */}
+          <TabsContent value="individual" className="mt-0">
+            <div className="rounded-lg border p-4">
+              <div className="mb-3">
+                <h2 className="text-lg font-semibold">Individual Rankings</h2>
+                <p className="text-sm text-muted-foreground">Personal standings</p>
+              </div>
+              <LeagueIndividualsTable individuals={individuals} showAvgRR={true} />
+            </div>
+          </TabsContent>
+
+          {/* Challenge Leaderboard */}
+          <TabsContent value="challenges" className="mt-0">
+            <ChallengeSpecificLeaderboard leagueId={leagueId} />
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Real-time Scoreboard (Below, always visible if data exists) */}
+      {pendingWindow?.dates?.length ? (
+        <div className="px-4 lg:px-6">
+          <div className="rounded-lg border p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <h2 className="text-lg font-semibold">Real-time Scoreboard</h2>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <Info className="size-4 text-muted-foreground" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="max-w-sm" align="start">
-                  <div className="space-y-3">
-                    <p>
-                      This table shows real-time scores ranked by today’s points. Avg RR is calculated from both today’s and yesterday’s entries.
-                      These standings are subject to change as more entries come in.
-                    </p>
-                    <p className="text-muted-foreground">
-                      For official finalized standings, please refer to the Leaderboard table above.
-                    </p>
-                  </div>
+                  Today's and yesterday's scores. Subject to change.
                 </PopoverContent>
               </Popover>
             </div>
+            <p className="text-sm text-muted-foreground mb-3">Scores from today and yesterday</p>
+            <RealTimeScoreboardTable dates={pendingWindow.dates} teams={pendingWindow.teams || []} />
           </div>
-          <RealTimeScoreboardTable dates={pendingWindow.dates} teams={pendingWindow.teams || []} />
         </div>
       ) : null}
-
-      {/* Individual Leaderboard */}
-      <div className="px-4 lg:px-6 py-4 border border-border rounded-lg">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold">Individual Leaderboard</h2>
-          <p className="text-sm text-muted-foreground">Individual standings for the selected date range</p>
-        </div>
-        <LeagueIndividualsTable individuals={individuals} showAvgRR={true} />
-      </div>
-
-      {/* Challenge-Specific Leaderboard */}
-      <div className="px-4 lg:px-6">
-        <ChallengeSpecificLeaderboard leagueId={leagueId} />
-      </div>
     </div>
   );
 }

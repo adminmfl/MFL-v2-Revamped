@@ -91,11 +91,13 @@ export interface LeagueReportData {
  * Get all data needed for a league member's personalized report
  * @param leagueId - The league ID
  * @param userId - The user ID to generate the report for
+ * @param options - Optional date range for dynamic reports
  * @returns LeagueReportData or null if user is not a member
  */
 export async function getLeagueReportData(
     leagueId: string,
-    userId: string
+    userId: string,
+    options?: { startDate?: string; endDate?: string }
 ): Promise<LeagueReportData | null> {
     const supabase = getSupabaseServiceRole();
 
@@ -165,11 +167,21 @@ export async function getLeagueReportData(
     }
 
     // 5. Get all effort entries for this member (approved only for scoring)
-    const { data: entries } = await supabase
+    // Apply optional date range filter for dynamic reports
+    let entriesQuery = supabase
         .from('effortentry')
         .select('*')
         .eq('league_member_id', leagueMemberId)
         .eq('status', 'approved');
+
+    if (options?.startDate) {
+        entriesQuery = entriesQuery.gte('date', options.startDate);
+    }
+    if (options?.endDate) {
+        entriesQuery = entriesQuery.lte('date', options.endDate);
+    }
+
+    const { data: entries } = await entriesQuery;
 
     const allEntries = entries || [];
 
@@ -197,11 +209,11 @@ export async function getLeagueReportData(
     const activeDatesSet = new Set(workoutEntries.map(e => e.date));
 
     // Calculate missed days
-    // Total league duration in days
-    const start = new Date(league.start_date);
-    const end = new Date(league.end_date);
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    const totalLeagueDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    // Use date range if provided, otherwise full league duration
+    const reportStartDate = options?.startDate ? new Date(options.startDate) : new Date(league.start_date);
+    const reportEndDate = options?.endDate ? new Date(options.endDate) : new Date(league.end_date);
+    const diffTime = Math.abs(reportEndDate.getTime() - reportStartDate.getTime());
+    const totalReportDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
     // Union of active and rest dates to avoid double counting if any overlap (though unlikely)
     const allLoggedDates = new Set([
@@ -210,7 +222,8 @@ export async function getLeagueReportData(
     ]);
 
     // Ensure we don't return negative missed days if data is weird or extra entries
-    const totalMissedDays = Math.max(0, totalLeagueDays - allLoggedDates.size);
+    const totalMissedDays = Math.max(0, totalReportDays - allLoggedDates.size);
+
 
     const performance: PerformanceSummary = {
         totalActivities: workoutEntries.length,

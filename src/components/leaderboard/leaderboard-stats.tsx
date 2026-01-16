@@ -1,6 +1,6 @@
 /**
- * Leaderboard Stats Cards
- * Displays summary statistics for the league leaderboard.
+ * Leaderboard Stats - Compact Horizontal Bar
+ * Displays summary statistics in a single line.
  */
 'use client';
 
@@ -8,11 +8,9 @@ import {
   Trophy,
   CheckCircle2,
   Clock3,
-  XCircle,
   TrendingUp,
 } from 'lucide-react';
 
-import { cn } from '@/lib/utils';
 import type { LeaderboardStats as StatsType } from '@/hooks/use-league-leaderboard';
 
 // ============================================================================
@@ -24,36 +22,30 @@ interface LeaderboardStatsProps {
 }
 
 // ============================================================================
-// Stats Card Component
+// Compact Stat Item
 // ============================================================================
 
-interface StatCardProps {
+interface StatItemProps {
   label: string;
   value: number | string;
   icon: React.ElementType;
-  color: string;
-  suffix?: string;
+  colorClass: string;
 }
 
-function StatCard({ label, value, icon: Icon, color, suffix }: StatCardProps) {
+function StatItem({ label, value, icon: Icon, colorClass }: StatItemProps) {
   return (
-    <div className="flex items-center gap-3 p-4 rounded-lg border bg-card">
-      <div className={cn('flex size-10 items-center justify-center rounded-lg', color)}>
-        <Icon className="size-5" />
-      </div>
-      <div>
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <p className="text-2xl font-bold">
-          {typeof value === 'number' ? value.toLocaleString() : value}
-          {suffix && <span className="text-base font-normal text-muted-foreground"> {suffix}</span>}
-        </p>
-      </div>
+    <div className="flex items-center gap-2">
+      <Icon className={`size-4 ${colorClass}`} />
+      <span className="text-sm text-muted-foreground">{label}:</span>
+      <span className="font-semibold tabular-nums">
+        {typeof value === 'number' ? value.toLocaleString() : value}
+      </span>
     </div>
   );
 }
 
 // ============================================================================
-// Main Component
+// Main Component - Compact Horizontal Bar
 // ============================================================================
 
 export function LeaderboardStats({ stats }: LeaderboardStatsProps) {
@@ -61,46 +53,38 @@ export function LeaderboardStats({ stats }: LeaderboardStatsProps) {
     ? Math.round((stats.approved / stats.total_submissions) * 100)
     : 0;
 
-  const cards = [
-    {
-      label: 'Total Submissions',
-      value: stats.total_submissions,
-      icon: Trophy,
-      color: 'text-primary bg-primary/10',
-    },
-    {
-      label: 'Approved',
-      value: stats.approved,
-      icon: CheckCircle2,
-      color: 'text-green-600 bg-green-100 dark:bg-green-900/30',
-    },
-    {
-      label: 'Pending',
-      value: stats.pending,
-      icon: Clock3,
-      color: 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30',
-    },
-    {
-      label: 'Approval Rate',
-      value: `${approvalRate}%`,
-      icon: TrendingUp,
-      color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30',
-    },
-  ];
-
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {cards.map((card) => (
-        <StatCard
-          key={card.label}
-          label={card.label}
-          value={card.value}
-          icon={card.icon}
-          color={card.color}
-        />
-      ))}
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 p-3 rounded-lg border bg-card/50">
+      <StatItem
+        label="Submissions"
+        value={stats.total_submissions}
+        icon={Trophy}
+        colorClass="text-primary"
+      />
+      <div className="hidden sm:block w-px h-4 bg-border" />
+      <StatItem
+        label="Approved"
+        value={stats.approved}
+        icon={CheckCircle2}
+        colorClass="text-green-500"
+      />
+      <div className="hidden sm:block w-px h-4 bg-border" />
+      <StatItem
+        label="Pending"
+        value={stats.pending}
+        icon={Clock3}
+        colorClass="text-yellow-500"
+      />
+      <div className="hidden sm:block w-px h-4 bg-border" />
+      <StatItem
+        label="Approval"
+        value={`${approvalRate}%`}
+        icon={TrendingUp}
+        colorClass="text-blue-500"
+      />
     </div>
   );
 }
 
 export default LeaderboardStats;
+

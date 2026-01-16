@@ -33,11 +33,13 @@ import Link from 'next/link';
 interface Donation {
     id: string;
     days_transferred: number;
-    status: 'pending' | 'approved' | 'rejected';
+    status: 'pending' | 'captain_approved' | 'approved' | 'rejected';
     notes: string | null;
+    proof_url: string | null;
     created_at: string;
     donor: {
         member_id: string;
+        team_id: string | null;
         user_id: string;
         username: string;
     };
@@ -46,10 +48,10 @@ interface Donation {
         user_id: string;
         username: string;
     };
-    approved_by: {
-        user_id: string;
-        username: string;
-    } | null;
+    captain_approved_by: string | null;
+    captain_approved_at: string | null;
+    final_approved_by: string | null;
+    final_approved_at: string | null;
 }
 
 interface LeagueMember {
@@ -75,6 +77,8 @@ export default function RestDayDonationsPage() {
     const [receiverMemberId, setReceiverMemberId] = useState('');
     const [daysToTransfer, setDaysToTransfer] = useState('1');
     const [notes, setNotes] = useState('');
+    const [proofFile, setProofFile] = useState<File | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
 
     // Fetch donations and members
     const fetchData = useCallback(async () => {
@@ -109,9 +113,35 @@ export default function RestDayDonationsPage() {
             return;
         }
 
+        if (!proofFile) {
+            toast.error('Please upload a proof image');
+            return;
+        }
+
         setIsSubmitting(true);
 
         try {
+            // Step 1: Upload the proof file
+            setIsUploading(true);
+            const formData = new FormData();
+            formData.append('file', proofFile);
+            formData.append('league_id', leagueId);
+
+            const uploadRes = await fetch('/api/upload/donation-proof', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!uploadRes.ok) {
+                const uploadError = await uploadRes.json();
+                throw new Error(uploadError.error || 'Failed to upload proof');
+            }
+
+            const uploadData = await uploadRes.json();
+            const proofUrl = uploadData.data.url;
+            setIsUploading(false);
+
+            // Step 2: Submit the donation request with the proof URL
             const res = await fetch(`/api/leagues/${leagueId}/rest-day-donations`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -119,6 +149,7 @@ export default function RestDayDonationsPage() {
                     receiver_member_id: receiverMemberId,
                     days_transferred: parseInt(daysToTransfer),
                     notes: notes || undefined,
+                    proof_url: proofUrl,
                 }),
             });
 
@@ -127,6 +158,10 @@ export default function RestDayDonationsPage() {
                 setReceiverMemberId('');
                 setDaysToTransfer('1');
                 setNotes('');
+                setProofFile(null);
+                // Reset file input
+                const fileInput = document.getElementById('proofFile') as HTMLInputElement;
+                if (fileInput) fileInput.value = '';
                 fetchData();
             } else {
                 const error = await res.json();
@@ -134,27 +169,28 @@ export default function RestDayDonationsPage() {
             }
         } catch (error) {
             console.error('Error submitting donation:', error);
-            toast.error('Failed to submit request');
+            toast.error(error instanceof Error ? error.message : 'Failed to submit request');
         } finally {
             setIsSubmitting(false);
+            setIsUploading(false);
         }
     };
 
-    // Approve/Reject donation
-    const handleUpdateStatus = async (donationId: string, status: 'approved' | 'rejected') => {
+    // Approve/Reject donation (two-stage flow)
+    const handleUpdateStatus = async (donationId: string, action: 'approve' | 'reject') => {
         try {
             const res = await fetch(`/api/leagues/${leagueId}/rest-day-donations/${donationId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status }),
+                body: JSON.stringify({ action }),
             });
 
+            const data = await res.json();
             if (res.ok) {
-                toast.success(`Donation ${status}!`);
+                toast.success(data.message || `Donation ${action}d!`);
                 fetchData();
             } else {
-                const error = await res.json();
-                toast.error(error.error || 'Failed to update donation');
+                toast.error(data.error || 'Failed to update donation');
             }
         } catch (error) {
             console.error('Error updating donation:', error);
@@ -162,8 +198,13 @@ export default function RestDayDonationsPage() {
         }
     };
 
+    const isCaptain = userRole === 'captain';
     const isGovernorOrHost = ['governor', 'host'].includes(userRole);
+
+    // Captain sees pending donations from their own team
+    // Governor/Host sees captain_approved donations (and can also handle pending)
     const pendingDonations = donations.filter(d => d.status === 'pending');
+    const captainApprovedDonations = donations.filter(d => d.status === 'captain_approved');
     const myDonations = donations.filter(
         d => d.donor.member_id === userMemberId || d.receiver.member_id === userMemberId
     );
@@ -196,21 +237,22 @@ export default function RestDayDonationsPage() {
                 </div>
             </div>
 
-            <Tabs defaultValue={isGovernorOrHost ? 'approval' : 'request'} className="space-y-4">
+            <Tabs defaultValue={(isGovernorOrHost || isCaptain) ? 'approval' : 'request'} className="space-y-4">
                 <TabsList>
                     <TabsTrigger value="request">Request Donation</TabsTrigger>
                     <TabsTrigger value="my-donations">My Donations</TabsTrigger>
-                    {isGovernorOrHost && (
+                    {(isGovernorOrHost || isCaptain) && (
                         <TabsTrigger value="approval" className="relative">
                             Approval Queue
-                            {pendingDonations.length > 0 && (
+                            {(isCaptain ? pendingDonations.length : (pendingDonations.length + captainApprovedDonations.length)) > 0 && (
                                 <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 text-xs flex items-center justify-center">
-                                    {pendingDonations.length}
+                                    {isCaptain ? pendingDonations.length : (pendingDonations.length + captainApprovedDonations.length)}
                                 </Badge>
                             )}
                         </TabsTrigger>
                     )}
                 </TabsList>
+
 
                 {/* Request Donation Tab */}
                 <TabsContent value="request">
@@ -265,12 +307,28 @@ export default function RestDayDonationsPage() {
                                     />
                                 </div>
 
-                                <Button type="submit" disabled={isSubmitting}>
+                                <div className="space-y-2">
+                                    <Label htmlFor="proofFile">Proof Image *</Label>
+                                    <Input
+                                        id="proofFile"
+                                        type="file"
+                                        accept="image/*,application/pdf"
+                                        onChange={(e) => setProofFile(e.target.files?.[0] || null)}
+                                        required
+                                    />
+                                    <p className="text-xs text-muted-foreground">Upload an image or PDF as proof for the donation request.</p>
+                                    {proofFile && (
+                                        <p className="text-xs text-green-600">Selected: {proofFile.name}</p>
+                                    )}
+                                </div>
+
+                                <Button type="submit" disabled={isSubmitting || isUploading}>
                                     {isSubmitting ? (
                                         <>
                                             <IconLoader2 className="h-4 w-4 mr-2 animate-spin" />
-                                            Submitting...
+                                            {isUploading ? 'Uploading...' : 'Submitting...'}
                                         </>
+
                                     ) : (
                                         <>
                                             <IconGift className="h-4 w-4 mr-2" />
@@ -339,8 +397,9 @@ export default function RestDayDonationsPage() {
                     </Card>
                 </TabsContent>
 
-                {/* Approval Queue Tab (Governor/Host only) */}
-                {isGovernorOrHost && (
+                {/* Approval Queue Tab (Captain, Governor, or Host) */}
+                {(isGovernorOrHost || isCaptain) && (
+
                     <TabsContent value="approval">
                         <Card>
                             <CardHeader>
@@ -381,7 +440,7 @@ export default function RestDayDonationsPage() {
                                                             <Button
                                                                 size="sm"
                                                                 variant="default"
-                                                                onClick={() => handleUpdateStatus(d.id, 'approved')}
+                                                                onClick={() => handleUpdateStatus(d.id, 'approve')}
                                                             >
                                                                 <IconCheck className="h-4 w-4 mr-1" />
                                                                 Approve
@@ -389,7 +448,7 @@ export default function RestDayDonationsPage() {
                                                             <Button
                                                                 size="sm"
                                                                 variant="destructive"
-                                                                onClick={() => handleUpdateStatus(d.id, 'rejected')}
+                                                                onClick={() => handleUpdateStatus(d.id, 'reject')}
                                                             >
                                                                 <IconX className="h-4 w-4 mr-1" />
                                                                 Reject
@@ -400,6 +459,63 @@ export default function RestDayDonationsPage() {
                                             ))}
                                         </TableBody>
                                     </Table>
+                                )}
+
+                                {/* Captain-Approved donations awaiting Governor/Host final approval */}
+                                {captainApprovedDonations.length > 0 && (
+                                    <div className="mt-8">
+                                        <h3 className="text-lg font-semibold mb-4">Awaiting Final Approval</h3>
+                                        <p className="text-sm text-muted-foreground mb-4">
+                                            These donations were approved by the Captain. Governor/Host final approval required.
+                                        </p>
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Donor</TableHead>
+                                                    <TableHead>Receiver</TableHead>
+                                                    <TableHead>Days</TableHead>
+                                                    <TableHead>Captain Approved</TableHead>
+                                                    <TableHead>Actions</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {captainApprovedDonations.map(d => (
+                                                    <TableRow key={d.id}>
+                                                        <TableCell className="font-medium">
+                                                            {d.donor.username}
+                                                        </TableCell>
+                                                        <TableCell>{d.receiver.username}</TableCell>
+                                                        <TableCell>{d.days_transferred}</TableCell>
+                                                        <TableCell className="text-muted-foreground">
+                                                            {d.captain_approved_at
+                                                                ? new Date(d.captain_approved_at).toLocaleDateString()
+                                                                : '-'}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="flex gap-2">
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="default"
+                                                                    onClick={() => handleUpdateStatus(d.id, 'approve')}
+                                                                >
+                                                                    <IconCheck className="h-4 w-4 mr-1" />
+                                                                    Final Approve
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="destructive"
+                                                                    onClick={() => handleUpdateStatus(d.id, 'reject')}
+                                                                >
+                                                                    <IconX className="h-4 w-4 mr-1" />
+                                                                    Reject
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
                                 )}
                             </CardContent>
                         </Card>
@@ -414,6 +530,13 @@ function StatusBadge({ status }: { status: string }) {
     switch (status) {
         case 'approved':
             return <Badge className="bg-green-500/10 text-green-500 border-green-500/20">Approved</Badge>;
+        case 'captain_approved':
+            return (
+                <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">
+                    <IconClock className="h-3 w-3 mr-1" />
+                    Captain Approved
+                </Badge>
+            );
         case 'rejected':
             return <Badge variant="destructive">Rejected</Badge>;
         default:
@@ -425,3 +548,4 @@ function StatusBadge({ status }: { status: string }) {
             );
     }
 }
+

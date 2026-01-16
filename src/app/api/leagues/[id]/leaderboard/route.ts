@@ -199,8 +199,10 @@ export async function GET(
         pendingWindowStart,
       ])
         .filter((d) => d >= filterStartDate && d <= String(filterEndDate))
-        .filter((d) => d > effectiveEndDate);
+        .filter((d) => d > effectiveEndDate)
+        .sort(); // Sort chronologically (ascending) so oldest date is first
     }
+
 
     // =========================================================================
     // Get all teams in the league via teamleagues

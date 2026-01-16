@@ -286,9 +286,15 @@ export function getSidebarNavItems(
           url: leagueUrl('/my-team/submissions'),
           icon: ClipboardCheck,
         },
+        {
+          title: 'Approve Donations',
+          url: leagueUrl('/rest-day-donations'),
+          icon: HeartHandshake,
+        },
       ],
     });
   }
+
 
   return sections;
 }

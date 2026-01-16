@@ -155,7 +155,7 @@ export default function MyTeamPage({
             const lbJson = await lbRes.json();
             if (lbRes.ok && lbJson?.success && lbJson.data?.individuals) {
               console.debug('[MyTeamPage] leaderboard individuals count:', lbJson.data.individuals.length);
-              console.debug('[MyTeamPage] sample individuals:', lbJson.data.individuals.slice(0,5));
+              console.debug('[MyTeamPage] sample individuals:', lbJson.data.individuals.slice(0, 5));
               const pts = new Map<string, number>(
                 lbJson.data.individuals.map((i: any) => [String(i.user_id), Number(i.points || 0)])
               );
@@ -337,9 +337,17 @@ export default function MyTeamPage({
       {/* Header */}
       <div className="flex flex-col gap-4 px-4 lg:px-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-4">
-          <div className="size-14 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shrink-0 shadow-lg">
-            <Crown className="size-7 text-white" />
-          </div>
+          {activeLeague?.team_logo_url ? (
+            <img
+              src={activeLeague.team_logo_url}
+              alt={userTeamName || 'Team logo'}
+              className="size-14 rounded-xl object-cover shrink-0 shadow-lg"
+            />
+          ) : (
+            <div className="size-14 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shrink-0 shadow-lg">
+              <Crown className="size-7 text-white" />
+            </div>
+          )}
           <div>
             <h1 className="text-2xl font-bold tracking-tight">{userTeamName}</h1>
             <p className="text-muted-foreground">
@@ -347,6 +355,7 @@ export default function MyTeamPage({
             </p>
           </div>
         </div>
+
         <Badge
           variant="outline"
           className="w-fit bg-amber-500/10 text-amber-600 border-amber-200"
@@ -376,31 +385,27 @@ export default function MyTeamPage({
         </div>
       )}
 
-      {/* Stats Cards */}
-      <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+      {/* Stats Cards - Compact 2x2 grid */}
+      <div className="grid grid-cols-2 gap-3 px-4 lg:px-6 @5xl/main:grid-cols-4">
         {stats.map((stat, index) => {
           const StatIcon = stat.icon;
           return (
-            <Card key={index} className="@container/card">
-              <CardHeader>
-                <CardDescription className="flex items-center gap-2">
-                  <StatIcon className="size-4" />
-                  {stat.title}
-                </CardDescription>
-                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                  {stat.value}
-                </CardTitle>
-              </CardHeader>
-              <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                <div className="line-clamp-1 flex gap-2 font-medium">
-                  {stat.description}
-                </div>
-                <div className="text-muted-foreground">{stat.detail}</div>
-              </CardFooter>
+            <Card key={index} className="p-3">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+                <StatIcon className="size-3.5" />
+                {stat.title}
+              </div>
+              <div className="text-xl font-bold tabular-nums">
+                {stat.value}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                {stat.description}
+              </div>
             </Card>
           );
         })}
       </div>
+
 
       {/* Team Members Table */}
       <div className="px-4 lg:px-6">

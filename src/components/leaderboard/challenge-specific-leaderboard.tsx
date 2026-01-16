@@ -5,13 +5,7 @@
 'use client';
 
 import * as React from 'react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+
 import {
   Select,
   SelectContent,
@@ -169,24 +163,27 @@ export function ChallengeSpecificLeaderboard({ leagueId }: ChallengeSpecificLead
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+    <div className="rounded-lg border p-4">
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
           <Trophy className="size-5" />
           Challenges
-        </CardTitle>
-        <CardDescription>
-          {selectedChallenge
-            ? `${getChallengeTypeLabel(selectedChallenge.challenge_type)} scores per challenge`
-            : 'Select a challenge to view rankings'}
-        </CardDescription>
-        {selectedChallenge && (
-          <p className="text-sm text-muted-foreground">
-            All points are added to the Team leaderboard above
+        </h2>
+        <div className="text-sm text-muted-foreground">
+          <p>
+            {selectedChallenge
+              ? `${getChallengeTypeLabel(selectedChallenge.challenge_type)} scores per challenge`
+              : 'Select a challenge to view rankings'}
           </p>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-4">
+          {selectedChallenge && (
+            <p className="mt-1">
+              All points are added to the overall Team/Individual leaderboard respectively.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-4">
         <Select value={selectedChallengeId} onValueChange={setSelectedChallengeId}>
           <SelectTrigger>
             <SelectValue placeholder="Select challenge..." />
@@ -281,7 +278,8 @@ export function ChallengeSpecificLeaderboard({ leagueId }: ChallengeSpecificLead
             </Table>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
+

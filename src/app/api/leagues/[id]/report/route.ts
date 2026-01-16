@@ -44,6 +44,13 @@ export async function GET(
             return NextResponse.json({ error: 'League not found' }, { status: 404 });
         }
 
+        // Check query parameters
+        const { searchParams } = new URL(request.url);
+        const format = searchParams.get('format') || 'pdf';
+        const type = searchParams.get('type') || 'report'; // 'report' or 'certificate'
+        const startDateParam = searchParams.get('start_date');
+        const endDateParam = searchParams.get('end_date');
+
         // Check if league is completed (either status is 'completed' or end_date has passed)
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -52,9 +59,11 @@ export async function GET(
 
         const isCompleted = league.status === 'completed' || today > endDate;
 
-        if (!isCompleted) {
+        // Allow dynamic reports (with date range) for active leagues
+        const isDynamicReport = startDateParam || endDateParam;
+        if (!isCompleted && !isDynamicReport) {
             return NextResponse.json(
-                { error: 'Reports are only available for completed leagues' },
+                { error: 'Reports are only available for completed leagues. Use date range params for progress reports.' },
                 { status: 400 }
             );
         }
@@ -74,13 +83,11 @@ export async function GET(
             );
         }
 
-        // Check query parameters
-        const { searchParams } = new URL(request.url);
-        const format = searchParams.get('format') || 'pdf';
-        const type = searchParams.get('type') || 'report'; // 'report' or 'certificate'
-
-        // Get report data
-        const reportData = await getLeagueReportData(leagueId, userId);
+        // Get report data with optional date range
+        const reportData = await getLeagueReportData(leagueId, userId, {
+            startDate: startDateParam || undefined,
+            endDate: endDateParam || undefined,
+        });
 
         if (!reportData) {
             return NextResponse.json(
@@ -88,6 +95,7 @@ export async function GET(
                 { status: 500 }
             );
         }
+
 
         // Return JSON if requested
         if (format === 'json') {
