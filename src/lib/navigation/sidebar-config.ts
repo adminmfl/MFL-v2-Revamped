@@ -155,8 +155,9 @@ export function getSidebarNavItems(
   // ========================================
   const showPlayerSection =
     role === 'player' ||
-    role === 'captain' || // Captain is always a player
-    ((role === 'host' || role === 'governor') && isAlsoPlayer);
+    role === 'captain' ||
+    role === 'host' ||
+    role === 'governor';
 
   if (showPlayerSection) {
     sections.push({
@@ -378,11 +379,12 @@ export function getMobileTabItems(
     });
   }
 
-  // Submit tab for players
+  // Submit tab for players (and hosts/governors)
   const showSubmit =
     role === 'player' ||
     role === 'captain' ||
-    ((role === 'host' || role === 'governor') && isAlsoPlayer);
+    role === 'host' ||
+    role === 'governor';
 
   if (showSubmit) {
     tabs.push({

@@ -85,10 +85,22 @@ function isActiveTab(pathname: string | null, tabUrl: string): boolean {
   // Exact match
   if (pathname === tabUrl) return true;
 
-  // For league-specific tabs, check if we're on that page
-  // e.g., /leagues/123/team should match /leagues/123/team
-  if (tabUrl.includes('/leagues/') && pathname.startsWith(tabUrl)) {
-    return true;
+  // For league-specific tabs
+  if (tabUrl.includes('/leagues/')) {
+    // Check if this is a "root" league path (e.g. /leagues/123)
+    // We want this to be EXACT match only, so it doesn't highlight for sub-pages 
+    // like /leagues/123/submit which have their own tabs.
+    const isLeagueRoot = /^\/leagues\/[^/]+$/.test(tabUrl);
+
+    if (isLeagueRoot) {
+      return pathname === tabUrl;
+    }
+
+    // For other tabs (like /leagues/123/team), allow prefix matching
+    // so /leagues/123/team/manage still highlights Team tab
+    if (pathname.startsWith(tabUrl)) {
+      return true;
+    }
   }
 
   // Special case for dashboard - only match exact
