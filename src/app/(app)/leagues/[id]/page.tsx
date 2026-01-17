@@ -161,6 +161,8 @@ export default function LeagueDashboardPage({
     missedDays: number;
     teamAvgRR: number | null;
     teamPoints: number | null;
+    teamMissedDays: number | null;
+    teamRestUsed: number | null;
   } | null>(null);
 
   // Sync active league if navigated directly
@@ -415,9 +417,10 @@ export default function LeagueDashboardPage({
         qs.set('startDate', league.start_date);
         qs.set('endDate', effectiveEndStr);
 
-        const [myRes, restRes] = await Promise.all([
+        const [myRes, restRes, teamSummaryRes] = await Promise.all([
           fetch(`/api/leagues/${id}/my-submissions?${qs.toString()}`, { credentials: 'include' }),
           fetch(`/api/leagues/${id}/rest-days`, { credentials: 'include' }),
+          fetch(`/api/leagues/${id}/my-team/summary`, { credentials: 'include' }),
         ]);
 
         let points = 0;
@@ -427,6 +430,8 @@ export default function LeagueDashboardPage({
         let restUnused: number | null = null;
         let teamAvgRR: number | null = null;
         let teamPoints: number | null = null;
+        let teamMissedDays: number | null = null;
+        let teamRestUsed: number | null = null;
 
         let teamId: string | null = null;
 
@@ -513,6 +518,17 @@ export default function LeagueDashboardPage({
           }
         }
 
+        if (teamSummaryRes.ok) {
+          const json = await teamSummaryRes.json();
+          const data = json?.data;
+          if (typeof data?.missedDays === 'number') {
+            teamMissedDays = Math.max(0, data.missedDays);
+          }
+          if (typeof data?.restUsed === 'number') {
+            teamRestUsed = Math.max(0, data.restUsed);
+          }
+        }
+
         // Fetch leaderboard data (for both team and individual stats) - single call with full=true
         let leaderboardData: any = null;
         let totalPoints = points;
@@ -564,8 +580,32 @@ export default function LeagueDashboardPage({
         }
 
         // Set summary with all calculated values
-        setMySummary({ points, totalPoints, challengePoints, avgRR, restUsed, restUnused, missedDays, teamAvgRR, teamPoints });
-        console.log('[MySummary] Final values:', { points, totalPoints, challengePoints, avgRR, restUsed, restUnused, missedDays, teamAvgRR, teamPoints });
+        setMySummary({
+          points,
+          totalPoints,
+          challengePoints,
+          avgRR,
+          restUsed,
+          restUnused,
+          missedDays,
+          teamAvgRR,
+          teamPoints,
+          teamMissedDays,
+          teamRestUsed,
+        });
+        console.log('[MySummary] Final values:', {
+          points,
+          totalPoints,
+          challengePoints,
+          avgRR,
+          restUsed,
+          restUnused,
+          missedDays,
+          teamAvgRR,
+          teamPoints,
+          teamMissedDays,
+          teamRestUsed,
+        });
       } catch {
         setMySummary(null);
       } finally {
@@ -1039,11 +1079,19 @@ export default function LeagueDashboardPage({
                   </div>
                   <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
                     <div className="text-[11px] text-muted-foreground">Days Missed</div>
-                    <div className="text-sm font-semibold text-primary tabular-nums">—</div>
+                    <div className="text-sm font-semibold text-primary tabular-nums">
+                      {typeof mySummary?.teamMissedDays === 'number'
+                        ? mySummary.teamMissedDays.toLocaleString()
+                        : '—'}
+                    </div>
                   </div>
                   <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
                     <div className="text-[11px] text-muted-foreground">Rest Days Used</div>
-                    <div className="text-sm font-semibold text-primary tabular-nums">—</div>
+                    <div className="text-sm font-semibold text-primary tabular-nums">
+                      {typeof mySummary?.teamRestUsed === 'number'
+                        ? mySummary.teamRestUsed.toLocaleString()
+                        : '—'}
+                    </div>
                   </div>
                 </div>
               </CardContent>
