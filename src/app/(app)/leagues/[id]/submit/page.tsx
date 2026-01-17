@@ -148,6 +148,16 @@ export default function SubmitActivityPage({
   // Submission type tab state
   const [submissionType, setSubmissionType] = React.useState<'workout' | 'rest'>('workout');
 
+  React.useEffect(() => {
+    if (resubmitId) return;
+    const typeParam = searchParams.get('type');
+    if (typeParam === 'rest') {
+      setSubmissionType('rest');
+    } else if (typeParam === 'workout') {
+      setSubmissionType('workout');
+    }
+  }, [searchParams, resubmitId]);
+
   // Whether the active league has completed
   const isLeagueCompleted = React.useMemo(() => {
     if (!activeLeague) return false;

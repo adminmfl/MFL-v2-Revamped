@@ -12,6 +12,8 @@ import {
   Dumbbell,
   TrendingUp,
   TrendingDown,
+  MoreVertical,
+  Eye,
 } from 'lucide-react';
 
 import { useLeague, LeagueWithRoles } from '@/contexts/league-context';
@@ -19,7 +21,6 @@ import { Button } from '@/components/ui/button';
 import {
   Card,
   CardAction,
-  CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
@@ -35,6 +36,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   Empty,
   EmptyContent,
@@ -57,7 +73,7 @@ export default function LeaguesPage() {
 
   // Filter leagues
   const filteredLeagues = React.useMemo(() => {
-    return userLeagues.filter((league) => {
+    const filtered = userLeagues.filter((league) => {
       // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
@@ -77,6 +93,13 @@ export default function LeaguesPage() {
       }
 
       return true;
+    });
+
+    return [...filtered].sort((a, b) => {
+      const aCompleted = a.status === 'completed';
+      const bCompleted = b.status === 'completed';
+      if (aCompleted === bCompleted) return 0;
+      return aCompleted ? 1 : -1;
     });
   }, [userLeagues, searchQuery, statusFilter, roleFilter]);
 
@@ -236,17 +259,10 @@ export default function LeaguesPage() {
         </div>
       )}
 
-      {/* Leagues Grid */}
+      {/* Leagues Table */}
       <div className="px-4 lg:px-6">
         {isLoading ? (
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            <LeagueCardSkeleton />
-            <LeagueCardSkeleton />
-            <LeagueCardSkeleton />
-            <LeagueCardSkeleton />
-            <LeagueCardSkeleton />
-            <LeagueCardSkeleton />
-          </div>
+          <LeaguesTableSkeleton />
         ) : filteredLeagues.length === 0 ? (
           <EmptyState
             hasLeagues={userLeagues.length > 0}
@@ -258,15 +274,7 @@ export default function LeaguesPage() {
             }}
           />
         ) : (
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredLeagues.map((league) => (
-              <LeagueCard
-                key={league.league_id}
-                league={league}
-                onSelect={() => setActiveLeague(league)}
-              />
-            ))}
-          </div>
+          <LeaguesTable leagues={filteredLeagues} onSelect={setActiveLeague} />
         )}
       </div>
     </div>
@@ -274,23 +282,16 @@ export default function LeaguesPage() {
 }
 
 // ============================================================================
-// League Card Component
+// Leagues Table Component (Dashboard Style)
 // ============================================================================
 
-function LeagueCard({
-  league,
+function LeaguesTable({
+  leagues,
   onSelect,
 }: {
-  league: LeagueWithRoles;
-  onSelect: () => void;
+  leagues: LeagueWithRoles[];
+  onSelect: (league: LeagueWithRoles) => void;
 }) {
-  const statusColors: Record<string, string> = {
-    draft: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-    launched: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-    active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-    completed: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400',
-  };
-
   const roleIcons: Record<string, React.ElementType> = {
     host: Crown,
     governor: Shield,
@@ -298,64 +299,126 @@ function LeagueCard({
     player: Dumbbell,
   };
 
+  const statusVariants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+    draft: 'secondary',
+    launched: 'outline',
+    active: 'default',
+    completed: 'secondary',
+  };
+
   return (
-    <Link href={`/leagues/${league.league_id}`} onClick={onSelect}>
-      <Card className="h-full hover:shadow-md transition-shadow cursor-pointer group overflow-hidden">
-        {/* Cover Gradient */}
-        <div className="relative h-28 bg-gradient-to-br from-primary/80 to-primary">
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <div className="absolute top-3 right-3">
-            <Badge className={statusColors[league.status]} variant="secondary">
-              {league.status}
-            </Badge>
-          </div>
-          <div className="absolute top-3 left-3">
-            <Avatar className="size-10 border-2 border-white/70 shadow-sm">
-              {league.logo_url ? (
-                <AvatarImage src={league.logo_url} alt={league.name} />
-              ) : (
-                <AvatarFallback className="bg-white/20 text-white font-semibold uppercase">
-                  {league.name?.slice(0, 2) || 'LG'}
-                </AvatarFallback>
-              )}
-            </Avatar>
-          </div>
-          <div className="absolute bottom-3 left-4 right-4 text-white">
-            <h3 className="font-semibold truncate group-hover:underline">
-              {league.name}
-            </h3>
-          </div>
-        </div>
+    <div className="overflow-hidden rounded-lg border">
+      <Table>
+        <TableHeader className="bg-muted">
+          <TableRow>
+            <TableHead>League</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Your Role</TableHead>
+            <TableHead>Team</TableHead>
+            <TableHead className="w-12"></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {leagues.map((league) => {
+            const roleHierarchy = ['host', 'governor', 'captain', 'player'];
+            const highestRole =
+              roleHierarchy.find((r) => league.roles.includes(r)) || 'player';
+            const RoleIcon = roleIcons[highestRole];
 
-        {/* Content */}
-        <CardContent className="p-4">
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-3 min-h-[40px]">
-            {league.description || 'No description'}
-          </p>
-
-          {/* Roles */}
-          <div className="flex flex-wrap gap-1.5">
-            {league.roles.map((role) => {
-              const RoleIcon = roleIcons[role];
-              return (
-                <Badge key={role} variant="outline" className="gap-1 text-xs">
-                  <RoleIcon className="size-3" />
-                  <span className="capitalize">{role}</span>
-                </Badge>
-              );
-            })}
-          </div>
-
-          {/* Team */}
-          {league.team_name && (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-3 pt-3 border-t">
-              <Users className="size-3.5" />
-              <span>Team: {league.team_name}</span>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </Link>
+            return (
+              <TableRow key={league.league_id}>
+                <TableCell>
+                  <Link
+                    href={`/leagues/${league.league_id}`}
+                    onClick={() => onSelect(league)}
+                    className="flex items-center gap-3 hover:underline"
+                  >
+                    <Avatar className="size-10 rounded-lg shrink-0">
+                      {league.logo_url ? (
+                        <AvatarImage src={league.logo_url} alt={league.name} />
+                      ) : (
+                        <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-semibold">
+                          {league.name.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{league.name}</div>
+                      <div className="text-xs text-muted-foreground truncate max-w-[200px]">
+                        {league.description || 'No description'}
+                      </div>
+                    </div>
+                  </Link>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={statusVariants[league.status] || 'secondary'}>
+                    {league.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <RoleIcon className="size-4 text-muted-foreground" />
+                    <span className="capitalize">{highestRole}</span>
+                    {league.roles.length > 1 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{league.roles.length - 1}
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {league.team_name ? (
+                    <div className="flex items-center gap-2">
+                      <Users className="size-4 text-muted-foreground" />
+                      <span className="truncate max-w-[120px]">
+                        {league.team_name}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-muted-foreground"
+                      >
+                        <MoreVertical className="size-4" />
+                        <span className="sr-only">Open menu</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href={`/leagues/${league.league_id}`}
+                          onClick={() => onSelect(league)}
+                        >
+                          <Eye className="mr-2 size-4" />
+                          View League
+                        </Link>
+                      </DropdownMenuItem>
+                      {league.roles.includes('host') && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem asChild>
+                            <Link href={`/leagues/${league.league_id}/settings`}>
+                              Settings
+                            </Link>
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 
@@ -428,18 +491,47 @@ function EmptyState({
 // Skeleton Component
 // ============================================================================
 
-function LeagueCardSkeleton() {
+function LeaguesTableSkeleton() {
   return (
-    <Card className="h-full overflow-hidden">
-      <div className="h-28 bg-muted animate-pulse" />
-      <CardContent className="p-4 space-y-3">
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-3 w-full" />
-        <div className="flex gap-2">
-          <Skeleton className="h-5 w-16" />
-          <Skeleton className="h-5 w-16" />
-        </div>
-      </CardContent>
-    </Card>
+    <div className="overflow-hidden rounded-lg border">
+      <Table>
+        <TableHeader className="bg-muted">
+          <TableRow>
+            <TableHead>League</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Your Role</TableHead>
+            <TableHead>Team</TableHead>
+            <TableHead className="w-12"></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {[1, 2, 3].map((i) => (
+            <TableRow key={i}>
+              <TableCell>
+                <div className="flex items-center gap-3">
+                  <Skeleton className="size-10 rounded-lg" />
+                  <div className="space-y-1">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-48" />
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-5 w-16" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-20" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-24" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="size-8 rounded" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
