@@ -754,14 +754,22 @@ export default function LeagueDashboardPage({
       {mySummaryLoading || !mySummaryStats ? (
         <>
           <div className="px-4 lg:px-6 mt-2">
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button asChild size="sm" className="sm:flex-1">
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                asChild
+                size="sm"
+              >
                 <Link href={`/leagues/${id}/submit?type=workout`}>
                   <Dumbbell className="mr-2 size-4" />
                   Add Workout
                 </Link>
               </Button>
-              <Button asChild size="sm" variant="outline" className="sm:flex-1">
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="bg-muted/50"
+              >
                 <Link href={`/leagues/${id}/submit?type=rest`}>
                   <Moon className="mr-2 size-4" />
                   Add Rest Day
@@ -813,18 +821,48 @@ export default function LeagueDashboardPage({
               </CardContent>
             </Card>
           </div>
+          <div className="px-4 lg:px-6 mt-2">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between gap-3">
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  {[1, 2, 3, 4].map((index) => (
+                    <div
+                      key={index}
+                      className="rounded-md bg-muted/40 px-3 py-2 text-center"
+                    >
+                      <Skeleton className="h-3 w-20 mx-auto" />
+                      <Skeleton className="h-5 w-12 mx-auto mt-2" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </>
       ) : (
         <>
           <div className="px-4 lg:px-6 mt-2">
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button asChild size="sm" className="sm:flex-1">
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                asChild
+                size="sm"
+              >
                 <Link href={`/leagues/${id}/submit?type=workout`}>
                   <Dumbbell className="mr-2 size-4" />
                   Add Workout
                 </Link>
               </Button>
-              <Button asChild size="sm" variant="outline" className="sm:flex-1">
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="bg-muted/50"
+              >
                 <Link href={`/leagues/${id}/submit?type=rest`}>
                   <Moon className="mr-2 size-4" />
                   Add Rest Day
@@ -836,12 +874,7 @@ export default function LeagueDashboardPage({
             <Card>
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <CardTitle className="text-base">My Summary</CardTitle>
-                    <CardDescription className="text-sm">
-                      Your approved performance in this league.
-                    </CardDescription>
-                  </div>
+                  <CardTitle className="text-base">My Summary</CardTitle>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -853,38 +886,40 @@ export default function LeagueDashboardPage({
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
-                  <div className="rounded-lg bg-muted/40 px-3 py-2 text-center col-span-2 sm:col-span-3">
-                    <div className="text-xs text-muted-foreground">Points</div>
-                    <div className="text-lg font-semibold text-primary tabular-nums">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
+                    <div className="text-[11px] text-muted-foreground">Points</div>
+                    <div className="text-base font-semibold text-primary tabular-nums">
                       {mySummary?.totalPoints.toLocaleString() ?? '—'}
                     </div>
                   </div>
-                  <div className="rounded-lg bg-muted/40 px-3 py-2 text-center col-span-2 sm:col-span-3">
-                    <div className="text-xs text-muted-foreground">Avg RR</div>
-                    <div className="text-lg font-semibold tabular-nums">
+                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
+                    <div className="text-[11px] text-muted-foreground">Avg RR</div>
+                    <div className="text-base font-semibold text-primary tabular-nums">
                       {mySummary?.avgRR !== null && typeof mySummary?.avgRR === 'number'
                         ? mySummary.avgRR.toFixed(2)
                         : '—'}
                     </div>
                   </div>
-                  <div className="rounded-lg bg-muted/40 px-3 py-2 text-center col-span-1 sm:col-span-2">
-                    <div className="text-xs text-muted-foreground">Rest Days Used</div>
-                    <div className="text-base font-semibold tabular-nums">
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-2.5 py-2 text-center">
+                    <div className="text-[10px] text-muted-foreground">Rest Days Used</div>
+                    <div className="text-sm font-semibold text-primary tabular-nums">
                       {mySummary?.restUsed.toLocaleString() ?? '—'}
                     </div>
                   </div>
-                  <div className="rounded-lg bg-muted/40 px-3 py-2 text-center col-span-1 sm:col-span-2">
-                    <div className="text-xs text-muted-foreground">Rest Days Unused</div>
-                    <div className="text-base font-semibold tabular-nums">
+                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-2.5 py-2 text-center">
+                    <div className="text-[10px] text-muted-foreground">Rest Days Unused</div>
+                    <div className="text-sm font-semibold text-primary tabular-nums">
                       {mySummary?.restUnused !== null && typeof mySummary?.restUnused === 'number'
                         ? mySummary.restUnused.toLocaleString()
                         : '—'}
                     </div>
                   </div>
-                  <div className="rounded-lg bg-muted/40 px-3 py-2 text-center col-span-2 sm:col-span-2">
-                    <div className="text-xs text-muted-foreground">Days Missed</div>
-                    <div className="text-base font-semibold tabular-nums">
+                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-2.5 py-2 text-center">
+                    <div className="text-[10px] text-muted-foreground">Days Missed</div>
+                    <div className="text-sm font-semibold text-primary tabular-nums">
                       {mySummary?.missedDays.toLocaleString() ?? '—'}
                     </div>
                   </div>
@@ -892,7 +927,7 @@ export default function LeagueDashboardPage({
 
                 <div className="rounded-lg border bg-muted/20 p-3">
                   <div className="flex flex-row items-center justify-between gap-4">
-                    <CardTitle className="text-sm">Avg RR — You vs Team</CardTitle>
+                    <span className="text-sm font-medium">Avg RR — You vs Team</span>
                     <span className="text-xs text-muted-foreground">Scale: 1.00 → 2.00</span>
                   </div>
                   <div className="mt-2.5">
@@ -974,6 +1009,41 @@ export default function LeagueDashboardPage({
                         </div>
                       );
                     })()}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="px-4 lg:px-6 mt-2">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Team Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
+                    <div className="text-[11px] text-muted-foreground">Points</div>
+                    <div className="text-base font-semibold text-primary tabular-nums">
+                      {typeof mySummary?.teamPoints === 'number'
+                        ? mySummary.teamPoints.toLocaleString()
+                        : '—'}
+                    </div>
+                  </div>
+                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
+                    <div className="text-[11px] text-muted-foreground">Avg RR</div>
+                    <div className="text-base font-semibold text-primary tabular-nums">
+                      {typeof mySummary?.teamAvgRR === 'number'
+                        ? mySummary.teamAvgRR.toFixed(2)
+                        : '—'}
+                    </div>
+                  </div>
+                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
+                    <div className="text-[11px] text-muted-foreground">Days Missed</div>
+                    <div className="text-sm font-semibold text-primary tabular-nums">—</div>
+                  </div>
+                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
+                    <div className="text-[11px] text-muted-foreground">Rest Days Used</div>
+                    <div className="text-sm font-semibold text-primary tabular-nums">—</div>
                   </div>
                 </div>
               </CardContent>

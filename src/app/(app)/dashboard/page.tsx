@@ -271,7 +271,7 @@ export default function DashboardPage() {
         ) : userLeagues.length === 0 ? (
           <LeaguesEmptyState />
         ) : (
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-2 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3">
             {userLeagues
               .filter((league) => league.status !== 'completed')
               .map((league) => (
@@ -354,17 +354,17 @@ function LeagueCard({
 
   return (
     <Link href={`/leagues/${league.league_id}`} onClick={onSelect}>
-      <Card className="h-full hover:shadow-md transition-shadow cursor-pointer group overflow-hidden">
+      <Card className="h-full p-0 hover:shadow-md transition-shadow cursor-pointer group overflow-hidden">
         {/* Cover Gradient */}
-        <div className="relative h-28 bg-gradient-to-br from-primary/80 to-primary">
+        <div className="relative h-16 lg:h-28 rounded-t-lg bg-gradient-to-br from-primary/80 to-primary">
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <div className="absolute top-3 right-3">
+          <div className="absolute top-1.5 right-1.5 lg:top-3 lg:right-3">
             <Badge className={statusColors[league.status]} variant="secondary">
               {league.status}
             </Badge>
           </div>
-          <div className="absolute top-3 left-3">
-            <Avatar className="size-10 border-2 border-white/70 shadow-sm">
+          <div className="absolute top-1.5 left-1.5 lg:top-3 lg:left-3">
+            <Avatar className="size-6 lg:size-10 border-2 border-white/70 shadow-sm">
               {league.logo_url ? (
                 <AvatarImage src={league.logo_url} alt={league.name} />
               ) : (
@@ -374,26 +374,26 @@ function LeagueCard({
               )}
             </Avatar>
           </div>
-          <div className="absolute bottom-3 left-4 right-4 text-white">
-            <h3 className="font-semibold truncate group-hover:underline">
+          <div className="absolute bottom-1.5 left-2.5 right-2.5 lg:bottom-3 lg:left-4 lg:right-4 text-white">
+            <h3 className="text-xs lg:text-sm font-semibold truncate group-hover:underline">
               {league.name}
             </h3>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-4">
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-3 min-h-[40px]">
+        <div className="p-2 lg:p-4">
+          <p className="text-[11px] lg:text-sm text-muted-foreground line-clamp-1 lg:line-clamp-2 mb-1 lg:mb-3 min-h-[18px] lg:min-h-[40px]">
             {league.description || 'No description'}
           </p>
 
           {/* Roles */}
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1">
             {league.roles.map((role) => {
               const RoleIcon = roleIcons[role];
               return (
-                <Badge key={role} variant="outline" className="gap-1 text-xs">
-                  <RoleIcon className="size-3" />
+                <Badge key={role} variant="outline" className="gap-1 text-[9px] lg:text-xs">
+                  <RoleIcon className="size-2.5 lg:size-3" />
                   <span className="capitalize">{role}</span>
                 </Badge>
               );
@@ -402,7 +402,7 @@ function LeagueCard({
 
           {/* Team */}
           {league.team_name && (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-3 pt-3 border-t">
+            <div className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground mt-3 pt-3 border-t">
               <Users className="size-3.5" />
               <span>Team: {league.team_name}</span>
             </div>
@@ -475,16 +475,16 @@ function SectionCardsSkeleton() {
 
 function LeagueGridSkeleton() {
   return (
-    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-2 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3">
       {[1, 2, 3, 4, 5, 6].map((i) => (
         <Card key={i} className="h-full overflow-hidden">
-          <div className="h-28 bg-muted animate-pulse" />
-          <div className="p-4 space-y-3">
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-3 w-full" />
+          <div className="h-16 lg:h-28 bg-muted animate-pulse" />
+          <div className="p-2.5 lg:p-4 space-y-2 lg:space-y-3">
+            <Skeleton className="h-3 lg:h-4 w-3/4" />
+            <Skeleton className="h-2.5 lg:h-3 w-full" />
             <div className="flex gap-2">
-              <Skeleton className="h-5 w-16" />
-              <Skeleton className="h-5 w-16" />
+              <Skeleton className="h-4 lg:h-5 w-14 lg:w-16" />
+              <Skeleton className="h-4 lg:h-5 w-14 lg:w-16" />
             </div>
           </div>
         </Card>

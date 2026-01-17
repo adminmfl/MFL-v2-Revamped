@@ -348,7 +348,7 @@ export function getMobileTabItems(
       icon: Trophy,
     },
     {
-      title: 'Board',
+      title: 'Leaderboard',
       url: leagueUrl('/leaderboard'),
       icon: BarChart3,
     },

@@ -34,6 +34,9 @@ interface Challenge {
   name: string;
   challenge_type: 'individual' | 'team' | 'sub_team';
   total_points: number;
+  status?: 'draft' | 'scheduled' | 'active' | 'submission_closed' | 'published' | 'closed' | string;
+  start_date?: string | null;
+  end_date?: string | null;
 }
 
 interface ChallengeScore {
@@ -109,6 +112,31 @@ export function ChallengeSpecificLeaderboard({ leagueId }: ChallengeSpecificLead
     };
     fetchChallenges();
   }, [leagueId]);
+
+  React.useEffect(() => {
+    if (selectedChallengeId || challenges.length === 0) return;
+
+    const toTime = (dateStr?: string | null) => {
+      if (!dateStr) return 0;
+      const dtIso = new Date(dateStr);
+      if (!Number.isNaN(dtIso.getTime())) return dtIso.getTime();
+      const parts = String(dateStr).split('-').map((p) => Number(p));
+      if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+        return new Date(parts[0], parts[1] - 1, parts[2]).getTime();
+      }
+      return 0;
+    };
+
+    const completedStatuses = new Set(['published', 'closed', 'submission_closed']);
+    const completed = challenges.filter((c) => completedStatuses.has(String(c.status || '')));
+    const sortByRecent = (a: Challenge, b: Challenge) =>
+      (toTime(b.end_date || b.start_date) - toTime(a.end_date || a.start_date));
+
+    const defaultChallenge = (completed.length ? completed.sort(sortByRecent) : [...challenges].sort(sortByRecent))[0];
+    if (defaultChallenge?.id) {
+      setSelectedChallengeId(defaultChallenge.id);
+    }
+  }, [challenges, selectedChallengeId]);
 
   // Fetch scores for selected challenge
   React.useEffect(() => {

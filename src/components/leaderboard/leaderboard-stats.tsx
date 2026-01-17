@@ -34,12 +34,18 @@ interface StatItemProps {
 
 function StatItem({ label, value, icon: Icon, colorClass }: StatItemProps) {
   return (
-    <div className="flex items-center gap-2">
-      <Icon className={`size-4 ${colorClass}`} />
-      <span className="text-sm text-muted-foreground">{label}:</span>
-      <span className="font-semibold tabular-nums">
-        {typeof value === 'number' ? value.toLocaleString() : value}
+    <div className="flex min-w-[140px] items-center gap-3 rounded-lg border bg-background px-3 py-2 shadow-sm">
+      <span className={`flex size-8 items-center justify-center rounded-md ${colorClass} bg-current/10`}>
+        <Icon className="size-4 text-current" />
       </span>
+      <div className="flex flex-col leading-tight">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          {label}
+        </span>
+        <span className="text-sm font-semibold tabular-nums">
+        {typeof value === 'number' ? value.toLocaleString() : value}
+        </span>
+      </div>
     </div>
   );
 }
@@ -54,28 +60,25 @@ export function LeaderboardStats({ stats }: LeaderboardStatsProps) {
     : 0;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 p-3 rounded-lg border bg-card/50">
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card/60 p-2 sm:p-3">
       <StatItem
         label="Submissions"
         value={stats.total_submissions}
         icon={Trophy}
         colorClass="text-primary"
       />
-      <div className="hidden sm:block w-px h-4 bg-border" />
       <StatItem
         label="Approved"
         value={stats.approved}
         icon={CheckCircle2}
-        colorClass="text-green-500"
+        colorClass="text-emerald-500"
       />
-      <div className="hidden sm:block w-px h-4 bg-border" />
       <StatItem
         label="Pending"
         value={stats.pending}
         icon={Clock3}
-        colorClass="text-yellow-500"
+        colorClass="text-amber-500"
       />
-      <div className="hidden sm:block w-px h-4 bg-border" />
       <StatItem
         label="Approval"
         value={`${approvalRate}%`}

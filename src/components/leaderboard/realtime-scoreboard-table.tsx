@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 import { cn } from '@/lib/utils';
 
@@ -92,9 +93,15 @@ export function RealTimeScoreboardTable({ dates, teams }: RealTimeScoreboardTabl
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
-                      <Users className="size-5 text-primary" />
-                    </div>
+                    <Avatar className="size-10 rounded-lg">
+                      {t.logo_url ? (
+                        <AvatarImage src={t.logo_url} alt={t.team_name} />
+                      ) : (
+                        <AvatarFallback className="rounded-lg text-xs uppercase">
+                          {t.team_name.slice(0, 2)}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
                     <div>
                       <p className="font-semibold">{t.team_name}</p>
                       <p className="text-xs text-muted-foreground">2-day delay window</p>

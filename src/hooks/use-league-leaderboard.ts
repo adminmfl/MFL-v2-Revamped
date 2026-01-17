@@ -68,6 +68,7 @@ export interface PendingTeamWindowRanking {
   total_points: number;
   avg_rr: number;
   pointsByDate: Record<string, number>;
+  logo_url?: string | null;
 }
 
 export interface PendingWindow {
@@ -228,6 +229,15 @@ export function useLeagueLeaderboard(
             ...t,
             logo_url: logoByTeamId[t.team_id] || null,
           }));
+        }
+        if (Array.isArray(data?.pendingWindow?.teams)) {
+          data.pendingWindow = {
+            ...data.pendingWindow,
+            teams: data.pendingWindow.teams.map((t) => ({
+              ...t,
+              logo_url: logoByTeamId[t.team_id] || null,
+            })),
+          };
         }
 
         // Compute normalized points when active and variance exists
