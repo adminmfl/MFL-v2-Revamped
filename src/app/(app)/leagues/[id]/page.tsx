@@ -635,10 +635,10 @@ export default function LeagueDashboardPage({
         icon: Zap,
       },
       {
-        title: 'Avg RR',
+        title: 'RR',
         value: mySummary.avgRR !== null ? mySummary.avgRR.toFixed(2) : '—',
-        changeLabel: 'Performance',
-        description: 'Average RR (approved)',
+        changeLabel: 'Your Performance',
+        description: 'Run Rate (approved)',
         icon: TrendingUp,
       },
       {
@@ -868,7 +868,7 @@ export default function LeagueDashboardPage({
           <div className="px-4 lg:px-6">
             <Card>
               <CardHeader className="flex flex-row items-start justify-between gap-4">
-                <CardTitle className="text-base">Avg RR — You vs Team</CardTitle>
+                <CardTitle className="text-base">RR — You vs Team</CardTitle>
                 <span className="text-sm text-muted-foreground">Scale: 1.00 → 2.00</span>
               </CardHeader>
               <CardContent>
@@ -906,7 +906,7 @@ export default function LeagueDashboardPage({
                         <span
                           className="absolute top-1/2"
                           style={markerStyle(youMarkerPct)}
-                          aria-label="Your Avg RR"
+                          aria-label="Your RR"
                         >
                           <span
                             className={
@@ -920,7 +920,7 @@ export default function LeagueDashboardPage({
                         <span
                           className="absolute top-1/2"
                           style={markerStyle(teamMarkerPct)}
-                          aria-label="Team Avg RR"
+                          aria-label="Team RR"
                         >
                           <span
                             className={
@@ -985,95 +985,7 @@ export default function LeagueDashboardPage({
         </div>
       )}
 
-      {/* Quick Actions */}
-      <div className="px-4 lg:px-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-semibold">Quick Actions</h2>
-            <p className="text-sm text-muted-foreground">Navigate to common tasks</p>
-          </div>
-          <Badge variant="outline" className="w-fit">
-            <Crown className="size-3 mr-1" />
-            Role: {activeRole || 'Player'}
-          </Badge>
-        </div>
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {/* Player Actions */}
-          <QuickActionCard
-            title="Submit Activity"
-            description="Log your workout and earn points"
-            icon={Dumbbell}
-            href={`/leagues/${id}/submit`}
-            color="bg-gradient-to-br from-green-500 to-emerald-600"
-          />
-          <QuickActionCard
-            title="Leaderboard"
-            description="Team and individual rankings"
-            icon={BarChart3}
-            href={`/leagues/${id}/leaderboard`}
-            color="bg-gradient-to-br from-blue-500 to-indigo-600"
-          />
-          <QuickActionCard
-            title="My Team"
-            description="View team members and stats"
-            icon={Users}
-            href={`/leagues/${id}/team`}
-            color="bg-gradient-to-br from-purple-500 to-violet-600"
-          />
-
-          {/* Captain+ Actions */}
-          {isCaptain && (
-            <QuickActionCard
-              title="Validate Submissions"
-              description="Review and approve activities"
-              icon={Shield}
-              href={`/leagues/${id}/my-team/submissions`}
-              color="bg-gradient-to-br from-amber-500 to-orange-600"
-            />
-          )}
-
-          {/* Governor+ Actions */}
-          {isGovernor && (
-            <>
-              <QuickActionCard
-                title="All Submissions"
-                description="View league-wide submissions"
-                icon={ClipboardCheck}
-                href={`/leagues/${id}/submissions`}
-                color="bg-gradient-to-br from-indigo-500 to-purple-600"
-              />
-              <QuickActionCard
-                title="Manage Members"
-                description="Add, remove, or transfer members"
-                icon={Users}
-                href={`/leagues/${id}/members`}
-                color="bg-gradient-to-br from-pink-500 to-rose-600"
-              />
-            </>
-          )}
-
-          {/* Host Actions */}
-          {isHost && (
-            <>
-              <QuickActionCard
-                title="Analytics"
-                description="Performance metrics and insights"
-                icon={TrendingUp}
-                href={`/leagues/${id}/analytics`}
-                color="bg-gradient-to-br from-cyan-500 to-teal-600"
-              />
-              <QuickActionCard
-                title="Manage Governors"
-                description="Assign or revoke governor access"
-                icon={Crown}
-                href={`/leagues/${id}/team`}
-                color="bg-gradient-to-br from-orange-500 to-red-600"
-              />
-            </>
-          )}
-        </div>
-      </div>
-
+      
       {/* Date-wise Progress (This Week: Sun–Sat) */}
       <div className="px-4 lg:px-6">
         {(() => {

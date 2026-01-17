@@ -251,7 +251,7 @@ export default function MyTeamPage({
     {
       title: 'Team RR',
       value: String(teamAvgRR),
-      description: 'Average RR',
+      description: 'RR',
       detail: 'Average RR per approved entry',
       icon: Flame,
     },
@@ -386,19 +386,19 @@ export default function MyTeamPage({
       )}
 
       {/* Stats Cards - Compact 2x2 grid */}
-      <div className="grid grid-cols-2 gap-3 px-4 lg:px-6 @5xl/main:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 px-4 lg:px-6">
         {stats.map((stat, index) => {
           const StatIcon = stat.icon;
           return (
-            <Card key={index} className="p-3">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                <StatIcon className="size-3.5" />
+            <Card key={index} className="p-2.5">
+              <div className="flex items-center gap-1.5 text-muted-foreground text-[10px] mb-0.5">
+                <StatIcon className="size-3" />
                 {stat.title}
               </div>
-              <div className="text-xl font-bold tabular-nums">
+              <div className="text-lg font-bold tabular-nums leading-tight">
                 {stat.value}
               </div>
-              <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+              <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">
                 {stat.description}
               </div>
             </Card>

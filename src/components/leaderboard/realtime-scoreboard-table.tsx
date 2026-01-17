@@ -77,7 +77,7 @@ export function RealTimeScoreboardTable({ dates, teams }: RealTimeScoreboardTabl
                 {formatHeaderDate(d)}
               </TableHead>
             ))}
-            <TableHead className="text-right">Avg RR</TableHead>
+            <TableHead className="text-right">RR</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
