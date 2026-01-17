@@ -132,6 +132,14 @@ function getBreadcrumbs(
 // AppHeader Component
 // ============================================================================
 
+// Role colors for text
+const roleTextColors: Record<string, string> = {
+  host: 'text-amber-600',
+  governor: 'text-blue-600',
+  captain: 'text-emerald-600',
+  player: 'text-gray-600',
+};
+
 export function AppHeader() {
   const pathname = usePathname();
   const { data: session } = useSession();
@@ -180,29 +188,28 @@ export function AppHeader() {
         {/* Right Side Actions */}
         <div className="ml-auto flex items-center gap-2">
           {activeLeague && (
-            <Button variant="ghost" size="sm" asChild className="hidden sm:flex gap-2">
+            <Button variant="ghost" size="sm" asChild className="flex gap-2 px-2 sm:px-4 h-auto py-1">
               <Link href={`/leagues/${activeLeague.league_id}`}>
-                <Avatar className="size-8 rounded-md">
+                <Avatar className="size-8 sm:size-9 rounded-md">
                   {activeLeague.logo_url ? (
                     <AvatarImage src={activeLeague.logo_url} alt={activeLeague.name} />
                   ) : (
-                    <AvatarFallback className="rounded-md bg-primary/10 text-primary font-semibold">
+                    <AvatarFallback className="rounded-md bg-primary/10 text-primary font-semibold text-xs sm:text-sm">
                       {activeLeague.name.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   )}
                 </Avatar>
-                <div className="flex flex-col items-start leading-tight">
-                  <span className="text-sm font-semibold truncate max-w-[140px]">{activeLeague.name}</span>
+                <div className="flex flex-col items-start leading-none gap-1">
+                  <span className="text-sm font-bold truncate max-w-[120px] sm:max-w-[140px]">{activeLeague.name}</span>
                   {activeRole && (
-                    <span className="text-xs text-muted-foreground">Viewing as {activeRole}</span>
+                    <span className={`text-[11px] font-medium uppercase tracking-wide ${roleTextColors[activeRole] || 'text-gray-500'}`}>
+                      {activeRole}
+                    </span>
                   )}
                 </div>
               </Link>
             </Button>
           )}
-
-          {/* Role Switcher (only shows when multi-role) */}
-          <RoleSwitcher />
 
           {/* Theme Toggle */}
           <ThemeToggle />

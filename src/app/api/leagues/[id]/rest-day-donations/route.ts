@@ -14,6 +14,7 @@ const createDonationSchema = z.object({
     receiver_member_id: z.string().uuid(),
     days_transferred: z.number().int().min(1),
     notes: z.string().optional(),
+    proof_url: z.string().url('Please provide a valid proof URL'),
 });
 
 export async function GET(
@@ -65,20 +66,24 @@ export async function GET(
                 days_transferred,
                 status,
                 notes,
+                proof_url,
                 created_at,
                 updated_at,
                 donor_member_id,
                 receiver_member_id,
-                approved_by,
+                captain_approved_by,
+                captain_approved_at,
+                final_approved_by,
+                final_approved_at,
                 donor:leaguemembers!donor_member_id (
                     league_member_id,
+                    team_id,
                     users!leaguemembers_user_id_fkey (user_id, username)
                 ),
                 receiver:leaguemembers!receiver_member_id (
                     league_member_id,
                     users!leaguemembers_user_id_fkey (user_id, username)
-                ),
-                approver:users!approved_by (user_id, username)
+                )
             `)
             .eq('league_id', leagueId)
             .order('created_at', { ascending: false });
@@ -116,10 +121,12 @@ export async function GET(
             days_transferred: d.days_transferred,
             status: d.status,
             notes: d.notes,
+            proof_url: d.proof_url || null,
             created_at: d.created_at,
             updated_at: d.updated_at,
             donor: {
                 member_id: d.donor?.league_member_id,
+                team_id: d.donor?.team_id,
                 user_id: d.donor?.users?.user_id,
                 username: d.donor?.users?.username,
             },
@@ -128,11 +135,13 @@ export async function GET(
                 user_id: d.receiver?.users?.user_id,
                 username: d.receiver?.users?.username,
             },
-            approved_by: d.approver ? {
-                user_id: d.approver.user_id,
-                username: d.approver.username,
-            } : null,
+            captain_approved_by: d.captain_approved_by,
+            captain_approved_at: d.captain_approved_at,
+            final_approved_by: d.final_approved_by,
+            final_approved_at: d.final_approved_at,
         }));
+
+
 
         return NextResponse.json({
             success: true,
@@ -170,7 +179,7 @@ export async function POST(
             return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 });
         }
 
-        const { receiver_member_id, days_transferred, notes } = parsed.data;
+        const { receiver_member_id, days_transferred, notes, proof_url } = parsed.data;
 
         // Get donor's membership
         const { data: donorMembership, error: donorError } = await supabase
@@ -210,8 +219,10 @@ export async function POST(
                 receiver_member_id,
                 days_transferred,
                 notes,
+                proof_url,
                 status: 'pending',
             })
+
             .select()
             .single();
 

@@ -793,7 +793,7 @@ CREATE POLICY teamleagues_update_host_or_captain ON public.teamleagues
   );
 
 -- =====================================================================================
--- REST DAY DONATIONS
+-- REST DAY DONATIONS (with two-stage approval: Captain → Governor/Host)
 -- =====================================================================================
 
 CREATE TABLE IF NOT EXISTS public.rest_day_donations (
@@ -802,9 +802,13 @@ CREATE TABLE IF NOT EXISTS public.rest_day_donations (
     donor_member_id UUID NOT NULL REFERENCES public.leaguemembers(league_member_id) ON DELETE CASCADE,
     receiver_member_id UUID NOT NULL REFERENCES public.leaguemembers(league_member_id) ON DELETE CASCADE,
     days_transferred INTEGER NOT NULL CHECK (days_transferred > 0),
-    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
-    approved_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'captain_approved', 'approved', 'rejected')),
+    proof_url TEXT,
     notes TEXT,
+    captain_approved_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    captain_approved_at TIMESTAMPTZ,
+    final_approved_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    final_approved_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -814,10 +818,15 @@ CREATE INDEX IF NOT EXISTS idx_rest_day_donations_donor ON public.rest_day_donat
 CREATE INDEX IF NOT EXISTS idx_rest_day_donations_receiver ON public.rest_day_donations(receiver_member_id);
 CREATE INDEX IF NOT EXISTS idx_rest_day_donations_status ON public.rest_day_donations(status);
 
-COMMENT ON TABLE public.rest_day_donations IS 'Tracks rest day donations between league members, requiring approval';
+COMMENT ON TABLE public.rest_day_donations IS 'Tracks rest day donations between league members with two-stage approval';
 COMMENT ON COLUMN public.rest_day_donations.donor_member_id IS 'The member donating rest days';
 COMMENT ON COLUMN public.rest_day_donations.receiver_member_id IS 'The member receiving rest days';
-COMMENT ON COLUMN public.rest_day_donations.status IS 'Donation status: pending → approved/rejected by Governor/Host';
+COMMENT ON COLUMN public.rest_day_donations.status IS 'Donation status: pending → captain_approved → approved | rejected';
+COMMENT ON COLUMN public.rest_day_donations.proof_url IS 'URL to proof image/document for the donation request';
+COMMENT ON COLUMN public.rest_day_donations.captain_approved_by IS 'User ID of captain who approved (stage 1)';
+COMMENT ON COLUMN public.rest_day_donations.captain_approved_at IS 'Timestamp of captain approval';
+COMMENT ON COLUMN public.rest_day_donations.final_approved_by IS 'User ID of governor/host who gave final approval (stage 2)';
+COMMENT ON COLUMN public.rest_day_donations.final_approved_at IS 'Timestamp of final approval';
 
 -- Updated_at trigger for rest_day_donations
 CREATE OR REPLACE FUNCTION update_rest_day_donations_updated_at()
@@ -833,7 +842,34 @@ CREATE TRIGGER rest_day_donations_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_rest_day_donations_updated_at();
 
+-- =====================================================================================
+-- DONATION PROOFS STORAGE BUCKET
+-- =====================================================================================
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('donation-proofs', 'donation-proofs', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Donation proofs policies
+CREATE POLICY "donation-proofs_public_read"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'donation-proofs');
+
+CREATE POLICY "donation-proofs_authenticated_insert"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'donation-proofs');
+
+CREATE POLICY "donation-proofs_owner_delete"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (
+    bucket_id = 'donation-proofs'
+    AND auth.uid()::text = (storage.foldername(name))[2]
+);
+
 
 -- =====================================================================================
 -- END OF SCHEMA
 -- =====================================================================================
+

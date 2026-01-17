@@ -70,20 +70,21 @@ export async function GET() {
     const tierIds = Array.from(
       new Set((leaguesData || []).map((l: any) => l.tier_id).filter(Boolean))
     );
-    
+
     let tierCapacityMap = new Map<string, number>();
     if (tierIds.length > 0) {
       const { data: tiersData } = await supabase
         .from('league_tiers')
         .select('tier_id, league_capacity')
         .in('tier_id', tierIds);
-      
+
       (tiersData || []).forEach((t: any) => {
         tierCapacityMap.set(t.tier_id, t.league_capacity || 20);
       });
     }
 
     let teamsData: any[] = [];
+    let teamLogoMap = new Map<string, string | null>();
     if (teamIds.length > 0) {
       const { data, error: teamsError } = await supabase
         .from('teams')
@@ -95,7 +96,20 @@ export async function GET() {
         return NextResponse.json({ error: 'Failed to fetch leagues' }, { status: 500 });
       }
       teamsData = data || [];
+
+      // Fetch team logos from teamleagues for each (team_id, league_id) pair
+      const { data: teamLeaguesData } = await supabase
+        .from('teamleagues')
+        .select('team_id, league_id, logo_url')
+        .in('team_id', teamIds)
+        .in('league_id', leagueIds);
+
+      for (const tl of (teamLeaguesData || [])) {
+        // Key by team_id + league_id for per-league logos
+        teamLogoMap.set(`${tl.team_id}_${tl.league_id}`, tl.logo_url || null);
+      }
     }
+
 
     const leagueById = new Map((leaguesData || []).map((l: any) => [l.league_id, l] as const));
     const teamById = new Map(teamsData.map((t: any) => [t.team_id, t] as const));
@@ -172,8 +186,10 @@ export async function GET() {
         roles: roles,
         team_id: team?.team_id || membership.team_id || null,
         team_name: team?.team_name || null,
+        team_logo_url: membership.team_id ? teamLogoMap.get(`${membership.team_id}_${leagueId}`) || null : null,
         is_host: isHost,
       };
+
     });
 
     // Remove duplicates (user might have multiple entries)

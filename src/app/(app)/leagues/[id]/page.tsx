@@ -23,7 +23,8 @@ import {
   Medal,
   Timer,
   TrendingUp,
-  RefreshCw
+  RefreshCw,
+  Moon,
 } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
@@ -635,10 +636,10 @@ export default function LeagueDashboardPage({
         icon: Zap,
       },
       {
-        title: 'Avg RR',
+        title: 'RR',
         value: mySummary.avgRR !== null ? mySummary.avgRR.toFixed(2) : '—',
-        changeLabel: 'Performance',
-        description: 'Average RR (approved)',
+        changeLabel: 'Your Performance',
+        description: 'Run Rate (approved)',
         icon: TrendingUp,
       },
       {
@@ -712,10 +713,6 @@ export default function LeagueDashboardPage({
         </div>
 
         <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={() => fetchLeagueData(true)}>
-            <RefreshCw className="mr-2 size-4" />
-            Refresh
-          </Button>
           {isHost && (
             <InviteDialog
               leagueId={league.league_id}
@@ -757,322 +754,303 @@ export default function LeagueDashboardPage({
       {mySummaryLoading || !mySummaryStats ? (
         <>
           <div className="px-4 lg:px-6 mt-2">
-            <h2 className="text-lg font-semibold">My Summary</h2>
-            <p className="text-sm text-muted-foreground">Your approved performance in this league.</p>
-          </div>
-          <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-2 gap-3 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-            {[1, 2, 3, 4].map((index) => (
-              <Card key={index} className="@container/card p-3 sm:p-6">
-                <CardHeader className="p-0 sm:p-6 sm:pb-2">
-                  <CardDescription className="flex items-center gap-2 text-xs sm:text-sm">
-                    <Skeleton className="h-4 w-4" />
-                    <Skeleton className="h-4 w-20" />
-                  </CardDescription>
-                  <CardTitle className="text-xl sm:text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                    <Skeleton className="h-6 sm:h-8 w-12 sm:w-16" />
-                  </CardTitle>
-                </CardHeader>
-                <CardFooter className="flex-col items-start gap-1 p-0 pt-2 sm:p-6 sm:pt-0">
-                  <Skeleton className="h-3 sm:h-4 w-20 sm:w-24" />
-                  <Skeleton className="h-2 sm:h-3 w-24 sm:w-32" />
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-          {mySummaryLoading && (
-            <div className="px-4 lg:px-6">
-              <Card>
-                <CardHeader className="flex flex-row items-start justify-between gap-4">
-                  <Skeleton className="h-5 w-40" />
-                  <Skeleton className="h-4 w-32" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-3 w-full rounded-full mb-3" />
-                  <div className="flex flex-wrap items-center gap-6 mt-3">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-4 w-24" />
-                  </div>
-                </CardContent>
-              </Card>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                asChild
+                size="sm"
+              >
+                <Link href={`/leagues/${id}/submit?type=workout`}>
+                  <Dumbbell className="mr-2 size-4" />
+                  Add Workout
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="bg-muted/50"
+              >
+                <Link href={`/leagues/${id}/submit?type=rest`}>
+                  <Moon className="mr-2 size-4" />
+                  Add Rest Day
+                </Link>
+              </Button>
             </div>
-          )}
+          </div>
+          <div className="px-4 lg:px-6 mt-2">
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-3 w-56" />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => fetchLeagueData(true)}
+                    aria-label="Refresh summary"
+                  >
+                    <RefreshCw className="size-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+                  {[1, 2, 3, 4, 5].map((index) => (
+                    <div
+                      key={index}
+                      className="rounded-lg bg-muted/40 px-4 py-3 text-center"
+                    >
+                      <Skeleton className="h-3 w-20 mx-auto" />
+                      <Skeleton className="h-5 w-12 mx-auto mt-2" />
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-lg border bg-muted/20 p-4">
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-4 w-36" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <Skeleton className="h-3 w-full rounded-full mt-4" />
+                  <div className="flex flex-wrap items-center gap-6 mt-3">
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="px-4 lg:px-6 mt-2">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between gap-3">
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  {[1, 2, 3, 4].map((index) => (
+                    <div
+                      key={index}
+                      className="rounded-md bg-muted/40 px-3 py-2 text-center"
+                    >
+                      <Skeleton className="h-3 w-20 mx-auto" />
+                      <Skeleton className="h-5 w-12 mx-auto mt-2" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </>
       ) : (
         <>
           <div className="px-4 lg:px-6 mt-2">
-            <h2 className="text-lg font-semibold">My Summary</h2>
-            <p className="text-sm text-muted-foreground">Your approved performance in this league.</p>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                asChild
+                size="sm"
+              >
+                <Link href={`/leagues/${id}/submit?type=workout`}>
+                  <Dumbbell className="mr-2 size-4" />
+                  Add Workout
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="bg-muted/50"
+              >
+                <Link href={`/leagues/${id}/submit?type=rest`}>
+                  <Moon className="mr-2 size-4" />
+                  Add Rest Day
+                </Link>
+              </Button>
+            </div>
           </div>
-          <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-2 gap-3 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-            {mySummaryStats.map((stat, index) => {
-              const StatIcon = stat.icon;
-              const isCombined = (stat as any).isCombined;
-              
-              if (isCombined) {
-                const restUsed = (stat as any).restUsed ?? 0;
-                const restUnused = (stat as any).restUnused ?? 0;
-                const total = restUsed + restUnused;
-                
-                return (
-                  <Card key={index} className="@container/card p-3 sm:p-6">
-                    <CardHeader className="p-0 sm:p-6 sm:pb-2">
-                      <CardDescription className="flex items-center gap-2 text-xs sm:text-sm">
-                        <StatIcon className="size-3 sm:size-4" />
-                        {stat.title}
-                      </CardDescription>
-                      <CardTitle className="text-xl sm:text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                        {stat.value}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardFooter className="flex-col items-start gap-2 p-0 pt-2 sm:p-6 sm:pt-0">
-                      <div className="flex flex-col gap-2 w-full">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs sm:text-sm">
-                          <div className="flex items-center gap-2">
-                            <Timer className="size-3 sm:size-4 text-muted-foreground" />
-                            <span className="font-medium">Used: {restUsed.toLocaleString()}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Shield className="size-3 sm:size-4 text-muted-foreground" />
-                            <span className="font-medium">Remaining: {restUnused !== null ? restUnused.toLocaleString() : '—'}</span>
-                          </div>
-                        </div>
-                        <div className="text-muted-foreground text-[10px] sm:text-xs">
-                          {total > 0 ? `Total allowance: ${total.toLocaleString()} rest days` : 'No rest days allocated'}
-                        </div>
-                      </div>
-                    </CardFooter>
-                  </Card>
-                );
-              }
-              
-              return (
-                <Card key={index} className="@container/card p-3 sm:p-6">
-                  <CardHeader className="p-0 sm:p-6 sm:pb-2">
-                    <CardDescription className="flex items-center gap-2 text-xs sm:text-sm">
-                      <StatIcon className="size-3 sm:size-4" />
-                      {stat.title}
-                    </CardDescription>
-                    <CardTitle className="text-xl sm:text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                      {stat.value}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardFooter className="flex-col items-start gap-1 p-0 pt-2 sm:p-6 sm:pt-0">
-                    <div className="line-clamp-1 flex gap-2 font-medium text-xs sm:text-sm">{stat.changeLabel}</div>
-                    <div className="text-muted-foreground text-[10px] sm:text-sm line-clamp-1 w-full">{stat.description}</div>
-                  </CardFooter>
-                </Card>
-              );
-            })}
-          </div>
-
-          <div className="px-4 lg:px-6">
+          <div className="px-4 lg:px-6 mt-2">
             <Card>
-              <CardHeader className="flex flex-row items-start justify-between gap-4">
-                <CardTitle className="text-base">Avg RR — You vs Team</CardTitle>
-                <span className="text-sm text-muted-foreground">Scale: 1.00 → 2.00</span>
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between gap-3">
+                  <CardTitle className="text-base">My Summary</CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => fetchLeagueData(true)}
+                    aria-label="Refresh summary"
+                  >
+                    <RefreshCw className="size-4" />
+                  </Button>
+                </div>
               </CardHeader>
-              <CardContent>
-                {(() => {
-                  const youPoints = typeof mySummary?.points === 'number' ? mySummary.points : null;
-                  const you = typeof mySummary?.avgRR === 'number' ? mySummary.avgRR : null;
-                  const team = typeof mySummary?.teamAvgRR === 'number' ? mySummary.teamAvgRR : null;
-                  const teamPoints = typeof mySummary?.teamPoints === 'number' ? mySummary.teamPoints : null;
-                  const min = 1.0;
-                  const max = 2.0;
-                  const span = max - min;
-                  const pct = (v: number) => Math.max(0, Math.min(100, ((v - min) / span) * 100));
-
-                  const youPct = typeof you === 'number' ? pct(you) : null;
-                  const teamPct = typeof team === 'number' ? pct(team) : null;
-
-                  const markerStyle = (p: number): React.CSSProperties => {
-                    // Keep the dot fully inside the bar at 0%/100%.
-                    const clamped = Math.max(0, Math.min(100, p));
-                    const transform =
-                      clamped <= 0
-                        ? 'translate(0, -50%)'
-                        : clamped >= 100
-                          ? 'translate(-100%, -50%)'
-                          : 'translate(-50%, -50%)';
-                    return { left: `${clamped}%`, transform };
-                  };
-
-                  const youMarkerPct = typeof youPct === 'number' ? youPct : 0;
-                  const teamMarkerPct = typeof teamPct === 'number' ? teamPct : 0;
-
-                  return (
-                    <div>
-                      <div className="relative h-3 rounded-full bg-muted">
-                        <span
-                          className="absolute top-1/2"
-                          style={markerStyle(youMarkerPct)}
-                          aria-label="Your Avg RR"
-                        >
-                          <span
-                            className={
-                              typeof you === 'number'
-                                ? 'block w-2.5 h-2.5 rounded-full bg-destructive border-2 border-background'
-                                : 'block w-2.5 h-2.5 rounded-full bg-muted-foreground/40 border-2 border-background'
-                            }
-                          />
-                        </span>
-
-                        <span
-                          className="absolute top-1/2"
-                          style={markerStyle(teamMarkerPct)}
-                          aria-label="Team Avg RR"
-                        >
-                          <span
-                            className={
-                              typeof team === 'number'
-                                ? 'block w-2.5 h-2.5 rounded-full bg-primary border-2 border-background'
-                                : 'block w-2.5 h-2.5 rounded-full bg-muted-foreground/40 border-2 border-background'
-                            }
-                          />
-                        </span>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground mt-3">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-destructive inline-block" />
-                          You:
-                          <span className="text-foreground tabular-nums">
-                            {typeof you === 'number' ? you.toFixed(2) : '—'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-primary inline-block" />
-                          Team:
-                          <span className="text-foreground tabular-nums">
-                            {typeof team === 'number' ? team.toFixed(2) : '—'}
-                          </span>
-                        </div>
-                      </div>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
+                    <div className="text-[11px] text-muted-foreground">Points</div>
+                    <div className="text-base font-semibold text-primary tabular-nums">
+                      {mySummary?.totalPoints.toLocaleString() ?? '—'}
                     </div>
-                  );
-                })()}
+                  </div>
+                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
+                    <div className="text-[11px] text-muted-foreground">Avg RR</div>
+                    <div className="text-base font-semibold text-primary tabular-nums">
+                      {mySummary?.avgRR !== null && typeof mySummary?.avgRR === 'number'
+                        ? mySummary.avgRR.toFixed(2)
+                        : '—'}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-2.5 py-2 text-center">
+                    <div className="text-[10px] text-muted-foreground">Rest Days Used</div>
+                    <div className="text-sm font-semibold text-primary tabular-nums">
+                      {mySummary?.restUsed.toLocaleString() ?? '—'}
+                    </div>
+                  </div>
+                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-2.5 py-2 text-center">
+                    <div className="text-[10px] text-muted-foreground">Rest Days Unused</div>
+                    <div className="text-sm font-semibold text-primary tabular-nums">
+                      {mySummary?.restUnused !== null && typeof mySummary?.restUnused === 'number'
+                        ? mySummary.restUnused.toLocaleString()
+                        : '—'}
+                    </div>
+                  </div>
+                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-2.5 py-2 text-center">
+                    <div className="text-[10px] text-muted-foreground">Days Missed</div>
+                    <div className="text-sm font-semibold text-primary tabular-nums">
+                      {mySummary?.missedDays.toLocaleString() ?? '—'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border bg-muted/20 p-3">
+                  <div className="flex flex-row items-center justify-between gap-4">
+                    <span className="text-sm font-medium">Avg RR — You vs Team</span>
+                    <span className="text-xs text-muted-foreground">Scale: 1.00 → 2.00</span>
+                  </div>
+                  <div className="mt-2.5">
+                    {(() => {
+                      const youPoints = typeof mySummary?.points === 'number' ? mySummary.points : null;
+                      const you = typeof mySummary?.avgRR === 'number' ? mySummary.avgRR : null;
+                      const team = typeof mySummary?.teamAvgRR === 'number' ? mySummary.teamAvgRR : null;
+                      const teamPoints = typeof mySummary?.teamPoints === 'number' ? mySummary.teamPoints : null;
+                      const min = 1.0;
+                      const max = 2.0;
+                      const span = max - min;
+                      const pct = (v: number) => Math.max(0, Math.min(100, ((v - min) / span) * 100));
+
+                      const youPct = typeof you === 'number' ? pct(you) : null;
+                      const teamPct = typeof team === 'number' ? pct(team) : null;
+
+                      const markerStyle = (p: number): React.CSSProperties => {
+                        const clamped = Math.max(0, Math.min(100, p));
+                        const transform =
+                          clamped <= 0
+                            ? 'translate(0, -50%)'
+                            : clamped >= 100
+                              ? 'translate(-100%, -50%)'
+                              : 'translate(-50%, -50%)';
+                        return { left: `${clamped}%`, transform };
+                      };
+
+                      const youMarkerPct = typeof youPct === 'number' ? youPct : 0;
+                      const teamMarkerPct = typeof teamPct === 'number' ? teamPct : 0;
+
+                      return (
+                        <div>
+                          <div className="relative h-2 rounded-full bg-muted">
+                            <span
+                              className="absolute top-1/2"
+                              style={markerStyle(youMarkerPct)}
+                              aria-label="Your RR"
+                            >
+                              <span
+                                className={
+                                  typeof you === 'number'
+                                    ? 'block w-2.5 h-2.5 rounded-full bg-destructive border-2 border-background'
+                                    : 'block w-2.5 h-2.5 rounded-full bg-muted-foreground/40 border-2 border-background'
+                                }
+                              />
+                            </span>
+
+                            <span
+                              className="absolute top-1/2"
+                              style={markerStyle(teamMarkerPct)}
+                              aria-label="Team RR"
+                            >
+                              <span
+                                className={
+                                  typeof team === 'number'
+                                    ? 'block w-2.5 h-2.5 rounded-full bg-primary border-2 border-background'
+                                    : 'block w-2.5 h-2.5 rounded-full bg-muted-foreground/40 border-2 border-background'
+                                }
+                              />
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mt-2.5">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-destructive inline-block" />
+                              You:
+                              <span className="text-foreground tabular-nums">
+                                {typeof you === 'number' ? you.toFixed(2) : '—'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-primary inline-block" />
+                              Team:
+                              <span className="text-foreground tabular-nums">
+                                {typeof team === 'number' ? team.toFixed(2) : '—'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="px-4 lg:px-6 mt-2">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Team Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
+                    <div className="text-[11px] text-muted-foreground">Points</div>
+                    <div className="text-base font-semibold text-primary tabular-nums">
+                      {typeof mySummary?.teamPoints === 'number'
+                        ? mySummary.teamPoints.toLocaleString()
+                        : '—'}
+                    </div>
+                  </div>
+                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
+                    <div className="text-[11px] text-muted-foreground">Avg RR</div>
+                    <div className="text-base font-semibold text-primary tabular-nums">
+                      {typeof mySummary?.teamAvgRR === 'number'
+                        ? mySummary.teamAvgRR.toFixed(2)
+                        : '—'}
+                    </div>
+                  </div>
+                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
+                    <div className="text-[11px] text-muted-foreground">Days Missed</div>
+                    <div className="text-sm font-semibold text-primary tabular-nums">—</div>
+                  </div>
+                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
+                    <div className="text-[11px] text-muted-foreground">Rest Days Used</div>
+                    <div className="text-sm font-semibold text-primary tabular-nums">—</div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
         </>
       )}
-
-      {/* Progress Bar (for launched/active leagues) */}
-      {(league.status === 'active' || league.status === 'launched') && (
-        <div className="px-4 lg:px-6">
-          <Card className="bg-gradient-to-r from-primary/5 via-transparent to-primary/5 border-primary/20">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Flame className="size-5 text-primary" />
-                  <span className="font-medium">League Progress</span>
-                </div>
-                <Badge variant="outline" className="font-mono">
-                  {progressPercent}% Complete
-                </Badge>
-              </div>
-              <Progress value={progressPercent} className="h-3" />
-              <div className="flex justify-between mt-3 text-sm">
-                <span className="text-muted-foreground">
-                  <span className="font-semibold text-foreground">{daysElapsed}</span> days elapsed
-                </span>
-                <span className="text-muted-foreground">
-                  <span className="font-semibold text-foreground">{daysRemaining}</span> days remaining
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Quick Actions */}
-      <div className="px-4 lg:px-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-semibold">Quick Actions</h2>
-            <p className="text-sm text-muted-foreground">Navigate to common tasks</p>
-          </div>
-          <Badge variant="outline" className="w-fit">
-            <Crown className="size-3 mr-1" />
-            Role: {activeRole || 'Player'}
-          </Badge>
-        </div>
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {/* Player Actions */}
-          <QuickActionCard
-            title="Submit Activity"
-            description="Log your workout and earn points"
-            icon={Dumbbell}
-            href={`/leagues/${id}/submit`}
-            color="bg-gradient-to-br from-green-500 to-emerald-600"
-          />
-          <QuickActionCard
-            title="Leaderboard"
-            description="Team and individual rankings"
-            icon={BarChart3}
-            href={`/leagues/${id}/leaderboard`}
-            color="bg-gradient-to-br from-blue-500 to-indigo-600"
-          />
-          <QuickActionCard
-            title="My Team"
-            description="View team members and stats"
-            icon={Users}
-            href={`/leagues/${id}/team`}
-            color="bg-gradient-to-br from-purple-500 to-violet-600"
-          />
-
-          {/* Captain+ Actions */}
-          {isCaptain && (
-            <QuickActionCard
-              title="Validate Submissions"
-              description="Review and approve activities"
-              icon={Shield}
-              href={`/leagues/${id}/my-team/submissions`}
-              color="bg-gradient-to-br from-amber-500 to-orange-600"
-            />
-          )}
-
-          {/* Governor+ Actions */}
-          {isGovernor && (
-            <>
-              <QuickActionCard
-                title="All Submissions"
-                description="View league-wide submissions"
-                icon={ClipboardCheck}
-                href={`/leagues/${id}/submissions`}
-                color="bg-gradient-to-br from-indigo-500 to-purple-600"
-              />
-              <QuickActionCard
-                title="Manage Members"
-                description="Add, remove, or transfer members"
-                icon={Users}
-                href={`/leagues/${id}/members`}
-                color="bg-gradient-to-br from-pink-500 to-rose-600"
-              />
-            </>
-          )}
-
-          {/* Host Actions */}
-          {isHost && (
-            <>
-              <QuickActionCard
-                title="Analytics"
-                description="Performance metrics and insights"
-                icon={TrendingUp}
-                href={`/leagues/${id}/analytics`}
-                color="bg-gradient-to-br from-cyan-500 to-teal-600"
-              />
-              <QuickActionCard
-                title="Manage Governors"
-                description="Assign or revoke governor access"
-                icon={Crown}
-                href={`/leagues/${id}/team`}
-                color="bg-gradient-to-br from-orange-500 to-red-600"
-              />
-            </>
-          )}
-        </div>
-      </div>
 
       {/* Date-wise Progress (This Week: Sun–Sat) */}
       <div className="px-4 lg:px-6">
@@ -1173,6 +1151,34 @@ export default function LeagueDashboardPage({
           </CardContent>
         </Card>
       </div>
+
+      {/* Progress Bar (for launched/active leagues) */}
+      {(league.status === 'active' || league.status === 'launched') && (
+        <div className="px-4 lg:px-6">
+          <Card className="bg-gradient-to-r from-primary/5 via-transparent to-primary/5 border-primary/20">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Flame className="size-5 text-primary" />
+                  <span className="font-medium">League Progress</span>
+                </div>
+                <Badge variant="outline" className="font-mono">
+                  {progressPercent}% Complete
+                </Badge>
+              </div>
+              <Progress value={progressPercent} className="h-3" />
+              <div className="flex justify-between mt-3 text-sm">
+                <span className="text-muted-foreground">
+                  <span className="font-semibold text-foreground">{daysElapsed}</span> days elapsed
+                </span>
+                <span className="text-muted-foreground">
+                  <span className="font-semibold text-foreground">{daysRemaining}</span> days remaining
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* League Information - Table Style */}
       <div className="px-4 lg:px-6">

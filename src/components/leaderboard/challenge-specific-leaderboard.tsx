@@ -5,13 +5,7 @@
 'use client';
 
 import * as React from 'react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+
 import {
   Select,
   SelectContent,
@@ -40,6 +34,9 @@ interface Challenge {
   name: string;
   challenge_type: 'individual' | 'team' | 'sub_team';
   total_points: number;
+  status?: 'draft' | 'scheduled' | 'active' | 'submission_closed' | 'published' | 'closed' | string;
+  start_date?: string | null;
+  end_date?: string | null;
 }
 
 interface ChallengeScore {
@@ -116,6 +113,31 @@ export function ChallengeSpecificLeaderboard({ leagueId }: ChallengeSpecificLead
     fetchChallenges();
   }, [leagueId]);
 
+  React.useEffect(() => {
+    if (selectedChallengeId || challenges.length === 0) return;
+
+    const toTime = (dateStr?: string | null) => {
+      if (!dateStr) return 0;
+      const dtIso = new Date(dateStr);
+      if (!Number.isNaN(dtIso.getTime())) return dtIso.getTime();
+      const parts = String(dateStr).split('-').map((p) => Number(p));
+      if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+        return new Date(parts[0], parts[1] - 1, parts[2]).getTime();
+      }
+      return 0;
+    };
+
+    const completedStatuses = new Set(['published', 'closed', 'submission_closed']);
+    const completed = challenges.filter((c) => completedStatuses.has(String(c.status || '')));
+    const sortByRecent = (a: Challenge, b: Challenge) =>
+      (toTime(b.end_date || b.start_date) - toTime(a.end_date || a.start_date));
+
+    const defaultChallenge = (completed.length ? completed.sort(sortByRecent) : [...challenges].sort(sortByRecent))[0];
+    if (defaultChallenge?.id) {
+      setSelectedChallengeId(defaultChallenge.id);
+    }
+  }, [challenges, selectedChallengeId]);
+
   // Fetch scores for selected challenge
   React.useEffect(() => {
     if (!selectedChallengeId) {
@@ -169,24 +191,27 @@ export function ChallengeSpecificLeaderboard({ leagueId }: ChallengeSpecificLead
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+    <div className="rounded-lg border p-4">
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
           <Trophy className="size-5" />
           Challenges
-        </CardTitle>
-        <CardDescription>
-          {selectedChallenge
-            ? `${getChallengeTypeLabel(selectedChallenge.challenge_type)} scores per challenge`
-            : 'Select a challenge to view rankings'}
-        </CardDescription>
-        {selectedChallenge && (
-          <p className="text-sm text-muted-foreground">
-            All points are added to the Team leaderboard above
+        </h2>
+        <div className="text-sm text-muted-foreground">
+          <p>
+            {selectedChallenge
+              ? `${getChallengeTypeLabel(selectedChallenge.challenge_type)} scores per challenge`
+              : 'Select a challenge to view rankings'}
           </p>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-4">
+          {selectedChallenge && (
+            <p className="mt-1">
+              All points are added to the overall Team/Individual leaderboard respectively.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-4">
         <Select value={selectedChallengeId} onValueChange={setSelectedChallengeId}>
           <SelectTrigger>
             <SelectValue placeholder="Select challenge..." />
@@ -281,7 +306,8 @@ export function ChallengeSpecificLeaderboard({ leagueId }: ChallengeSpecificLead
             </Table>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
+

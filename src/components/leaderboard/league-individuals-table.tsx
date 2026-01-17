@@ -138,7 +138,7 @@ export function LeagueIndividualsTable({
       ? [
           {
             accessorKey: 'avg_rr',
-            header: 'Avg RR',
+            header: 'RR',
             cell: ({ row }) => (
               <div className="flex items-center gap-1.5">
                 <Star className="size-4 text-yellow-500" />

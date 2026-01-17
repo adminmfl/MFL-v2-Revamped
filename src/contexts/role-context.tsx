@@ -108,7 +108,14 @@ export function RoleProvider({ children }: RoleProviderProps) {
     <RoleContext.Provider
       value={{
         activeRole: currentRole,
-        availableRoles,
+        availableRoles: availableRoles.filter(role => {
+          // If user has any higher role (host, governor, captain), hide player role
+          const hasHigherRole = availableRoles.some(r => ['host', 'governor', 'captain'].includes(r));
+          if (hasHigherRole && role === 'player') {
+            return false;
+          }
+          return true;
+        }),
         setActiveRole: setCurrentRole,
         isLoading: leagueLoading,
         isAlsoPlayer,

@@ -72,9 +72,9 @@ function PageSkeleton() {
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 px-4 lg:px-6">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-32 rounded-lg" />
+          <Skeleton key={i} className="h-16 rounded-lg" />
         ))}
       </div>
       <div className="px-4 lg:px-6">
@@ -208,9 +208,9 @@ export default function MyTeamViewPage({
       icon: Target,
     },
     {
-      title: 'Avg RR',
+      title: 'RR',
       value: parseFloat(teamAvgRR).toFixed(1),
-      description: 'Reward Rate',
+      description: 'Run Rate',
       detail: 'Average per workout',
       icon: Flame,
     },
@@ -338,27 +338,22 @@ export default function MyTeamViewPage({
         </div>
       )}
 
-      {/* Stats Cards */}
-      <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+      {/* Stats Cards - Compact 2x2 grid */}
+      <div className="grid grid-cols-2 gap-2 px-4 lg:px-6">
         {stats.map((stat, index) => {
           const StatIcon = stat.icon;
           return (
-            <Card key={index} className="@container/card">
-              <CardHeader>
-                <CardDescription className="flex items-center gap-2">
-                  <StatIcon className="size-4" />
-                  {stat.title}
-                </CardDescription>
-                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                  {stat.value}
-                </CardTitle>
-              </CardHeader>
-              <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                <div className="line-clamp-1 flex gap-2 font-medium">
-                  {stat.description}
-                </div>
-                <div className="text-muted-foreground">{stat.detail}</div>
-              </CardFooter>
+            <Card key={index} className="p-2.5">
+              <div className="flex items-center gap-1.5 text-muted-foreground text-[10px] mb-0.5">
+                <StatIcon className="size-3" />
+                {stat.title}
+              </div>
+              <div className="text-lg font-bold tabular-nums leading-tight">
+                {stat.value}
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">
+                {stat.description}
+              </div>
             </Card>
           );
         })}

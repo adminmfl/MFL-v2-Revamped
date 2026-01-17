@@ -1,6 +1,11 @@
 /**
  * REST API for Individual Rest Day Donation
- * PATCH: Approve or reject a donation (Governor/Host only)
+ * PATCH: Approve or reject a donation
+ * 
+ * Two-stage approval flow:
+ * 1. Captain approves: pending → captain_approved
+ * 2. Governor/Host approves: captain_approved → approved
+ * Either can reject at any stage.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -10,7 +15,7 @@ import { getSupabaseServiceRole } from '@/lib/supabase/client';
 import { z } from 'zod';
 
 const updateDonationSchema = z.object({
-    status: z.enum(['approved', 'rejected']),
+    action: z.enum(['approve', 'reject']),
 });
 
 /**
@@ -57,7 +62,6 @@ async function getMemberFinalRestDays(
     const donated = (donatedDonations || []).reduce((sum, d) => sum + d.days_transferred, 0);
 
     // Formula: final_used = auto + donated - received
-    // (donated increases usage, received decreases usage)
     const finalUsed = (autoRestDays || 0) + donated - received;
     const finalRemaining = Math.max(0, totalAllowed - finalUsed);
 
@@ -88,7 +92,7 @@ export async function PATCH(
         // Verify user is a member of this league
         const { data: membership, error: memberError } = await supabase
             .from('leaguemembers')
-            .select('league_member_id')
+            .select('league_member_id, team_id')
             .eq('user_id', userId)
             .eq('league_id', leagueId)
             .single();
@@ -97,20 +101,16 @@ export async function PATCH(
             return NextResponse.json({ error: 'Not a member of this league' }, { status: 403 });
         }
 
-        // Get user's role in league
+        // Get user's roles in league
         const { data: roleData } = await supabase
             .from('assignedrolesforleague')
             .select('role_id, roles(role_name)')
             .eq('user_id', userId)
             .eq('league_id', leagueId);
 
-        // Determine highest role
         const roleNames = (roleData || []).map((r: any) => r.roles?.role_name?.toLowerCase()).filter(Boolean);
+        const isCaptain = roleNames.includes('captain');
         const isGovernorOrHost = roleNames.includes('host') || roleNames.includes('governor');
-
-        if (!isGovernorOrHost) {
-            return NextResponse.json({ error: 'Only Governor or Host can approve/reject donations' }, { status: 403 });
-        }
 
         // Parse and validate body
         const body = await req.json();
@@ -120,12 +120,12 @@ export async function PATCH(
             return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 });
         }
 
-        const { status } = parsed.data;
+        const { action } = parsed.data;
 
         // Get the donation
         const { data: donation, error: donationError } = await supabase
             .from('rest_day_donations')
-            .select('*')
+            .select('*, donor:leaguemembers!donor_member_id(team_id)')
             .eq('id', donationId)
             .eq('league_id', leagueId)
             .single();
@@ -134,12 +134,63 @@ export async function PATCH(
             return NextResponse.json({ error: 'Donation not found' }, { status: 404 });
         }
 
-        if (donation.status !== 'pending') {
-            return NextResponse.json({ error: 'Donation has already been processed' }, { status: 400 });
+        const currentStatus = donation.status;
+        const donorTeamId = donation.donor?.team_id;
+
+        // Determine what the user can do based on role and current status
+        let canAct = false;
+        let newStatus: string | null = null;
+        let updateFields: Record<string, any> = {};
+
+        if (action === 'reject') {
+            // Captain can reject if pending, Governor/Host can reject at any stage before approved
+            if (isCaptain && currentStatus === 'pending' && membership.team_id === donorTeamId) {
+                canAct = true;
+                newStatus = 'rejected';
+            } else if (isGovernorOrHost && (currentStatus === 'pending' || currentStatus === 'captain_approved')) {
+                canAct = true;
+                newStatus = 'rejected';
+            }
+        } else if (action === 'approve') {
+            // Stage 1: Captain approves pending → captain_approved (if same team)
+            if (isCaptain && currentStatus === 'pending' && membership.team_id === donorTeamId) {
+                canAct = true;
+                newStatus = 'captain_approved';
+                updateFields = {
+                    captain_approved_by: userId,
+                    captain_approved_at: new Date().toISOString(),
+                };
+            }
+            // Stage 2: Governor/Host approves captain_approved → approved
+            else if (isGovernorOrHost && currentStatus === 'captain_approved') {
+                canAct = true;
+                newStatus = 'approved';
+                updateFields = {
+                    final_approved_by: userId,
+                    final_approved_at: new Date().toISOString(),
+                };
+            }
+            // Governor/Host can also do direct approval for pending if no captain in team
+            else if (isGovernorOrHost && currentStatus === 'pending') {
+                canAct = true;
+                newStatus = 'captain_approved';
+                updateFields = {
+                    captain_approved_by: userId,
+                    captain_approved_at: new Date().toISOString(),
+                };
+            }
         }
 
-        // If approving, validate donor has enough rest days
-        if (status === 'approved') {
+        if (!canAct || !newStatus) {
+            return NextResponse.json({
+                error: 'You do not have permission to perform this action on this donation',
+                currentStatus,
+                yourRoles: roleNames,
+            }, { status: 403 });
+        }
+
+        // If final approval, validate donor has enough rest days
+        if (newStatus === 'approved') {
             const donorStats = await getMemberFinalRestDays(supabase, donation.donor_member_id, leagueId);
 
             if (donorStats.finalRemaining < donation.days_transferred) {
@@ -153,8 +204,9 @@ export async function PATCH(
         const { data: updatedDonation, error: updateError } = await supabase
             .from('rest_day_donations')
             .update({
-                status,
-                approved_by: userId,
+                status: newStatus,
+                updated_at: new Date().toISOString(),
+                ...updateFields,
             })
             .eq('id', donationId)
             .select()
@@ -168,9 +220,13 @@ export async function PATCH(
         return NextResponse.json({
             success: true,
             data: updatedDonation,
+            message: action === 'approve'
+                ? (newStatus === 'approved' ? 'Donation fully approved!' : 'Donation approved by captain. Awaiting Governor/Host approval.')
+                : 'Donation rejected.',
         });
     } catch (error) {
         console.error('Error in rest-day-donations PATCH:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
+
