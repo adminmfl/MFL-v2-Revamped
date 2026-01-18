@@ -129,26 +129,33 @@ export function LeagueIndividualsTable({
       accessorKey: 'points',
       header: 'Points',
       cell: ({ row }) => (
-        <span className="text-lg font-bold text-primary">
-          {row.original.points}
-        </span>
+        <div>
+          <div className="text-lg font-bold text-primary tabular-nums">
+            {row.original.points}
+          </div>
+          {(row.original as any).challenge_points > 0 && (
+            <div className="text-[10px] text-muted-foreground whitespace-nowrap">
+              (+{(row.original as any).challenge_points} Challenge)
+            </div>
+          )}
+        </div>
       ),
     },
     ...(showAvgRR
       ? [
-          {
-            accessorKey: 'avg_rr',
-            header: 'RR',
-            cell: ({ row }) => (
-              <div className="flex items-center gap-1.5">
-                <Star className="size-4 text-yellow-500" />
-                <span className="font-medium">
-                  {row.original.avg_rr.toFixed(2)}
-                </span>
-              </div>
-            ),
-          },
-        ]
+        {
+          accessorKey: 'avg_rr',
+          header: 'RR',
+          cell: ({ row }) => (
+            <div className="flex items-center gap-1.5">
+              <Star className="size-4 text-yellow-500" />
+              <span className="font-medium">
+                {row.original.avg_rr.toFixed(2)}
+              </span>
+            </div>
+          ),
+        },
+      ]
       : []),
     {
       accessorKey: 'submission_count',

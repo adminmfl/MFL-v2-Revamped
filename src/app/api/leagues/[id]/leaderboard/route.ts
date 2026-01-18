@@ -625,6 +625,7 @@ export async function GET(
       team_id: string | null;
       team_name: string | null;
       points: number;
+      challenge_points: number;
       total_rr: number;
       rr_count: number;
       submission_count: number;
@@ -642,6 +643,7 @@ export async function GET(
         team_id: m.team_id,
         team_name: teamInfo?.team_name || null,
         points: 0,
+        challenge_points: 0,
         total_rr: 0,
         rr_count: 0,
         submission_count: 0,
@@ -669,6 +671,7 @@ export async function GET(
     (Array.from(memberChallengePoints.entries()) || []).forEach(([memberId, challengePoints]) => {
       const individualStat = individualStats.get(memberId);
       if (individualStat) {
+        individualStat.challenge_points = challengePoints;
         individualStat.points += challengePoints;
       }
     });
@@ -684,6 +687,7 @@ export async function GET(
         team_id: is.team_id,
         team_name: is.team_name,
         points: is.points,
+        challenge_points: is.challenge_points,
         avg_rr: is.rr_count > 0 ? Math.round((is.total_rr / is.rr_count) * 100) / 100 : 0,
         submission_count: is.submission_count,
       }))

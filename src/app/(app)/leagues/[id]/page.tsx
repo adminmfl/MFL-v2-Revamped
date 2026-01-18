@@ -555,22 +555,33 @@ export default function LeagueDashboardPage({
               teamAvgRR = typeof v === 'number' && Number.isFinite(v) ? Math.round(v * 100) / 100 : null;
 
               const p =
-                mine && typeof mine.points === 'number'
-                  ? mine.points
-                  : mine && typeof mine.total_points === 'number'
-                    ? mine.total_points
+                mine && typeof mine.total_points === 'number'
+                  ? mine.total_points
+                  : mine && typeof mine.points === 'number'
+                    ? mine.points
                     : null;
               teamPoints = typeof p === 'number' && Number.isFinite(p) ? Math.max(0, p) : null;
             }
 
             // Extract individual stats for user's total points (includes challenge bonuses)
-            const individuals: Array<{ user_id?: string; points?: number }> =
+            const individuals: Array<{ user_id?: string; points?: number; avg_rr?: number; challenge_points?: number }> =
               leaderboardData?.data?.individuals || leaderboardData?.data?.individualRankings || [];
             if (user && Array.isArray(individuals) && individuals.length > 0) {
               const mine = individuals.find((it) => String(it.user_id) === String(user.id));
               if (mine && typeof mine.points === 'number' && Number.isFinite(mine.points)) {
                 totalPoints = Math.max(0, Math.round(mine.points));
-                challengePoints = Math.max(0, totalPoints - points);
+
+                // Prioritize official challenge points from leaderboard
+                if (typeof mine.challenge_points === 'number' && Number.isFinite(mine.challenge_points)) {
+                  challengePoints = mine.challenge_points;
+                } else {
+                  challengePoints = Math.max(0, totalPoints - points);
+                }
+
+                // Overwrite Avg RR with leaderboard official value if available (to ensure parity)
+                if (typeof mine.avg_rr === 'number' && Number.isFinite(mine.avg_rr)) {
+                  avgRR = mine.avg_rr;
+                }
               }
             }
           }
@@ -929,8 +940,13 @@ export default function LeagueDashboardPage({
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
                     <div className="text-[11px] text-muted-foreground">Points</div>
-                    <div className="text-base font-semibold text-primary tabular-nums">
-                      {mySummary?.totalPoints.toLocaleString() ?? '—'}
+                    <div className="text-base font-semibold text-primary tabular-nums flex flex-col items-center leading-tight">
+                      <span>{mySummary?.totalPoints.toLocaleString() ?? '—'}</span>
+                      {mySummary && mySummary.challengePoints > 0 && (
+                        <span className="text-[10px] text-muted-foreground font-normal">
+                          (+{mySummary.challengePoints} Challenge Points)
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
