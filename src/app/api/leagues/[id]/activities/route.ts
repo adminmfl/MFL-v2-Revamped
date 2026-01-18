@@ -19,6 +19,7 @@ export interface LeagueActivity {
   activity_name: string;
   description: string | null;
   category_id: string | null;
+  frequency?: number | null;
   category?: {
     category_id: string;
     category_name: string;
@@ -31,6 +32,106 @@ export interface LeagueActivity {
     [key: string]: any;
   } | null;
   admin_info?: string | null;
+}
+
+// ============================================================================
+// PATCH Handler - Update activity frequency (host only)
+// ============================================================================
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: leagueId } = await params;
+    const session = (await getServerSession(authOptions as any)) as import('next-auth').Session | null;
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = session.user.id;
+    const supabase = getSupabaseServiceRole();
+
+    // Check if user is host of this league
+    const { data: league } = await supabase
+      .from('leagues')
+      .select('created_by')
+      .eq('league_id', leagueId)
+      .single();
+
+    if (league?.created_by !== userId) {
+      return NextResponse.json(
+        { error: 'Only the league host can configure activities' },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const { activity_id, frequency } = body as { activity_id?: string; frequency?: number | null };
+
+    if (!activity_id) {
+      return NextResponse.json(
+        { error: 'activity_id is required' },
+        { status: 400 }
+      );
+    }
+
+    let normalizedFrequency: number | null = null;
+    if (frequency !== null && frequency !== undefined && frequency !== '') {
+      const asNumber = Number(frequency);
+      if (!Number.isFinite(asNumber)) {
+        return NextResponse.json(
+          { error: 'frequency must be a number or null' },
+          { status: 400 }
+        );
+      }
+
+      const rounded = Math.floor(asNumber);
+      if (rounded < 0 || rounded > 7) {
+        return NextResponse.json(
+          { error: 'frequency must be between 0 and 7 (or null for unlimited)' },
+          { status: 400 }
+        );
+      }
+
+      normalizedFrequency = rounded;
+    }
+
+    const { data: updated, error: updateError } = await supabase
+      .from('leagueactivities')
+      .update({ frequency: normalizedFrequency, modified_by: userId, modified_date: new Date().toISOString() })
+      .eq('league_id', leagueId)
+      .eq('activity_id', activity_id)
+      .select()
+      .maybeSingle();
+
+    if (updateError) {
+      console.error('Error updating activity frequency:', updateError);
+      return NextResponse.json(
+        { error: 'Failed to update activity frequency' },
+        { status: 500 }
+      );
+    }
+
+    if (!updated) {
+      return NextResponse.json(
+        { error: 'Activity is not enabled for this league' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: { activity_id, frequency: normalizedFrequency },
+    });
+  } catch (error) {
+    console.error('Error in league activities PATCH:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
 }
 
 // ============================================================================
@@ -89,10 +190,14 @@ export async function GET(
     }
 
     // Get league-specific activities via leagueactivities junction table
-    const { data: leagueActivities, error: activitiesError } = await supabase
+    let leagueActivities: any[] | null = null;
+    let activitiesError: any = null;
+
+    const withFrequency = await supabase
       .from('leagueactivities')
       .select(`
         activity_id,
+        frequency,
         activities(
           activity_id, 
           activity_name, 
@@ -105,6 +210,35 @@ export async function GET(
         )
       `)
       .eq('league_id', leagueId);
+
+    leagueActivities = withFrequency.data as any[] | null;
+    activitiesError = withFrequency.error;
+
+    // Fallback if frequency column is not present yet
+    if (activitiesError && typeof activitiesError?.message === 'string') {
+      const msg = activitiesError.message.toLowerCase();
+      if (msg.includes('frequency') && msg.includes('column')) {
+        const withoutFrequency = await supabase
+          .from('leagueactivities')
+          .select(`
+            activity_id,
+            activities(
+              activity_id, 
+              activity_name, 
+              description,
+              category_id,
+              measurement_type,
+              settings,
+              admin_info,
+              activity_categories(category_id, category_name, display_name)
+            )
+          `)
+          .eq('league_id', leagueId);
+
+        leagueActivities = withoutFrequency.data as any[] | null;
+        activitiesError = withoutFrequency.error;
+      }
+    }
 
     if (activitiesError) {
       console.error('Error fetching league activities:', activitiesError);
@@ -124,6 +258,7 @@ export async function GET(
           activity_name: activity.activity_name,
           description: activity.description,
           category_id: activity.category_id,
+          frequency: (la as any).frequency ?? null,
           category: activity.activity_categories,
           value: activity.activity_name,
           measurement_type: activity.measurement_type,
@@ -155,6 +290,7 @@ export async function GET(
           activity_name: a.activity_name,
           description: a.description,
           category_id: a.category_id,
+          frequency: null,
           category: a.activity_categories,
           value: a.activity_name,
           measurement_type: a.measurement_type,

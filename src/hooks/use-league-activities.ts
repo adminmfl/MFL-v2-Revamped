@@ -15,6 +15,7 @@ export interface LeagueActivity {
   activity_name: string;
   description: string | null;
   category_id: string | null;
+  frequency?: number | null;
   category?: {
     category_id: string;
     category_name: string;
@@ -44,6 +45,7 @@ export interface UseLeagueActivitiesReturn {
   refetch: () => Promise<void>;
   addActivities: (activityIds: string[]) => Promise<boolean>;
   removeActivity: (activityId: string) => Promise<boolean>;
+  updateFrequency: (activityId: string, frequency: number | null) => Promise<boolean>;
 }
 
 // ============================================================================
@@ -154,6 +156,35 @@ export function useLeagueActivities(
     }
   }, [leagueId, fetchActivities]);
 
+  // Update activity frequency (host only)
+  const updateFrequency = useCallback(
+    async (activityId: string, frequency: number | null): Promise<boolean> => {
+      if (!leagueId) return false;
+
+      try {
+        const response = await fetch(`/api/leagues/${leagueId}/activities`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ activity_id: activityId, frequency }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to update frequency');
+        }
+
+        await fetchActivities();
+        return true;
+      } catch (err) {
+        console.error('Error updating frequency:', err);
+        setError(err instanceof Error ? err.message : 'Failed to update frequency');
+        return false;
+      }
+    },
+    [leagueId, fetchActivities]
+  );
+
   // Initial fetch
   useEffect(() => {
     fetchActivities();
@@ -167,6 +198,7 @@ export function useLeagueActivities(
     refetch: fetchActivities,
     addActivities,
     removeActivity,
+    updateFrequency,
   };
 }
 

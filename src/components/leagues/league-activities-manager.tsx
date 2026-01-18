@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import {
   Card,
   CardContent,
@@ -78,10 +79,29 @@ interface ActivityCardProps {
   activity: LeagueActivity;
   isEnabled: boolean;
   onToggle: (activityId: string, enable: boolean) => void;
+  onUpdateFrequency: (activityId: string, frequency: number | null) => void;
   isLoading: boolean;
 }
 
-function ActivityCard({ activity, isEnabled, onToggle, isLoading }: ActivityCardProps) {
+function ActivityCard({ activity, isEnabled, onToggle, onUpdateFrequency, isLoading }: ActivityCardProps) {
+  const [localFrequency, setLocalFrequency] = React.useState<string>('');
+
+  React.useEffect(() => {
+    const freq = typeof activity.frequency === 'number' ? String(activity.frequency) : '';
+    setLocalFrequency(freq);
+  }, [activity.frequency]);
+
+  const handleBlur = () => {
+    if (!isEnabled) return;
+    const trimmed = localFrequency.trim();
+    const next = trimmed === '' ? null : Number(trimmed);
+    if (trimmed !== '' && (!Number.isFinite(next) || next < 0 || next > 7)) {
+      toast.error('Frequency must be between 0 and 7 (or empty for unlimited)');
+      return;
+    }
+    onUpdateFrequency(activity.activity_id, trimmed === '' ? null : Math.floor(next as number));
+  };
+
   return (
     <div
       className={cn(
@@ -103,6 +123,26 @@ function ActivityCard({ activity, isEnabled, onToggle, isLoading }: ActivityCard
           <p className="text-xs text-muted-foreground truncate">
             {activity.description}
           </p>
+        )}
+        {isEnabled && (
+          <div
+            className="mt-2 flex items-center gap-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="text-xs text-muted-foreground">Weekly limit</span>
+            <Input
+              type="number"
+              min={0}
+              max={7}
+              step={1}
+              value={localFrequency}
+              placeholder="Unlimited"
+              onChange={(e) => setLocalFrequency(e.target.value)}
+              onBlur={handleBlur}
+              className="h-7 w-28 text-xs"
+              disabled={isLoading}
+            />
+          </div>
         )}
       </div>
       {isEnabled && (
@@ -132,6 +172,7 @@ export function LeagueActivitiesManager({ leagueId }: LeagueActivitiesManagerPro
     refetch,
     addActivities,
     removeActivity,
+    updateFrequency,
   } = useLeagueActivities(leagueId, { includeAll: true });
 
   // Don't treat "no activities configured" as an error in the manager - it's a valid state
@@ -143,6 +184,10 @@ export function LeagueActivitiesManager({ leagueId }: LeagueActivitiesManagerPro
   // Get set of enabled activity IDs
   const enabledActivityIds = React.useMemo(() => {
     return new Set((leagueData?.activities || []).map((a) => a.activity_id));
+  }, [leagueData?.activities]);
+
+  const enabledActivityMap = React.useMemo(() => {
+    return new Map((leagueData?.activities || []).map((a) => [a.activity_id, a]));
   }, [leagueData?.activities]);
 
   // Handle toggle activity
@@ -215,6 +260,22 @@ export function LeagueActivitiesManager({ leagueId }: LeagueActivitiesManagerPro
     }
   }, [allActivities, enabledActivityIds, addActivities]);
 
+  const handleUpdateFrequency = React.useCallback(
+    async (activityId: string, frequency: number | null) => {
+      const success = await updateFrequency(activityId, frequency);
+      if (success) {
+        if (frequency === null) {
+          toast.success('Frequency cleared (unlimited)');
+        } else {
+          toast.success('Frequency updated');
+        }
+      } else {
+        toast.error('Failed to update frequency');
+      }
+    },
+    [updateFrequency]
+  );
+
   if (isLoading) {
     return <LoadingSkeleton />;
   }
@@ -282,9 +343,13 @@ export function LeagueActivitiesManager({ leagueId }: LeagueActivitiesManagerPro
         {allActivities.map((activity) => (
           <ActivityCard
             key={activity.activity_id}
-            activity={activity}
+            activity={{
+              ...activity,
+              frequency: enabledActivityMap.get(activity.activity_id)?.frequency ?? null,
+            }}
             isEnabled={enabledActivityIds.has(activity.activity_id)}
             onToggle={handleToggle}
+            onUpdateFrequency={handleUpdateFrequency}
             isLoading={pendingChanges.has(activity.activity_id)}
           />
         ))}
