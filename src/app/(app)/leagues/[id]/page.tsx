@@ -922,10 +922,10 @@ export default function LeagueDashboardPage({
             </div>
           </div>
           <div className="px-4 lg:px-6 mt-2">
-            <Card>
-              <CardHeader className="pb-2">
+            <Card className="py-3 gap-2">
+              <CardHeader className="pb-0">
                 <div className="flex items-start justify-between gap-3">
-                  <CardTitle className="text-base">My Summary</CardTitle>
+                  <CardTitle className="text-base pt-1">My Summary</CardTitle>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -1071,8 +1071,8 @@ export default function LeagueDashboardPage({
             </Card>
           </div>
           <div className="px-4 lg:px-6 mt-2">
-            <Card>
-              <CardHeader className="pb-2">
+            <Card className="py-3 gap-2">
+              <CardHeader className="pb-0">
                 <CardTitle className="text-base">Team Summary</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
