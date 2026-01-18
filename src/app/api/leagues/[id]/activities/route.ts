@@ -107,9 +107,21 @@ export async function PATCH(
       .maybeSingle();
 
     if (updateError) {
+      const rawMessage = typeof updateError?.message === 'string' ? updateError.message : '';
+      const message = rawMessage.toLowerCase();
+      if (message.includes('frequency') && message.includes('column')) {
+        return NextResponse.json(
+          { error: 'Frequency is not supported yet for this league', code: 'FREQUENCY_NOT_SUPPORTED' },
+          { status: 409 }
+        );
+      }
+
       console.error('Error updating activity frequency:', updateError);
       return NextResponse.json(
-        { error: 'Failed to update activity frequency' },
+        {
+          error: 'Failed to update activity frequency',
+          details: process.env.NODE_ENV === 'development' ? rawMessage || updateError : undefined,
+        },
         { status: 500 }
       );
     }
@@ -192,6 +204,7 @@ export async function GET(
     // Get league-specific activities via leagueactivities junction table
     let leagueActivities: any[] | null = null;
     let activitiesError: any = null;
+    let supportsFrequency = true;
 
     const withFrequency = await supabase
       .from('leagueactivities')
@@ -218,6 +231,7 @@ export async function GET(
     if (activitiesError && typeof activitiesError?.message === 'string') {
       const msg = activitiesError.message.toLowerCase();
       if (msg.includes('frequency') && msg.includes('column')) {
+        supportsFrequency = false;
         const withoutFrequency = await supabase
           .from('leagueactivities')
           .select(`
@@ -316,6 +330,7 @@ export async function GET(
         activities: enabledActivities,
         allActivities: includeAll ? allActivities : undefined,
         isLeagueSpecific: true,
+        supportsFrequency,
         isHost,
       },
     });

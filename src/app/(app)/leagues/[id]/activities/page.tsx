@@ -91,6 +91,8 @@ export default function LeagueActivitiesPage({
     return new Map((data?.activities || []).map((a) => [a.activity_id, a]));
   }, [data?.activities]);
 
+  const supportsFrequency = data?.supportsFrequency !== false;
+
   React.useEffect(() => {
     if (!data?.activities) return;
     const next: Record<string, string> = {};
@@ -410,6 +412,11 @@ export default function LeagueActivitiesPage({
                     workouts.
                   </span>
                 )}
+                {!supportsFrequency && isHost && (
+                  <span className="block mt-2 text-xs text-muted-foreground">
+                    Weekly limits are unavailable because the frequency field is not enabled in this environment.
+                  </span>
+                )}
               </AlertDescription>
             </Alert>
 
@@ -462,7 +469,7 @@ export default function LeagueActivitiesPage({
                             {activity.description}
                           </p>
                         )}
-                        {isEnabled && (
+                        {isEnabled && supportsFrequency && (
                           <div
                             className="mt-2 flex items-center gap-2"
                             onClick={(e) => e.stopPropagation()}

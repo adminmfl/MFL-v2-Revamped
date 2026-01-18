@@ -195,8 +195,15 @@ export async function POST(req: NextRequest) {
         ? Math.floor(rawFrequency)
         : null;
 
-      // Null or >= 7 means unlimited
-      if (typeof frequency === 'number' && frequency >= 0 && frequency < 7) {
+      // Null means unlimited. Otherwise, enforce max submissions per week.
+      if (typeof frequency === 'number' && frequency >= 0) {
+        if (frequency === 0) {
+          return NextResponse.json(
+            { error: 'This activity is disabled for weekly submissions.' },
+            { status: 409 }
+          );
+        }
+
         const weekRange = getWeekRangeYmd(normalizedDate);
         if (!weekRange) {
           return NextResponse.json({ error: 'Invalid date format for submission' }, { status: 400 });

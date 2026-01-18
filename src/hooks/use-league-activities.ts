@@ -35,6 +35,7 @@ export interface LeagueActivitiesData {
   allActivities?: LeagueActivity[]; // All available activities (for host configuration)
   isLeagueSpecific: boolean;
   isHost?: boolean;
+  supportsFrequency?: boolean;
 }
 
 export interface UseLeagueActivitiesReturn {
@@ -171,7 +172,8 @@ export function useLeagueActivities(
         const result = await response.json();
 
         if (!response.ok) {
-          throw new Error(result.error || 'Failed to update frequency');
+          const detail = result?.details ? ` (${result.details})` : '';
+          throw new Error((result.error || 'Failed to update frequency') + detail);
         }
 
         await fetchActivities();
