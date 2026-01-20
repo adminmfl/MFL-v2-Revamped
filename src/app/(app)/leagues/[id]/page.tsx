@@ -407,6 +407,15 @@ export default function LeagueDashboardPage({
 
     const run = async () => {
       try {
+        // Check cache first for instant display (stale-while-revalidate pattern)
+        const cacheKey = `mySummary_${id}_${user?.id}`;
+        const cached = getClientCache<typeof mySummary>(cacheKey);
+        if (cached) {
+          setMySummary(cached);
+          setMySummaryLoading(false);
+          // Continue to refresh in background
+        }
+
         const todayLocal = new Date();
         const todayStr = localYmd(todayLocal);
 
@@ -457,12 +466,15 @@ export default function LeagueDashboardPage({
           // User-facing definitions for the dashboard:
           // - Points: approved workouts count (1 point per approved workout)
           // - Avg RR: total approved RR divided by the number of approved workout-days (points)
-          const approvedWorkouts = approvedSubs.filter((s) => String(s.type).toLowerCase() === 'workout');
-          points = approvedWorkouts.length;
+          // BACKEND PARITY: All approved entries (workouts + rest) count as 1 point.
+          points = approvedSubs.length;
           restUsed = approvedSubs.filter((s) => String(s.type).toLowerCase() === 'rest').length;
 
-          const totalRR = approvedWorkouts
+          const totalRR = approvedSubs
             .map((s) => {
+              // User Rule: Rest days give 1 RR
+              if (String(s.type).toLowerCase() === 'rest') return 1;
+
               const v = s.rr_value;
               if (typeof v === 'number') return v;
               if (typeof v === 'string') {
@@ -569,19 +581,26 @@ export default function LeagueDashboardPage({
             if (user && Array.isArray(individuals) && individuals.length > 0) {
               const mine = individuals.find((it) => String(it.user_id) === String(user.id));
               if (mine && typeof mine.points === 'number' && Number.isFinite(mine.points)) {
-                totalPoints = Math.max(0, Math.round(mine.points));
-
-                // Prioritize official challenge points from leaderboard
+                // Prioritize official challenge points from leaderboard (2-day delayed)
                 if (typeof mine.challenge_points === 'number' && Number.isFinite(mine.challenge_points)) {
                   challengePoints = mine.challenge_points;
                 } else {
-                  challengePoints = Math.max(0, totalPoints - points);
+                  // Fallback: if challenge bonus acts as a diff (rare)
+                  // Note: subtracting fresh points from stale total might result in negative, so clamp to 0.
+                  const staleTotal = Math.round(mine.points);
+                  challengePoints = Math.max(0, staleTotal - points);
                 }
 
+                // Recalculate totalPoints using FRESH local workout points + leaderboard challenge points.
+                // This ensures the "Total Points" on the dashboard updates immediately for new workouts
+                // instead of showing the 2-day delayed leaderboard total.
+                totalPoints = points + challengePoints;
+
                 // Overwrite Avg RR with leaderboard official value if available (to ensure parity)
-                if (typeof mine.avg_rr === 'number' && Number.isFinite(mine.avg_rr)) {
-                  avgRR = mine.avg_rr;
-                }
+                // DISABLED: We want fresh stats on dashboard, leaderboard is delayed by 2 days.
+                // if (typeof mine.avg_rr === 'number' && Number.isFinite(mine.avg_rr)) {
+                //   avgRR = mine.avg_rr;
+                // }
               }
             }
           }
@@ -591,7 +610,7 @@ export default function LeagueDashboardPage({
         }
 
         // Set summary with all calculated values
-        setMySummary({
+        const summaryData = {
           points,
           totalPoints,
           challengePoints,
@@ -603,20 +622,13 @@ export default function LeagueDashboardPage({
           teamPoints,
           teamMissedDays,
           teamRestUsed,
-        });
-        console.log('[MySummary] Final values:', {
-          points,
-          totalPoints,
-          challengePoints,
-          avgRR,
-          restUsed,
-          restUnused,
-          missedDays,
-          teamAvgRR,
-          teamPoints,
-          teamMissedDays,
-          teamRestUsed,
-        });
+        };
+        setMySummary(summaryData);
+
+        // Cache the summary data for faster subsequent loads
+        setClientCache(cacheKey, summaryData);
+
+        console.log('[MySummary] Final values:', summaryData);
       } catch {
         setMySummary(null);
       } finally {
