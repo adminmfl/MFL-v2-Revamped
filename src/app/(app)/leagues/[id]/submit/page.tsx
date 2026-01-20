@@ -37,6 +37,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
@@ -140,6 +147,16 @@ export default function SubmitActivityPage({
 
   // Submission type tab state
   const [submissionType, setSubmissionType] = React.useState<'workout' | 'rest'>('workout');
+
+  React.useEffect(() => {
+    if (resubmitId) return;
+    const typeParam = searchParams.get('type');
+    if (typeParam === 'rest') {
+      setSubmissionType('rest');
+    } else if (typeParam === 'workout') {
+      setSubmissionType('workout');
+    }
+  }, [searchParams, resubmitId]);
 
   // Whether the active league has completed
   const isLeagueCompleted = React.useMemo(() => {
@@ -795,9 +812,6 @@ export default function SubmitActivityPage({
             )}
           </p>
         </div>
-        <Button variant="outline" asChild>
-          <Link href={`/leagues/${leagueId}`}>Cancel</Link>
-        </Button>
       </div>
 
       <Tabs value={submissionType} onValueChange={(v) => setSubmissionType(v as 'workout' | 'rest')} className="w-full">
@@ -814,88 +828,44 @@ export default function SubmitActivityPage({
 
         {/* Workout Tab Content */}
         <TabsContent value="workout" className="mt-6">
-          <form onSubmit={handleSubmit}>
-            <div className="grid gap-6 lg:grid-cols-3">
-              {/* Main Form */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* Activity Type */}
-                <div className="rounded-lg border">
-                  <div className="border-b bg-muted/50 px-4 py-3">
-                    <h2 className="font-semibold">Activity Type</h2>
-                  </div>
-                  <div className="p-4">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {activityTypes.map((type) => (
-                        <button
-                          key={type.value}
-                          type="button"
-                          onClick={() =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              activity_type: type.value,
-                            }))
-                          }
-                          className={cn(
-                            'p-3 rounded-lg border text-center transition-all hover:border-primary/50',
-                            formData.activity_type === type.value
-                              ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                              : 'border-border bg-background'
-                          )}
-                        >
-                          <span className="text-sm font-medium block">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="rounded-lg border p-4 space-y-4 max-w-2xl">
+              {/* Activity Type - Dropdown */}
+              <div className="space-y-2">
+                <Label htmlFor="activity-type">Activity Type *</Label>
+                <Select
+                  value={formData.activity_type}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, activity_type: value }))
+                  }
+                >
+                  <SelectTrigger id="activity-type">
+                    <SelectValue placeholder="Select an activity type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activityTypes.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
                             {type.label}
-                          </span>
-                          {type.description && (
-                            <span className="text-xs text-muted-foreground line-clamp-1">
-                              {type.description}
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Activity Details */}
-                <div className="rounded-lg border">
-                  <div className="border-b bg-muted/50 px-4 py-3">
-                    <h2 className="font-semibold">Activity Details</h2>
-                  </div>
-                  <div className="p-4 space-y-4">
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                     {selectedActivity?.admin_info && (
-                      <div className="p-3 rounded-md border-l-4 border-primary bg-primary/5 flex items-start gap-3">
-                        <Info className="size-5 text-primary mt-1" />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">Note</span>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <button type="button" className="ml-2 text-xs text-muted-foreground underline">Read</button>
-                              </PopoverTrigger>
-                              <PopoverContent className="max-w-sm">
-                                <p className="text-sm whitespace-pre-wrap">{selectedActivity.admin_info}</p>
-                              </PopoverContent>
-                            </Popover>
-                          </div>
-                          <div className="text-sm text-muted-foreground mt-1 line-clamp-2">{selectedActivity.admin_info}</div>
-                        </div>
+                  <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                    {selectedActivity.admin_info}
                       </div>
                     )}
-                    {/* Activity Data Inputs */}
-                    <div className="rounded-lg border">
-                      <div className="border-b bg-muted/50 px-4 py-3">
-                        <h2 className="font-semibold">Workout Data</h2>
                       </div>
-                      <div className="p-4 space-y-4">
-                        {(() => {
+
+              {/* Workout Metrics */}
+              {formData.activity_type && (() => {
                           const primary = selectedActivity?.measurement_type || 'duration';
                           const secondary = selectedActivity?.settings?.secondary_measurement_type;
 
-                          const renderInput = (type: string, isSecondary: boolean = false) => {
+                const renderInput = (type: string) => {
                             let label = '';
                             let placeholder = '';
                             let unit = '';
-                            // Map 'hole' measurement type to 'holes' form field
                             const formKey = type === 'hole' ? 'holes' : type;
 
                             switch (type) {
@@ -923,8 +893,8 @@ export default function SubmitActivityPage({
 
                             return (
                               <div key={type} className="space-y-2">
-                                <Label htmlFor={type}>{label}</Label>
-                                <div className="relative group">
+                      <Label htmlFor={type}>{label}</Label>
+                      <div className="relative">
                                   <Input
                                     id={type}
                                     type="number"
@@ -935,7 +905,7 @@ export default function SubmitActivityPage({
                                     onChange={(e) =>
                                       setFormData((prev) => ({ ...prev, [formKey]: e.target.value }))
                                     }
-                                    className="pr-16" // Add padding to prevent text overlap with unit
+                                    className="pr-20 appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:m-0 [appearance:textfield]"
                                   />
                                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 border-l bg-muted/50 text-muted-foreground rounded-r-md px-3 text-sm">
                                     {unit}
@@ -947,60 +917,26 @@ export default function SubmitActivityPage({
 
                           return (
                             <div className="space-y-4">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="text-sm text-muted-foreground flex items-center gap-1">
-                                  {secondary ? 'Choose one metric to submit' : 'Enter workout details'}
-                                  {secondary && (
-                                    <Popover>
-                                      <PopoverTrigger asChild>
-                                        <button type="button" className="inline-flex items-center justify-center p-1 hover:bg-muted rounded-full transition-colors">
-                                          <Info className="size-4 text-muted-foreground" />
-                                          <span className="sr-only">Info</span>
-                                        </button>
-                                      </PopoverTrigger>
-                                      <PopoverContent className="max-w-xs text-sm" align="start">
-                                        You can submit your workout using either <strong>{primary}</strong> or <strong>{secondary}</strong>. Please maximize one metric and leave the other blank.
-                                      </PopoverContent>
-                                    </Popover>
-                                  )}
-                                </div>
-                              </div>
-
-                              <div className="flex flex-col md:flex-row gap-4 items-start">
-                                <div className="flex-1 w-full">
+                    {secondary ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   {renderInput(primary)}
+                        {renderInput(secondary)}
                                 </div>
-
+                    ) : (
+                      renderInput(primary)
+                    )}
                                 {secondary && (
-                                  <>
-                                    <div className="flex items-center justify-center md:h-[68px] md:pt-6">
-                                      <div className="bg-muted text-muted-foreground text-xs font-semibold px-2 py-1 rounded-full">
-                                        OR
-                                      </div>
-                                    </div>
-                                    <div className="flex-1 w-full">
-                                      {renderInput(secondary, true)}
-                                    </div>
-                                  </>
-                                )}
-                              </div>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Info className="size-3" />
+                        Enter only one metric - {primary} OR {secondary}
+                      </p>
+                    )}
                             </div>
                           );
                         })()}
 
-                        <div className="space-y-2">
-                          <Label htmlFor="notes">Notes (Optional)</Label>
-                          <Textarea
-                            id="notes"
-                            placeholder="How did it feel?"
-                            rows={2}
-                            value={formData.notes}
-                            onChange={(e) =>
-                              setFormData((prev) => ({ ...prev, notes: e.target.value }))
-                            }
-                          />
-                        </div>
-
+              {/* Date and Notes */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>Activity Date</Label>
                           <Popover>
@@ -1010,7 +946,7 @@ export default function SubmitActivityPage({
                                 className="w-full justify-start text-left font-normal"
                               >
                                 <CalendarIcon className="mr-2 size-4" />
-                                {format(activityDate, 'PPP')}
+                        {format(activityDate, 'MMM d, yyyy')}
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
@@ -1019,49 +955,52 @@ export default function SubmitActivityPage({
                                 selected={activityDate}
                                 onSelect={(date) => date && setActivityDate(date)}
                                 disabled={(date) => {
-                                  // Disable future dates relative to real-time
                                   if (date > new Date()) return true;
-                                  // Disable dates after league end date
                                   if (activeLeague?.end_date) {
                                     const endString = String(activeLeague.end_date).slice(0, 10);
-                                    // Compare YYYY-MM-DD strings for simplicity/safety
                                     const dateYmd = format(date, 'yyyy-MM-dd');
                                     return dateYmd > endString;
                                   }
                                   return false;
                                 }}
-                                // Users can select past dates (e.g. League End Date) for late submission
                                 initialFocus
                               />
                             </PopoverContent>
                           </Popover>
                         </div>
-                      </div>
-                    </div>      </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notes (Optional)</Label>
+                  <Textarea
+                    id="notes"
+                    placeholder="How did it feel?"
+                    rows={2}
+                    value={formData.notes}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, notes: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
 
                   {/* Photo Upload */}
-                  <div className="rounded-lg border">
-                    <div className="border-b bg-muted/50 px-4 py-3">
-                      <h2 className="font-semibold">Upload Proof Screenshot *</h2>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Upload a screenshot from your fitness app. We'll try to auto-extract duration.
-                      </p>
-                    </div>
-                    <div className="p-4">
+              <div className="space-y-2">
+                <Label htmlFor="proof-file">Proof Screenshot *</Label>
                       <input
+                        id="proof-file"
                         ref={fileInputRef}
                         type="file"
                         accept="image/*"
                         onChange={handleFileUpload}
                         className="hidden"
+                        aria-label="Upload proof screenshot"
                       />
-
                       {imagePreview ? (
                         <div className="relative">
                           <img
                             src={imagePreview}
                             alt="Selected workout"
-                            className="w-full h-48 object-contain rounded-lg border bg-muted"
+                      className="w-full h-32 object-contain rounded-lg border bg-muted"
                           />
                           <Button
                             type="button"
@@ -1072,130 +1011,32 @@ export default function SubmitActivityPage({
                           >
                             <X className="size-4" />
                           </Button>
-                          <Badge className="absolute bottom-2 left-2 bg-amber-600">
-                            <CheckCircle2 className="size-3 mr-1" />
-                            Ready to upload
-                          </Badge>
                         </div>
                       ) : (
                         <div
                           onClick={handleUploadClick}
-                          className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                    className="border-2 border-dashed rounded-lg p-4 text-center hover:border-primary/50 transition-colors cursor-pointer"
                         >
                           {uploadingImage || ocrProcessing ? (
-                            <>
-                              <Loader2 className="size-8 mx-auto text-primary mb-2 animate-spin" />
-                              <p className="text-sm font-medium mb-1">
-                                {uploadingImage ? 'Uploading...' : 'Processing image...'}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {ocrProcessing ? 'Extracting workout data' : 'Please wait'}
-                              </p>
-                            </>
+                      <Loader2 className="size-6 mx-auto text-primary animate-spin" />
                           ) : (
                             <>
-                              <ImageIcon className="size-8 mx-auto text-muted-foreground mb-2" />
-                              <p className="text-sm font-medium mb-1">
-                                Upload workout screenshot
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                PNG, JPG, GIF, WebP - Max 10MB
-                              </p>
+                        <ImageIcon className="size-6 mx-auto text-muted-foreground mb-1" />
+                        <p className="text-sm text-muted-foreground">Click to upload image</p>
                             </>
                           )}
                         </div>
                       )}
-                    </div>
-                  </div>
-                </div>
               </div>
 
-              {/* Sidebar */}
-              <div>
-                <div className="rounded-lg border sticky top-6">
-                  <div className="border-b bg-muted/50 px-4 py-3">
-                    <h2 className="font-semibold">Summary</h2>
-                  </div>
-                  <div className="p-4 space-y-4">
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Activity</span>
-                        <span className="font-medium">
-                          {selectedActivity?.activity_name || '—'}
-                        </span>
-                      </div>
-                      {/* Dynamic Summary Rows */}
-                      {formData.distance && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Distance</span>
-                          <span className="font-medium">{formData.distance} km</span>
-                        </div>
-                      )}
-                      {formData.duration && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Duration</span>
-                          <span className="font-medium">{formData.duration} min</span>
-                        </div>
-                      )}
-                      {formData.steps && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Steps</span>
-                          <span className="font-medium">{formData.steps} steps</span>
-                        </div>
-                      )}
-                      {formData.holes && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Holes</span>
-                          <span className="font-medium">{formData.holes} holes</span>
-                        </div>
-                      )}
-
-                      {/* Fallback if nothing entered */}
-                      {!formData.distance && !formData.duration && !formData.steps && !formData.holes && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">
-                            {selectedActivity?.measurement_type === 'steps' ? 'Steps' :
-                              selectedActivity?.measurement_type === 'hole' ? 'Holes' :
-                                selectedActivity?.measurement_type === 'distance' ? 'Distance' : 'Duration'}
-                          </span>
-                          <span className="font-medium">—</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Date</span>
-                        <span className="font-medium">
-                          {format(activityDate, 'MMM d, yyyy')}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Proof</span>
-                        <span className="font-medium">
-                          {selectedFile ? (
-                            <span className="text-amber-600">Selected</span>
-                          ) : (
-                            <span className="text-muted-foreground">None</span>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    {/* RR Estimate */}
-                    <div className="p-3 rounded-lg bg-muted/50">
+              {/* Summary and Submit */}
+              <div className="pt-4 border-t space-y-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">
-                          Estimated RR
-                        </span>
-                        <span className="text-xl font-bold text-primary">
+                  <span className="text-sm text-muted-foreground">Estimated RR</span>
+                  <span className="text-lg font-bold text-primary">
                           ~{estimatedRR.toFixed(1)} RR
                         </span>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Final RR calculated on submission
-                      </p>
-                    </div>
-
                     <Button
                       type="submit"
                       className="w-full"
@@ -1204,7 +1045,7 @@ export default function SubmitActivityPage({
                       {loading || uploadingImage ? (
                         <>
                           <Loader2 className="mr-2 size-4 animate-spin" />
-                          {uploadingImage ? 'Uploading proof...' : 'Submitting...'}
+                      {uploadingImage ? 'Uploading...' : 'Submitting...'}
                         </>
                       ) : (
                         <>
@@ -1213,13 +1054,9 @@ export default function SubmitActivityPage({
                         </>
                       )}
                     </Button>
-
-                    <p className="text-xs text-muted-foreground">
-                      Your submission will be reviewed by your team captain before
-                      points are awarded.
-                    </p>
-                  </div>
-                </div>
+                <p className="text-xs text-muted-foreground text-center">
+                  Submission will be reviewed by your captain
+                </p>
               </div>
             </div>
           </form>
@@ -1227,31 +1064,19 @@ export default function SubmitActivityPage({
 
         {/* Rest Day Tab Content */}
         <TabsContent value="rest" className="mt-6">
-          <form onSubmit={handleRestDaySubmit}>
-            <div className="grid gap-6 lg:grid-cols-3">
-              {/* Main Content */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* Rest Day Stats Card */}
-                <div className="rounded-lg border">
-                  <div className="border-b bg-muted/50 px-4 py-3">
-                    <h2 className="font-semibold flex items-center gap-2">
-                      <Moon className="size-4" />
-                      Rest Day Allowance
-                    </h2>
-                  </div>
-                  <div className="p-4">
+          <form onSubmit={handleRestDaySubmit} className="space-y-6">
+            <div className="rounded-lg border p-4 space-y-4 max-w-2xl">
+              {/* Rest Day Stats */}
                     {restDayLoading ? (
                       <div className="flex items-center justify-center py-4">
                         <Loader2 className="size-6 animate-spin text-muted-foreground" />
                       </div>
                     ) : restDayStats ? (
-                      <div className="space-y-4">
-                        {/* Progress Bar */}
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Rest days used</span>
+                <div className="space-y-3 pb-4 border-b">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Rest Days</span>
                             <span className="font-medium">
-                              {restDayStats.used} / {restDayStats.totalAllowed}
+                      {restDayStats.used} / {restDayStats.totalAllowed} used
                             </span>
                           </div>
                           <Progress
@@ -1261,68 +1086,34 @@ export default function SubmitActivityPage({
                               restDayStats.isAtLimit && '[&>div]:bg-amber-500'
                             )}
                           />
-                        </div>
-
-                        {/* Stats Grid */}
-                        <div className="grid grid-cols-3 gap-4 text-center">
-                          <div className="p-3 rounded-lg bg-muted/50">
-                            <div className="text-2xl font-bold text-green-600">
-                              {restDayStats.remaining}
-                            </div>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="p-2 rounded bg-muted/50">
+                      <div className="text-lg font-bold text-green-600">{restDayStats.remaining}</div>
                             <div className="text-xs text-muted-foreground">Remaining</div>
                           </div>
-                          <div className="p-3 rounded-lg bg-muted/50">
-                            <div className="text-2xl font-bold">
-                              {restDayStats.used}
-                            </div>
+                    <div className="p-2 rounded bg-muted/50">
+                      <div className="text-lg font-bold">{restDayStats.used}</div>
                             <div className="text-xs text-muted-foreground">Used</div>
                           </div>
-                          <div className="p-3 rounded-lg bg-muted/50">
-                            <div className="text-2xl font-bold text-amber-600">
-                              {restDayStats.pending}
-                            </div>
+                    <div className="p-2 rounded bg-muted/50">
+                      <div className="text-lg font-bold text-amber-600">{restDayStats.pending}</div>
                             <div className="text-xs text-muted-foreground">Pending</div>
                           </div>
                         </div>
-
-                        {/* Info */}
-                        {/* Info */}
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
-                          <Info className="size-4 mt-0.5 shrink-0" />
-                          <div>
-                            <span className="font-medium">{restDayStats.totalAllowed} Total Rest Days Allowed</span>
-                          </div>
-                        </div>
-
-                        {/* At Limit Warning */}
                         {restDayStats.isAtLimit && (
                           <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/20">
                             <ShieldAlert className="size-4 text-amber-600" />
-                            <AlertTitle className="text-amber-800 dark:text-amber-400">Rest Day Limit Reached</AlertTitle>
-                            <AlertDescription className="text-amber-700 dark:text-amber-300">
-                              You've used all your rest days. Any additional rest day will be submitted as an
-                              <strong> exemption request</strong> and requires approval from your Captain or Governor.
+                      <AlertTitle className="text-sm text-amber-800 dark:text-amber-400">Limit Reached</AlertTitle>
+                      <AlertDescription className="text-xs text-amber-700 dark:text-amber-300">
+                        This will be an exemption request requiring approval.
                             </AlertDescription>
                           </Alert>
                         )}
                       </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground py-4 text-center">
-                        Unable to load rest day stats
-                      </p>
-                    )}
-                  </div>
-                </div>
+              ) : null}
 
                 {/* Rest Day Form */}
-                <div className="rounded-lg border">
-                  <div className="border-b bg-muted/50 px-4 py-3">
-                    <h2 className="font-semibold">
-                      {restDayStats?.isAtLimit ? 'Request Rest Day Exemption' : 'Log Rest Day'}
-                    </h2>
-                  </div>
-                  <div className="p-4 space-y-4">
-                    {/* Date Picker */}
+              <div className="space-y-4">
                     <div className="space-y-2">
                       <Label>Rest Day Date</Label>
                       <Popover>
@@ -1332,7 +1123,7 @@ export default function SubmitActivityPage({
                             className="w-full justify-start text-left font-normal"
                           >
                             <CalendarIcon className="mr-2 size-4" />
-                            {format(activityDate, 'PPP')}
+                        {format(activityDate, 'MMM d, yyyy')}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
@@ -1341,9 +1132,7 @@ export default function SubmitActivityPage({
                             selected={activityDate}
                             onSelect={(date) => date && setActivityDate(date)}
                             disabled={(date) => {
-                              // Disable future dates relative to real-time
                               if (date > new Date()) return true;
-                              // Disable dates after league end date
                               if (activeLeague?.end_date) {
                                 const endString = String(activeLeague.end_date).slice(0, 10);
                                 const dateYmd = format(date, 'yyyy-MM-dd');
@@ -1357,7 +1146,6 @@ export default function SubmitActivityPage({
                       </Popover>
                     </div>
 
-                    {/* Reason (optional, required for exemption) */}
                     <div className="space-y-2">
                       <Label htmlFor="restReason">
                         {restDayStats?.isAtLimit ? 'Reason for Exemption *' : 'Reason (Optional)'}
@@ -1374,65 +1162,14 @@ export default function SubmitActivityPage({
                         rows={3}
                         required={restDayStats?.isAtLimit}
                       />
-                    </div>
-                  </div>
-                </div>
               </div>
 
-              {/* Sidebar */}
-              <div>
-                <div className="rounded-lg border sticky top-6">
-                  <div className="border-b bg-muted/50 px-4 py-3">
-                    <h2 className="font-semibold">Summary</h2>
-                  </div>
-                  <div className="p-4 space-y-4">
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Type</span>
-                        <span className="font-medium flex items-center gap-1">
-                          <Moon className="size-3" />
-                          Rest Day
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Date</span>
-                        <span className="font-medium">
-                          {format(activityDate, 'MMM d, yyyy')}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Status</span>
-                        <span className="font-medium">
-                          {restDayStats?.isAtLimit ? (
-                            <Badge variant="outline" className="text-amber-600 border-amber-300">
-                              Exemption Request
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-green-600 border-green-300">
-                              Within Limit
-                            </Badge>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    {/* RR Value */}
-                    <div className="p-3 rounded-lg bg-muted/50">
+                {/* Summary and Submit */}
+                <div className="pt-4 border-t space-y-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">
-                          RR Points
-                        </span>
-                        <span className="text-xl font-bold text-primary">
-                          +1.0 RR
-                        </span>
+                    <span className="text-sm text-muted-foreground">RR Points</span>
+                    <span className="text-lg font-bold text-primary">+1.0 RR</span>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Rest days earn 1.0 RR when approved
-                      </p>
-                    </div>
-
                     <Button
                       type="submit"
                       className="w-full"
@@ -1455,13 +1192,11 @@ export default function SubmitActivityPage({
                         </>
                       )}
                     </Button>
-
-                    <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground text-center">
                       {restDayStats?.isAtLimit
-                        ? 'Your exemption request will be reviewed by your Captain or Governor.'
-                        : 'Rest days help you recover while maintaining your streak.'}
+                      ? 'Requires approval from Captain or Governor'
+                      : 'Rest days earn 1.0 RR when approved'}
                     </p>
-                  </div>
                 </div>
               </div>
             </div>

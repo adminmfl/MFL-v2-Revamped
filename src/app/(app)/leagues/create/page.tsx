@@ -107,7 +107,7 @@ export default function CreateLeaguePage() {
     description: '',
     num_teams: '4',
     max_participants: '20',
-    rest_days: '18',
+    rest_days: '6',
     is_public: false,
     is_exclusive: true,
   });
@@ -161,6 +161,16 @@ export default function CreateLeaguePage() {
       setEndDate(end);
     }
   }, [startDate, duration]);
+
+  // Update rest days when duration changes (Default: 20% of duration)
+  React.useEffect(() => {
+    // Default rest days is 20% of duration, rounded to nearest integer
+    const calculatedRestDays = Math.round(duration * 0.20);
+    setFormData(prev => ({
+      ...prev,
+      rest_days: calculatedRestDays.toString()
+    }));
+  }, [duration]);
 
   // Fetch tiers on mount
   React.useEffect(() => {
@@ -227,9 +237,14 @@ export default function CreateLeaguePage() {
           setPricePreview(json.price_breakdown);
           setValidation(json.validation);
         } else {
-          console.error('Price preview failed:', json.error);
+          // If servers sends validation details even on failure, use them
+          if (json.validation) {
+            setValidation(json.validation);
+          } else {
+            console.error('Price preview failed:', json.error);
+            setValidation(null);
+          }
           setPricePreview(null);
-          setValidation(null);
         }
       } catch (err) {
         console.error('Price preview error:', err);
@@ -718,10 +733,18 @@ export default function CreateLeaguePage() {
                       type="number"
                       min={1}
                       max={selectedTier?.max_days || 365}
-                      value={duration}
-                      onChange={(e) => setDuration(parseInt(e.target.value) || 1)}
+                      value={duration || ''}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                        setDuration(val);
+                      }}
                       required
                     />
+                    {selectedTier && duration > selectedTier.max_days && (
+                      <p className="text-sm text-destructive mt-1">
+                        Duration cannot exceed {selectedTier.max_days} days for the {selectedTier.display_name} tier.
+                      </p>
+                    )}
                     {validation && !validation.valid && validation.errors.some(e => e.includes('Duration')) && (
                       <p className="text-sm text-destructive">
                         {validation.errors.find(e => e.includes('Duration'))}

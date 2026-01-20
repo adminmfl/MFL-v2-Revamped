@@ -75,15 +75,32 @@ export default function LeagueActivitiesPage({
 
   // Host/Governor can see all activities to configure
   const isAdmin = isHost || isGovernor;
-  const { data, isLoading, error, refetch, addActivities, removeActivity } =
+  const { data, isLoading, error, refetch, addActivities, removeActivity, updateFrequency } =
     useLeagueActivities(leagueId, { includeAll: isAdmin });
 
   const [toggleLoading, setToggleLoading] = React.useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = React.useState<string>('all');
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [frequencyDrafts, setFrequencyDrafts] = React.useState<Record<string, string>>({});
 
   const enabledActivityIds = React.useMemo(() => {
     return new Set(data?.activities.map((a) => a.activity_id) || []);
+  }, [data?.activities]);
+
+  const enabledActivityMap = React.useMemo(() => {
+    return new Map((data?.activities || []).map((a) => [a.activity_id, a]));
+  }, [data?.activities]);
+
+  const supportsFrequency = data?.supportsFrequency !== false;
+
+  React.useEffect(() => {
+    if (!data?.activities) return;
+    const next: Record<string, string> = {};
+    for (const activity of data.activities) {
+      next[activity.activity_id] =
+        typeof activity.frequency === 'number' ? String(activity.frequency) : '';
+    }
+    setFrequencyDrafts(next);
   }, [data?.activities]);
 
   // Extract unique categories
@@ -151,6 +168,46 @@ export default function LeagueActivitiesPage({
       toast.error('An error occurred');
     } finally {
       setToggleLoading(null);
+    }
+  };
+
+  const handleFrequencyBlur = async (activityId: string) => {
+    const raw = (frequencyDrafts[activityId] ?? '').trim();
+    const current = enabledActivityMap.get(activityId)?.frequency ?? null;
+
+    if (raw === '') {
+      if (current === null) return;
+      const success = await updateFrequency(activityId, null);
+      if (!success) {
+        toast.error('Failed to update frequency');
+        setFrequencyDrafts((prev) => ({
+          ...prev,
+          [activityId]: typeof current === 'number' ? String(current) : '',
+        }));
+      }
+      return;
+    }
+
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 7) {
+      toast.error('Frequency must be between 0 and 7 (or empty for unlimited)');
+      setFrequencyDrafts((prev) => ({
+        ...prev,
+        [activityId]: typeof current === 'number' ? String(current) : '',
+      }));
+      return;
+    }
+
+    const next = Math.floor(parsed);
+    if (current === next) return;
+
+    const success = await updateFrequency(activityId, next);
+    if (!success) {
+      toast.error('Failed to update frequency');
+      setFrequencyDrafts((prev) => ({
+        ...prev,
+        [activityId]: typeof current === 'number' ? String(current) : '',
+      }));
     }
   };
 
@@ -355,6 +412,11 @@ export default function LeagueActivitiesPage({
                     workouts.
                   </span>
                 )}
+                {!supportsFrequency && isHost && (
+                  <span className="block mt-2 text-xs text-muted-foreground">
+                    Weekly limits are unavailable because the frequency field is not enabled in this environment.
+                  </span>
+                )}
               </AlertDescription>
             </Alert>
 
@@ -406,6 +468,31 @@ export default function LeagueActivitiesPage({
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                             {activity.description}
                           </p>
+                        )}
+                        {isEnabled && supportsFrequency && (
+                          <div
+                            className="mt-2 flex items-center gap-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <span className="text-xs text-muted-foreground">Weekly limit</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={7}
+                              step={1}
+                              value={frequencyDrafts[activity.activity_id] ?? ''}
+                              placeholder="Unlimited"
+                              onChange={(e) =>
+                                setFrequencyDrafts((prev) => ({
+                                  ...prev,
+                                  [activity.activity_id]: e.target.value,
+                                }))
+                              }
+                              onBlur={() => handleFrequencyBlur(activity.activity_id)}
+                              className="h-7 w-28 text-xs"
+                              disabled={isProcessing}
+                            />
+                          </div>
                         )}
                       </div>
                     </div>

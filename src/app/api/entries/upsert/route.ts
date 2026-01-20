@@ -176,6 +176,71 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Enforce per-week activity frequency (if configured)
+    if (type === 'workout' && workout_type && !reupload_of) {
+      const { data: leagueActivity, error: leagueActivityError } = await supabase
+        .from('leagueactivities')
+        .select('frequency, activities!inner(activity_name)')
+        .eq('league_id', league_id)
+        .eq('activities.activity_name', workout_type)
+        .maybeSingle();
+
+      if (leagueActivityError) {
+        console.error('League activity lookup error:', leagueActivityError);
+        return NextResponse.json({ error: 'Failed to validate activity frequency' }, { status: 500 });
+      }
+
+      const rawFrequency = (leagueActivity as any)?.frequency ?? null;
+      const frequency = typeof rawFrequency === 'number' && Number.isFinite(rawFrequency)
+        ? Math.floor(rawFrequency)
+        : null;
+
+      // Null means unlimited. Otherwise, enforce max submissions per week.
+      if (typeof frequency === 'number' && frequency >= 0) {
+        if (frequency === 0) {
+          return NextResponse.json(
+            { error: 'This activity is disabled for weekly submissions.' },
+            { status: 409 }
+          );
+        }
+
+        const weekRange = getWeekRangeYmd(normalizedDate);
+        if (!weekRange) {
+          return NextResponse.json({ error: 'Invalid date format for submission' }, { status: 400 });
+        }
+
+        const { data: weeklyEntries, error: weeklyError } = await supabase
+          .from('effortentry')
+          .select('date, status')
+          .eq('league_member_id', membership.league_member_id)
+          .eq('type', 'workout')
+          .eq('workout_type', workout_type)
+          .gte('date', weekRange.start)
+          .lte('date', weekRange.end);
+
+        if (weeklyError) {
+          console.error('Weekly entries lookup error:', weeklyError);
+          return NextResponse.json({ error: 'Failed to validate weekly activity limit' }, { status: 500 });
+        }
+
+        const usedDates = new Set(
+          (weeklyEntries || [])
+            .filter((row: any) => row?.status && row.status !== 'rejected')
+            .map((row: any) => normalizeDateOnly(row.date))
+            .filter(Boolean)
+        );
+
+        if (usedDates.size >= frequency) {
+          return NextResponse.json(
+            {
+              error: `This activity is limited to ${frequency} day${frequency === 1 ? '' : 's'} per week. You have already used ${usedDates.size} day${usedDates.size === 1 ? '' : 's'} this week.`,
+            },
+            { status: 409 }
+          );
+        }
+      }
+    }
+
     // Get user's age for RR calculation adjustments
     const { data: userData } = await supabase
       .from('users')
@@ -431,4 +496,26 @@ function normalizeDateOnly(input: unknown): string {
 
   // Fallback: let Postgres attempt to parse; we keep original.
   return input;
+}
+
+function getWeekRangeYmd(dateYmd: string): { start: string; end: string } | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateYmd)) return null;
+
+  const [y, m, d] = dateYmd.split('-').map(Number);
+  if (!y || !m || !d) return null;
+
+  const base = new Date(Date.UTC(y, m - 1, d));
+  if (Number.isNaN(base.getTime())) return null;
+
+  const dayOfWeek = base.getUTCDay(); // 0 = Sunday
+  const start = new Date(base);
+  start.setUTCDate(base.getUTCDate() - dayOfWeek);
+
+  const end = new Date(start);
+  end.setUTCDate(start.getUTCDate() + 6);
+
+  return {
+    start: start.toISOString().slice(0, 10),
+    end: end.toISOString().slice(0, 10),
+  };
 }

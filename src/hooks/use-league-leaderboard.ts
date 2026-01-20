@@ -25,7 +25,7 @@ export interface TeamRanking {
   logo_url?: string | null;
   // Optional normalized points (computed client-side when normalization is active)
   normalized_points?: number;
-} 
+}
 
 export interface IndividualRanking {
   rank: number;
@@ -68,6 +68,7 @@ export interface PendingTeamWindowRanking {
   total_points: number;
   avg_rr: number;
   pointsByDate: Record<string, number>;
+  logo_url?: string | null;
 }
 
 export interface PendingWindow {
@@ -151,6 +152,13 @@ export function useLeagueLeaderboard(
       // Build URL with query params
       const params = new URLSearchParams();
       params.set('tzOffsetMinutes', String(new Date().getTimezoneOffset()));
+      // Also send IANA timezone for more accurate date calculation
+      try {
+        const ianaTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (ianaTimezone) {
+          params.set('ianaTimezone', ianaTimezone);
+        }
+      } catch { }
       if (dateRange.startDate) {
         params.set('startDate', dateRange.startDate);
       }
@@ -160,9 +168,10 @@ export function useLeagueLeaderboard(
 
       const url = `/api/leagues/${leagueId}/leaderboard${params.toString() ? `?${params.toString()}` : ''}`;
 
+
       // Try in-memory cache first for snappy back/forward navigation.
       const cacheKey = `leaderboard:${leagueId}:${dateRange.startDate || ''}:${dateRange.endDate || ''}`;
-      
+
       if (!force) {
         const cached = getClientCache<{
           data: LeaderboardData | null;
@@ -220,6 +229,15 @@ export function useLeagueLeaderboard(
             ...t,
             logo_url: logoByTeamId[t.team_id] || null,
           }));
+        }
+        if (Array.isArray(data?.pendingWindow?.teams)) {
+          data.pendingWindow = {
+            ...data.pendingWindow,
+            teams: data.pendingWindow.teams.map((t) => ({
+              ...t,
+              logo_url: logoByTeamId[t.team_id] || null,
+            })),
+          };
         }
 
         // Compute normalized points when active and variance exists

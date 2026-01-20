@@ -58,7 +58,7 @@ export function RoleSwitcher() {
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
-          
+
           {/* Dropdown menu */}
           <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
             <div className="p-2">
@@ -66,9 +66,10 @@ export function RoleSwitcher() {
                 Switch Role
               </div>
               {availableRoles.map((role) => {
+
                 const Icon = roleIcons[role];
                 const isActive = role === activeRole;
-                
+
                 return (
                   <button
                     key={role}
@@ -76,11 +77,10 @@ export function RoleSwitcher() {
                       setActiveRole(role);
                       setIsOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors ${
-                      isActive
-                        ? 'bg-primary text-white'
-                        : 'hover:bg-gray-100'
-                    }`}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors ${isActive
+                      ? 'bg-primary text-white'
+                      : 'hover:bg-gray-100'
+                      }`}
                   >
                     <Icon className="w-4 h-4" />
                     <div className="text-left flex-1">

@@ -26,8 +26,10 @@ export interface LeagueWithRoles {
   roles: LeagueRole[];
   team_id: string | null;
   team_name: string | null;
+  team_logo_url: string | null;
   is_host: boolean;
 }
+
 
 interface LeagueContextType {
   // League state

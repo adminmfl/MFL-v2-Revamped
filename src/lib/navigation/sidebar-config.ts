@@ -155,8 +155,9 @@ export function getSidebarNavItems(
   // ========================================
   const showPlayerSection =
     role === 'player' ||
-    role === 'captain' || // Captain is always a player
-    ((role === 'host' || role === 'governor') && isAlsoPlayer);
+    role === 'captain' ||
+    role === 'host' ||
+    role === 'governor';
 
   if (showPlayerSection) {
     sections.push({
@@ -286,9 +287,15 @@ export function getSidebarNavItems(
           url: leagueUrl('/my-team/submissions'),
           icon: ClipboardCheck,
         },
+        {
+          title: 'Approve Donations',
+          url: leagueUrl('/rest-day-donations'),
+          icon: HeartHandshake,
+        },
       ],
     });
   }
+
 
   return sections;
 }
@@ -341,7 +348,7 @@ export function getMobileTabItems(
       icon: Trophy,
     },
     {
-      title: 'Board',
+      title: 'Leaderboard',
       url: leagueUrl('/leaderboard'),
       icon: BarChart3,
     },
@@ -372,11 +379,12 @@ export function getMobileTabItems(
     });
   }
 
-  // Submit tab for players
+  // Submit tab for players (and hosts/governors)
   const showSubmit =
     role === 'player' ||
     role === 'captain' ||
-    ((role === 'host' || role === 'governor') && isAlsoPlayer);
+    role === 'host' ||
+    role === 'governor';
 
   if (showSubmit) {
     tabs.push({

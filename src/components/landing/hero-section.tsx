@@ -52,14 +52,19 @@ export function HeroSection() {
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start mb-8">
-              <Button size="lg" asChild className="px-6">
-                <Link href="/signup">
-                  Get Started
-                  <ArrowRight className="ml-2 size-4" />
-                </Link>
-              </Button>
-              <Button size="lg" variant="outline" asChild>
+            <div className="flex flex-col gap-4 justify-center lg:justify-start mb-8">
+              <div className="flex flex-row gap-3 justify-center lg:justify-start">
+                <Button size="lg" asChild className="flex-1 sm:flex-none px-6 shadow-lg shadow-primary/20">
+                  <Link href="/signup">
+                    Get Started
+                    <ArrowRight className="ml-2 size-4" />
+                  </Link>
+                </Button>
+                <Button size="lg" variant="outline" asChild className="flex-1 sm:flex-none px-6 bg-background/50 backdrop-blur-sm">
+                  <Link href="/login">Login</Link>
+                </Button>
+              </div>
+              <Button size="lg" variant="ghost" asChild className="text-muted-foreground hover:text-foreground">
                 <a href="#how-it-works">See How It Works</a>
               </Button>
             </div>

@@ -131,7 +131,7 @@ export function LeagueTeamsTable({ teams, showAvgRR = false }: LeagueTeamsTableP
     ...(showAvgRR
       ? [{
           accessorKey: 'avg_rr' as const,
-          header: 'Avg RR',
+          header: 'RR',
           cell: ({ row }: { row: any }) => (
             <div className="flex items-center gap-1.5">
               <Star className="size-4 text-yellow-500" />
