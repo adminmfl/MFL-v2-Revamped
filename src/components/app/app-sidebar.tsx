@@ -208,6 +208,8 @@ function NavSectionGroup({
   pathname: string | null;
   leagueId: string | null;
 }) {
+  const { setOpenMobile } = useSidebar();
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>{section.title}</SidebarGroupLabel>
@@ -225,7 +227,7 @@ function NavSectionGroup({
                 isActive={isActive}
                 tooltip={item.title}
               >
-                <Link href={item.url}>
+                <Link href={item.url} onClick={() => setOpenMobile(false)}>
                   <item.icon className="size-4" />
                   <span>{item.title}</span>
                   {item.badge && (

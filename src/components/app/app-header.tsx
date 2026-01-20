@@ -34,25 +34,33 @@ const routeTitles: Record<string, string> = {
   '/leagues/create': 'Create League',
   '/profile': 'Profile',
   '/help': 'Help & Support',
+  '/payments': 'Payments',
 };
 
 // Dynamic route patterns
 const dynamicRoutePatterns: [RegExp, (match: RegExpMatchArray) => string][] = [
   [/^\/leagues\/([^/]+)$/, () => 'League Dashboard'],
-  [/^\/leagues\/([^/]+)\/team$/, () => 'My Team'],
+  [/^\/leagues\/([^/]+)\/team$/, () => 'Team Management'],
+  [/^\/leagues\/([^/]+)\/my-team$/, () => 'My Team'],
+  [/^\/leagues\/([^/]+)\/my-team-view$/, () => 'My Team'],
   [/^\/leagues\/([^/]+)\/team\/manage$/, () => 'Team Management'],
   [/^\/leagues\/([^/]+)\/leaderboard$/, () => 'Leaderboard'],
   [/^\/leagues\/([^/]+)\/submit$/, () => 'Submit Activity'],
   [/^\/leagues\/([^/]+)\/manual-entry$/, () => 'Manual Workout Entry'],
-  [/^\/leagues\/([^/]+)\/validate$/, () => 'Validate Submissions'],
+  [/^\/leagues\/([^/]+)\/validate$/, () => 'Validate Activities'],
   [/^\/leagues\/([^/]+)\/teams$/, () => 'All Teams'],
-  [/^\/leagues\/([^/]+)\/submissions$/, () => 'All Submissions'],
+  [/^\/leagues\/([^/]+)\/submissions$/, () => 'All Activities'],
   [/^\/leagues\/([^/]+)\/members$/, () => 'Members'],
   [/^\/leagues\/([^/]+)\/settings$/, () => 'League Settings'],
   [/^\/leagues\/([^/]+)\/governors$/, () => 'Manage Governors'],
   [/^\/leagues\/([^/]+)\/analytics$/, () => 'Analytics'],
   [/^\/leagues\/([^/]+)\/progress$/, () => 'My Progress'],
   [/^\/leagues\/([^/]+)\/edit$/, () => 'Edit League'],
+  [/^\/leagues\/([^/]+)\/challenges$/, () => 'Challenges'],
+  [/^\/leagues\/([^/]+)\/activities$/, () => 'Activities'],
+  [/^\/leagues\/([^/]+)\/my-team\/submissions$/, () => 'Team Activities'],
+  [/^\/leagues\/([^/]+)\/rest-day-donations$/, () => 'Approve Donations'],
+  [/^\/leagues\/([^/]+)\/rules$/, () => 'Rules'],
 ];
 
 // ============================================================================

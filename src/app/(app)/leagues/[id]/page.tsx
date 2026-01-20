@@ -25,6 +25,7 @@ import {
   TrendingUp,
   RefreshCw,
   Moon,
+  Gift,
 } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
@@ -951,14 +952,9 @@ export default function LeagueDashboardPage({
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
-                    <div className="text-[11px] text-muted-foreground">Points</div>
-                    <div className="text-base font-semibold text-primary tabular-nums flex flex-col items-center leading-tight">
-                      <span>{mySummary?.totalPoints.toLocaleString() ?? '—'}</span>
-                      {mySummary && mySummary.challengePoints > 0 && (
-                        <span className="text-[10px] text-muted-foreground font-normal">
-                          (+{mySummary.challengePoints} Challenge Points)
-                        </span>
-                      )}
+                    <div className="text-[11px] text-muted-foreground">Total Points</div>
+                    <div className="text-base font-semibold text-primary tabular-nums">
+                      {mySummary?.totalPoints.toLocaleString() ?? '—'}
                     </div>
                   </div>
                   <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
@@ -967,6 +963,20 @@ export default function LeagueDashboardPage({
                       {mySummary?.avgRR !== null && typeof mySummary?.avgRR === 'number'
                         ? mySummary.avgRR.toFixed(2)
                         : '—'}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
+                    <div className="text-[11px] text-muted-foreground">Activity Points</div>
+                    <div className="text-base font-semibold text-primary tabular-nums">
+                      {mySummary?.points.toLocaleString() ?? '—'}
+                    </div>
+                  </div>
+                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
+                    <div className="text-[11px] text-muted-foreground">Challenge Points</div>
+                    <div className="text-base font-semibold text-primary tabular-nums">
+                      {mySummary?.challengePoints.toLocaleString() ?? '—'}
                     </div>
                   </div>
                 </div>
@@ -1226,6 +1236,22 @@ export default function LeagueDashboardPage({
             </div>
           </CardContent>
         </Card>
+
+        {/* Donate Rest Days Button */}
+        <Link href={`/leagues/${id}/rest-day-donations`} className="mt-4 block">
+          <Card className="hover:shadow-md transition-all hover:border-primary/30 cursor-pointer group">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="size-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shrink-0">
+                <Gift className="size-6 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold group-hover:text-primary transition-colors">Donate Rest Days</h3>
+                <p className="text-sm text-muted-foreground">Help a teammate in need</p>
+              </div>
+              <ArrowRight className="size-5 text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all" />
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* Progress Bar (for launched/active leagues) */}

@@ -87,25 +87,24 @@ export function LeagueTeamsTable({ teams, showAvgRR = false }: LeagueTeamsTableP
       accessorKey: 'rank',
       header: 'Rank',
       cell: ({ row }) => <RankBadge rank={row.original.rank} />,
-      size: 60,
     },
     {
       accessorKey: 'team_name',
       header: 'Team',
       cell: ({ row }) => (
-        <div className="flex items-center gap-3">
-          <Avatar className="size-10 rounded-lg">
+        <div className="flex items-center gap-2">
+          <Avatar className="size-8 rounded-md shrink-0">
             {row.original.logo_url ? (
               <AvatarImage src={row.original.logo_url} alt={row.original.team_name} />
             ) : (
-              <AvatarFallback className="rounded-lg text-xs uppercase">
+              <AvatarFallback className="rounded-md text-xs uppercase">
                 {row.original.team_name.slice(0, 2)}
               </AvatarFallback>
             )}
           </Avatar>
           <div>
-            <p className="font-semibold">{row.original.team_name}</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="font-semibold text-sm whitespace-nowrap">{row.original.team_name}</p>
+            <p className="text-xs text-muted-foreground whitespace-nowrap">
               {row.original.member_count} members
             </p>
           </div>
@@ -116,39 +115,23 @@ export function LeagueTeamsTable({ teams, showAvgRR = false }: LeagueTeamsTableP
       accessorKey: 'total_points',
       header: 'Points',
       cell: ({ row }) => (
-        <div>
-          <p className="text-lg font-bold text-primary tabular-nums">
-            {row.original.total_points}
-          </p>
-          {row.original.challenge_bonus > 0 && (
-            <p className="text-xs text-muted-foreground">
-              Challenge Bonus: {row.original.challenge_bonus}
-            </p>
-          )}
+        <div className="text-base font-bold text-primary tabular-nums">
+          {row.original.total_points}
         </div>
       ),
     },
     ...(showAvgRR
       ? [{
-          accessorKey: 'avg_rr' as const,
-          header: 'RR',
-          cell: ({ row }: { row: any }) => (
-            <div className="flex items-center gap-1.5">
-              <Star className="size-4 text-yellow-500" />
-              <span className="font-medium">{row.original.avg_rr.toFixed(2)}</span>
-            </div>
-          ),
-        }]
+        accessorKey: 'avg_rr' as const,
+        header: 'RR',
+        cell: ({ row }: { row: any }) => (
+          <div className="flex items-center gap-1">
+            <Star className="size-3.5 text-yellow-500" />
+            <span className="text-sm font-medium whitespace-nowrap">{row.original.avg_rr.toFixed(2)}</span>
+          </div>
+        ),
+      }]
       : []),
-    {
-      accessorKey: 'submission_count',
-      header: 'Submissions',
-      cell: ({ row }) => (
-        <Badge variant="secondary">
-          {row.original.submission_count}
-        </Badge>
-      ),
-    },
   ], [showAvgRR]);
 
   // ============================================================================
@@ -169,8 +152,8 @@ export function LeagueTeamsTable({ teams, showAvgRR = false }: LeagueTeamsTableP
   // ============================================================================
 
   return (
-    <div className="rounded-lg border">
-      <Table>
+    <div className="rounded-lg border overflow-x-auto">
+      <Table className="w-full">
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>

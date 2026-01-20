@@ -67,11 +67,11 @@ export function RealTimeScoreboardTable({ dates, teams }: RealTimeScoreboardTabl
   if (!dates.length) return null;
 
   return (
-    <div className="rounded-lg border">
-      <Table>
+    <div className="rounded-lg border overflow-x-auto">
+      <Table className="w-full">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[80px]">Rank</TableHead>
+            <TableHead>Rank</TableHead>
             <TableHead>Team</TableHead>
             {dates.map((d) => (
               <TableHead key={d} className="text-right tabular-nums">
@@ -92,19 +92,19 @@ export function RealTimeScoreboardTable({ dates, teams }: RealTimeScoreboardTabl
                   <RankBadge rank={t.rank} />
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar className="size-10 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Avatar className="size-8 rounded-md shrink-0">
                       {t.logo_url ? (
                         <AvatarImage src={t.logo_url} alt={t.team_name} />
                       ) : (
-                        <AvatarFallback className="rounded-lg text-xs uppercase">
+                        <AvatarFallback className="rounded-md text-xs uppercase">
                           {t.team_name.slice(0, 2)}
                         </AvatarFallback>
                       )}
                     </Avatar>
                     <div>
-                      <p className="font-semibold">{t.team_name}</p>
-                      <p className="text-xs text-muted-foreground">2-day delay window</p>
+                      <p className="font-semibold text-sm whitespace-nowrap">{t.team_name}</p>
+                      <p className="text-xs text-muted-foreground whitespace-nowrap">2-day delay window</p>
                     </div>
                   </div>
                 </TableCell>
@@ -119,9 +119,9 @@ export function RealTimeScoreboardTable({ dates, teams }: RealTimeScoreboardTabl
                   );
                 })}
                 <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-1.5">
-                    <Star className="size-4 text-yellow-500" />
-                    <span className="font-medium tabular-nums">{t.avg_rr.toFixed(2)}</span>
+                  <div className="flex items-center justify-end gap-1">
+                    <Star className="size-3.5 text-yellow-500" />
+                    <span className="text-sm font-medium tabular-nums whitespace-nowrap">{t.avg_rr.toFixed(2)}</span>
                   </div>
                 </TableCell>
               </TableRow>

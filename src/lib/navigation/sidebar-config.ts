@@ -164,7 +164,7 @@ export function getSidebarNavItems(
       title: 'Player',
       items: [
         {
-          title: 'My Submissions',
+          title: 'My Activities',
           url: leagueUrl('/my-submissions'),
           icon: ClipboardCheck,
         },
@@ -177,11 +177,6 @@ export function getSidebarNavItems(
           title: 'My Team',
           url: leagueUrl('/my-team-view'),
           icon: Eye,
-        },
-        {
-          title: 'Donate Rest Days',
-          url: leagueUrl('/rest-day-donations'),
-          icon: Gift,
         },
       ],
     });
@@ -251,7 +246,7 @@ export function getSidebarNavItems(
       title: 'Oversight',
       items: [
         {
-          title: 'All Submissions',
+          title: 'All Activities',
           url: leagueUrl('/submissions'),
           icon: ClipboardCheck,
         },
@@ -283,7 +278,7 @@ export function getSidebarNavItems(
           icon: Users,
         },
         {
-          title: 'Team Submissions',
+          title: 'Team Activities',
           url: leagueUrl('/my-team/submissions'),
           icon: ClipboardCheck,
         },

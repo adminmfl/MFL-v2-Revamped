@@ -4,8 +4,8 @@
  */
 'use client';
 
-import React, { use, useState } from 'react';
-import { format, parseISO } from 'date-fns';
+import React, { use, useState, useMemo } from 'react';
+import { format, parseISO, addDays, differenceInDays } from 'date-fns';
 import {
   RefreshCw,
   AlertCircle,
@@ -48,6 +48,44 @@ import {
 import { DynamicReportDialog } from '@/components/leagues/dynamic-report-dialog';
 
 // ============================================================================
+// Week Calculation Helper
+// ============================================================================
+
+interface WeekPreset {
+  label: string;
+  startDate: string;
+  endDate: string;
+  weekNumber: number;
+}
+
+function calculateWeekPresets(leagueStartDate: string, leagueEndDate: string): WeekPreset[] {
+  const start = parseISO(leagueStartDate);
+  const end = parseISO(leagueEndDate);
+  const today = new Date();
+  const weeks: WeekPreset[] = [];
+
+  let weekStart = start;
+  let weekNumber = 1;
+
+  while (weekStart <= end && weekStart <= today) {
+    const weekEnd = addDays(weekStart, 6);
+    const actualEnd = weekEnd > end ? end : weekEnd;
+
+    weeks.push({
+      label: `Week ${weekNumber}`,
+      startDate: format(weekStart, 'yyyy-MM-dd'),
+      endDate: format(actualEnd, 'yyyy-MM-dd'),
+      weekNumber,
+    });
+
+    weekStart = addDays(weekStart, 7);
+    weekNumber++;
+  }
+
+  return weeks;
+}
+
+// ============================================================================
 // Loading Skeleton
 // ============================================================================
 
@@ -73,6 +111,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [filterOpen, setFilterOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('teams');
+  const [selectedWeek, setSelectedWeek] = useState<number | 'all' | 'custom'>('all');
 
   // Fetch leaderboard data
   const {
@@ -104,6 +143,33 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
 
   const canToggleRaw = roles.includes('host') || roles.includes('governor');
 
+  // Calculate week presets based on league dates
+  const league = data?.league;
+  const weekPresets = useMemo(() => {
+    if (!league?.start_date || !league?.end_date) return [];
+    return calculateWeekPresets(league.start_date, league.end_date);
+  }, [league?.start_date, league?.end_date]);
+
+  const handleWeekSelect = (week: number | 'all' | 'custom') => {
+    setSelectedWeek(week);
+    if (week === 'all') {
+      setStartDate(undefined);
+      setEndDate(undefined);
+      setDateRange(null, null);
+      setFilterOpen(false);
+    } else if (week === 'custom') {
+      setFilterOpen(true);
+    } else {
+      const preset = weekPresets.find(w => w.weekNumber === week);
+      if (preset) {
+        setStartDate(parseISO(preset.startDate));
+        setEndDate(parseISO(preset.endDate));
+        setDateRange(preset.startDate, preset.endDate);
+        setFilterOpen(false);
+      }
+    }
+  };
+
   const handleApplyDateRange = () => {
     setDateRange(
       startDate ? format(startDate, 'yyyy-MM-dd') : null,
@@ -116,6 +182,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
     setStartDate(undefined);
     setEndDate(undefined);
     setDateRange(null, null);
+    setSelectedWeek('all');
     setFilterOpen(false);
   };
 
@@ -146,7 +213,6 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
   const individuals = data?.individuals || [];
   const stats = data?.stats || { total_submissions: 0, approved: 0, pending: 0, rejected: 0, total_rr: 0 };
   const dateRange = data?.dateRange;
-  const league = data?.league;
   const pendingWindow = (viewRawTotals && canToggleRaw && rawPendingWindow) ? rawPendingWindow : data?.pendingWindow;
 
   const displayDateRange = dateRange
@@ -158,8 +224,8 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="@container/main flex flex-1 flex-col gap-3 lg:gap-4">
       {/* Compact Header */}
-      <div className="flex flex-col gap-2 px-4 lg:px-6 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
+      <div className="px-4 lg:px-6">
+        <div className="flex items-start justify-between gap-3 mb-2">
           <div>
             <h1 className="text-xl font-bold tracking-tight">Leaderboard</h1>
             <p className="text-sm text-muted-foreground">
@@ -169,6 +235,9 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
               )}
             </p>
           </div>
+          <Button variant="outline" size="sm" onClick={refetch}>
+            <RefreshCw className="size-4" />
+          </Button>
         </div>
         <div className="flex items-center gap-2">
           {league?.start_date && league?.end_date && league?.status !== 'completed' && (
@@ -178,9 +247,6 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
               leagueEndDate={league.end_date}
             />
           )}
-          <Button variant="outline" size="sm" onClick={refetch}>
-            <RefreshCw className="size-4" />
-          </Button>
           {normalizationActive && canToggleRaw && (
             <Button variant="ghost" size="sm" onClick={() => setViewRawTotals(v => !v)}>
               {viewRawTotals ? 'Normalized' : 'Raw'}
@@ -189,74 +255,115 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      {/* Stats Bar + Collapsible Filter */}
-      <div className="px-4 lg:px-6 space-y-2">
-        <LeaderboardStats stats={stats} />
-
-        {/* Collapsible Date Filter */}
-        <Collapsible open={filterOpen} onOpenChange={setFilterOpen}>
-          <div className="flex items-center justify-between">
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-sm text-muted-foreground">
-                <Calendar className="size-4 mr-2" />
-                {displayDateRange}
-                {filterOpen ? <ChevronUp className="size-4 ml-2" /> : <ChevronDown className="size-4 ml-2" />}
+      {/* Week Filter Only */}
+      <div className="px-4 lg:px-6">
+        {/* Date Range Filter Dropdown */}
+        <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="text-sm">
+              <Calendar className="size-4 mr-2" />
+              {selectedWeek === 'all'
+                ? 'All Time'
+                : selectedWeek === 'custom'
+                  ? (startDate && endDate
+                    ? `${format(startDate, 'MMM d')} – ${format(endDate, 'MMM d')}`
+                    : 'Custom Range')
+                  : weekPresets.find(w => w.weekNumber === selectedWeek)?.label || 'All Time'}
+              <ChevronDown className="size-4 ml-2" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-2" align="start">
+            <div className="flex flex-col gap-1">
+              {/* All Time Option */}
+              <Button
+                variant={selectedWeek === 'all' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="justify-start"
+                onClick={() => handleWeekSelect('all')}
+              >
+                All Time
               </Button>
-            </CollapsibleTrigger>
-          </div>
-          <CollapsibleContent className="pt-3">
-            <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg border bg-muted/30">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn(!startDate && 'text-muted-foreground')}>
-                    {startDate ? format(startDate, 'MMM d, yyyy') : 'Start date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={startDate}
-                    onSelect={setStartDate}
-                    disabled={(date) => endDate ? date > endDate : false}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <span className="text-muted-foreground">to</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn(!endDate && 'text-muted-foreground')}>
-                    {endDate ? format(endDate, 'MMM d, yyyy') : 'End date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={endDate}
-                    onSelect={setEndDate}
-                    disabled={(date) => startDate ? date < startDate : false}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <Button size="sm" onClick={handleApplyDateRange}>Apply</Button>
-              <Button variant="ghost" size="sm" onClick={handleResetDateRange}>Reset</Button>
+
+              {/* Week Presets */}
+              {weekPresets.length > 0 && (
+                <>
+                  <div className="text-xs font-medium text-muted-foreground px-2 py-1 mt-1">
+                    Weeks
+                  </div>
+                  {weekPresets.map((week) => (
+                    <Button
+                      key={week.weekNumber}
+                      variant={selectedWeek === week.weekNumber ? 'secondary' : 'ghost'}
+                      size="sm"
+                      className="justify-start"
+                      onClick={() => handleWeekSelect(week.weekNumber)}
+                    >
+                      {week.label}
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {format(parseISO(week.startDate), 'MMM d')} – {format(parseISO(week.endDate), 'MMM d')}
+                      </span>
+                    </Button>
+                  ))}
+                </>
+              )}
+
+              {/* Custom Date Range */}
+              <div className="text-xs font-medium text-muted-foreground px-2 py-1 mt-1">
+                Custom Range
+              </div>
+              <div className="flex flex-col gap-2 p-2 rounded border bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className={cn('flex-1 text-xs', !startDate && 'text-muted-foreground')}>
+                        {startDate ? format(startDate, 'MMM d') : 'Start'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={startDate}
+                        onSelect={setStartDate}
+                        disabled={(date) => endDate ? date > endDate : false}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <span className="text-xs text-muted-foreground">–</span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className={cn('flex-1 text-xs', !endDate && 'text-muted-foreground')}>
+                        {endDate ? format(endDate, 'MMM d') : 'End'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={endDate}
+                        onSelect={setEndDate}
+                        disabled={(date) => startDate ? date < startDate : false}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={handleResetDateRange}>Reset</Button>
+                  <Button size="sm" className="flex-1 text-xs" onClick={handleApplyDateRange}>Apply</Button>
+                </div>
+              </div>
             </div>
-          </CollapsibleContent>
-        </Collapsible>
+          </PopoverContent>
+        </Popover>
       </div>
 
-      {/* Tabbed Leaderboards */}
-      <div className="px-4 lg:px-6 flex-1">
+      {/* Tabbed Leaderboards - Teams & Challenges Only */}
+      <div className="px-4 lg:px-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="teams" className="gap-2">
               <Trophy className="size-4" />
-              <span>Teams</span>
-            </TabsTrigger>
-            <TabsTrigger value="individual" className="gap-2">
-              <User className="size-4" />
-              <span>Individual</span>
+              <span>Overall</span>
             </TabsTrigger>
             <TabsTrigger value="challenges" className="gap-2">
               <Flag className="size-4" />
@@ -264,60 +371,58 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
             </TabsTrigger>
           </TabsList>
 
-
-          {/* Teams Leaderboard (Main) */}
+          {/* Teams Leaderboard (Overall) */}
           <TabsContent value="teams" className="mt-0">
-            <div className="rounded-lg border p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold">Team Rankings</h2>
-                  <p className="text-sm text-muted-foreground">Overall standings</p>
-                </div>
-              </div>
-              <LeagueTeamsTable teams={teams} showAvgRR={true} />
-            </div>
-          </TabsContent>
-
-          {/* Individual Leaderboard */}
-          <TabsContent value="individual" className="mt-0">
-            <div className="rounded-lg border p-4">
+            <div className="rounded-lg border p-3 sm:p-4">
               <div className="mb-3">
-                <h2 className="text-lg font-semibold">Individual Rankings</h2>
-                <p className="text-sm text-muted-foreground">Personal standings</p>
+                <h2 className="text-base sm:text-lg font-semibold">Overall standings</h2>
+                <p className="text-xs sm:text-sm text-muted-foreground">This is the overall leaderboard including challange scores</p>
               </div>
-              <LeagueIndividualsTable individuals={individuals} showAvgRR={true} />
+              <div className="overflow-hidden">
+                <LeagueTeamsTable teams={teams} showAvgRR={true} />
+              </div>
             </div>
           </TabsContent>
 
-          {/* Challenge Leaderboard */}
+          {/* Challenges Leaderboard */}
           <TabsContent value="challenges" className="mt-0">
             <ChallengeSpecificLeaderboard leagueId={leagueId} />
           </TabsContent>
         </Tabs>
       </div>
 
-      {/* Real-time Scoreboard (Below, always visible if data exists) */}
+      {/* Real-time Scoreboard - Always Visible Below Tabs */}
       {pendingWindow?.dates?.length ? (
         <div className="px-4 lg:px-6">
-          <div className="rounded-lg border p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <h2 className="text-lg font-semibold">Real-time Scoreboard</h2>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
-                    <Info className="size-4 text-muted-foreground" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="max-w-sm" align="start">
-                  Today's and yesterday's scores. Subject to change.
-                </PopoverContent>
-              </Popover>
+          <div className="rounded-lg border p-3 sm:p-4">
+            <div className="mb-3">
+              <h2 className="text-base sm:text-lg font-semibold">Real-time Scoreboard</h2>
+              <p className="text-xs sm:text-sm text-muted-foreground">Today's and yesterday's scores (subject to change)</p>
             </div>
-            <p className="text-sm text-muted-foreground mb-3">Scores from today and yesterday</p>
-            <RealTimeScoreboardTable dates={pendingWindow.dates} teams={pendingWindow.teams || []} />
+            <div className="overflow-hidden">
+              <RealTimeScoreboardTable dates={pendingWindow.dates} teams={pendingWindow.teams || []} />
+            </div>
           </div>
         </div>
       ) : null}
+
+      {/* Individual Leaderboard - Always Visible Below Real-time */}
+      <div className="px-4 lg:px-6">
+        <div className="rounded-lg border p-3 sm:p-4">
+          <div className="mb-3">
+            <h2 className="text-base sm:text-lg font-semibold">Individual Rankings</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground">Personal standings</p>
+          </div>
+          <div className="overflow-hidden">
+            <LeagueIndividualsTable individuals={individuals} showAvgRR={true} />
+          </div>
+        </div>
+      </div>
+
+      {/* Stats at Bottom */}
+      <div className="px-4 lg:px-6 pb-4">
+        <LeaderboardStats stats={stats} />
+      </div>
     </div>
   );
 }
