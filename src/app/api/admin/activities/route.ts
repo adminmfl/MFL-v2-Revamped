@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const body = await req.json();
     const {
       activity_name,
       description,

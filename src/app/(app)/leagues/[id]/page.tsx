@@ -161,6 +161,8 @@ export default function LeagueDashboardPage({
     missedDays: number;
     teamAvgRR: number | null;
     teamPoints: number | null;
+    teamMissedDays: number | null;
+    teamRestUsed: number | null;
   } | null>(null);
 
   // Sync active league if navigated directly
@@ -415,9 +417,10 @@ export default function LeagueDashboardPage({
         qs.set('startDate', league.start_date);
         qs.set('endDate', effectiveEndStr);
 
-        const [myRes, restRes] = await Promise.all([
+        const [myRes, restRes, teamSummaryRes] = await Promise.all([
           fetch(`/api/leagues/${id}/my-submissions?${qs.toString()}`, { credentials: 'include' }),
           fetch(`/api/leagues/${id}/rest-days`, { credentials: 'include' }),
+          fetch(`/api/leagues/${id}/my-team/summary`, { credentials: 'include' }),
         ]);
 
         let points = 0;
@@ -427,6 +430,8 @@ export default function LeagueDashboardPage({
         let restUnused: number | null = null;
         let teamAvgRR: number | null = null;
         let teamPoints: number | null = null;
+        let teamMissedDays: number | null = null;
+        let teamRestUsed: number | null = null;
 
         let teamId: string | null = null;
 
@@ -513,6 +518,17 @@ export default function LeagueDashboardPage({
           }
         }
 
+        if (teamSummaryRes.ok) {
+          const json = await teamSummaryRes.json();
+          const data = json?.data;
+          if (typeof data?.missedDays === 'number') {
+            teamMissedDays = Math.max(0, data.missedDays);
+          }
+          if (typeof data?.restUsed === 'number') {
+            teamRestUsed = Math.max(0, data.restUsed);
+          }
+        }
+
         // Fetch leaderboard data (for both team and individual stats) - single call with full=true
         let leaderboardData: any = null;
         let totalPoints = points;
@@ -539,22 +555,33 @@ export default function LeagueDashboardPage({
               teamAvgRR = typeof v === 'number' && Number.isFinite(v) ? Math.round(v * 100) / 100 : null;
 
               const p =
-                mine && typeof mine.points === 'number'
-                  ? mine.points
-                  : mine && typeof mine.total_points === 'number'
-                    ? mine.total_points
+                mine && typeof mine.total_points === 'number'
+                  ? mine.total_points
+                  : mine && typeof mine.points === 'number'
+                    ? mine.points
                     : null;
               teamPoints = typeof p === 'number' && Number.isFinite(p) ? Math.max(0, p) : null;
             }
 
             // Extract individual stats for user's total points (includes challenge bonuses)
-            const individuals: Array<{ user_id?: string; points?: number }> =
+            const individuals: Array<{ user_id?: string; points?: number; avg_rr?: number; challenge_points?: number }> =
               leaderboardData?.data?.individuals || leaderboardData?.data?.individualRankings || [];
             if (user && Array.isArray(individuals) && individuals.length > 0) {
               const mine = individuals.find((it) => String(it.user_id) === String(user.id));
               if (mine && typeof mine.points === 'number' && Number.isFinite(mine.points)) {
                 totalPoints = Math.max(0, Math.round(mine.points));
-                challengePoints = Math.max(0, totalPoints - points);
+
+                // Prioritize official challenge points from leaderboard
+                if (typeof mine.challenge_points === 'number' && Number.isFinite(mine.challenge_points)) {
+                  challengePoints = mine.challenge_points;
+                } else {
+                  challengePoints = Math.max(0, totalPoints - points);
+                }
+
+                // Overwrite Avg RR with leaderboard official value if available (to ensure parity)
+                if (typeof mine.avg_rr === 'number' && Number.isFinite(mine.avg_rr)) {
+                  avgRR = mine.avg_rr;
+                }
               }
             }
           }
@@ -564,8 +591,32 @@ export default function LeagueDashboardPage({
         }
 
         // Set summary with all calculated values
-        setMySummary({ points, totalPoints, challengePoints, avgRR, restUsed, restUnused, missedDays, teamAvgRR, teamPoints });
-        console.log('[MySummary] Final values:', { points, totalPoints, challengePoints, avgRR, restUsed, restUnused, missedDays, teamAvgRR, teamPoints });
+        setMySummary({
+          points,
+          totalPoints,
+          challengePoints,
+          avgRR,
+          restUsed,
+          restUnused,
+          missedDays,
+          teamAvgRR,
+          teamPoints,
+          teamMissedDays,
+          teamRestUsed,
+        });
+        console.log('[MySummary] Final values:', {
+          points,
+          totalPoints,
+          challengePoints,
+          avgRR,
+          restUsed,
+          restUnused,
+          missedDays,
+          teamAvgRR,
+          teamPoints,
+          teamMissedDays,
+          teamRestUsed,
+        });
       } catch {
         setMySummary(null);
       } finally {
@@ -871,10 +922,10 @@ export default function LeagueDashboardPage({
             </div>
           </div>
           <div className="px-4 lg:px-6 mt-2">
-            <Card>
-              <CardHeader className="pb-2">
+            <Card className="py-3 gap-2">
+              <CardHeader className="pb-0">
                 <div className="flex items-start justify-between gap-3">
-                  <CardTitle className="text-base">My Summary</CardTitle>
+                  <CardTitle className="text-base pt-1">My Summary</CardTitle>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -889,8 +940,13 @@ export default function LeagueDashboardPage({
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
                     <div className="text-[11px] text-muted-foreground">Points</div>
-                    <div className="text-base font-semibold text-primary tabular-nums">
-                      {mySummary?.totalPoints.toLocaleString() ?? '—'}
+                    <div className="text-base font-semibold text-primary tabular-nums flex flex-col items-center leading-tight">
+                      <span>{mySummary?.totalPoints.toLocaleString() ?? '—'}</span>
+                      {mySummary && mySummary.challengePoints > 0 && (
+                        <span className="text-[10px] text-muted-foreground font-normal">
+                          (+{mySummary.challengePoints} Challenge Points)
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
@@ -1015,8 +1071,8 @@ export default function LeagueDashboardPage({
             </Card>
           </div>
           <div className="px-4 lg:px-6 mt-2">
-            <Card>
-              <CardHeader className="pb-2">
+            <Card className="py-3 gap-2">
+              <CardHeader className="pb-0">
                 <CardTitle className="text-base">Team Summary</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -1039,11 +1095,19 @@ export default function LeagueDashboardPage({
                   </div>
                   <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
                     <div className="text-[11px] text-muted-foreground">Days Missed</div>
-                    <div className="text-sm font-semibold text-primary tabular-nums">—</div>
+                    <div className="text-sm font-semibold text-primary tabular-nums">
+                      {typeof mySummary?.teamMissedDays === 'number'
+                        ? mySummary.teamMissedDays.toLocaleString()
+                        : '—'}
+                    </div>
                   </div>
                   <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
                     <div className="text-[11px] text-muted-foreground">Rest Days Used</div>
-                    <div className="text-sm font-semibold text-primary tabular-nums">—</div>
+                    <div className="text-sm font-semibold text-primary tabular-nums">
+                      {typeof mySummary?.teamRestUsed === 'number'
+                        ? mySummary.teamRestUsed.toLocaleString()
+                        : '—'}
+                    </div>
                   </div>
                 </div>
               </CardContent>

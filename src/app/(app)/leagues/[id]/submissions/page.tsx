@@ -22,7 +22,7 @@ import {
   Crown,
   Dumbbell,
   Moon,
-  Calendar,
+  Calendar as CalendarIcon,
   RefreshCw,
   Check,
   X,
@@ -41,7 +41,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isSameDay } from 'date-fns';
 import { toast } from 'sonner';
 
 import { useLeague } from '@/contexts/league-context';
@@ -65,6 +65,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -153,7 +155,7 @@ function StatsCards({ stats }: { stats: SubmissionStats }) {
     {
       label: 'Total',
       value: stats.total,
-      icon: Calendar,
+      icon: CalendarIcon,
       color: 'text-primary bg-primary/10',
     },
     {
@@ -260,6 +262,9 @@ export default function AllSubmissionsPage({
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [teamFilter, setTeamFilter] = useState<string>('all');
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [tempDate, setTempDate] = useState<Date | undefined>(undefined);
 
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<LeagueSubmission | null>(null);
@@ -359,8 +364,15 @@ export default function AllSubmissionsPage({
       filtered = filtered.filter((s) => s.member.team_id === teamFilter);
     }
 
+    if (dateFilter) {
+      filtered = filtered.filter((s) => {
+        const subDate = parseISO(s.date);
+        return isSameDay(subDate, dateFilter);
+      });
+    }
+
     return filtered;
-  }, [submissions, statusFilter, teamFilter]);
+  }, [submissions, statusFilter, teamFilter, dateFilter]);
 
   // Note: Only reupload entries (reupload_of != null) should display the
   // "Re-submitted" badge. Originals should remain unmarked.
@@ -377,8 +389,10 @@ export default function AllSubmissionsPage({
   // Table columns
   const columns: ColumnDef<LeagueSubmission>[] = [
     {
-      accessorKey: 'member',
+      id: 'memberName',
+      accessorFn: (row) => row.member.username,
       header: 'Member',
+      filterFn: 'includesString',
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <Avatar className="size-8">
@@ -627,8 +641,9 @@ export default function AllSubmissionsPage({
         )}
 
         {/* Filters */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <div className="relative flex-1 sm:max-w-xs">
+        {/* Filters */}
+        <div className="flex flex-col gap-3">
+          <div className="relative w-full sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by member..."
@@ -637,35 +652,97 @@ export default function AllSubmissionsPage({
               className="pl-9"
             />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={teamFilter} onValueChange={setTeamFilter}>
-            <SelectTrigger className="w-[180px]">
-              <Users className="mr-2 size-4" />
-              <SelectValue placeholder="All Teams" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Teams</SelectItem>
-              {teams.map((team) => (
-                <SelectItem key={team.team_id} value={team.team_id}>
-                  {team.team_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[130px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={teamFilter} onValueChange={setTeamFilter}>
+              <SelectTrigger className="w-full sm:w-[160px]">
+                <Users className="mr-2 size-4" />
+                <SelectValue placeholder="All Teams" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Teams</SelectItem>
+                {teams.map((team) => (
+                  <SelectItem key={team.team_id} value={team.team_id}>
+                    {team.team_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="col-span-2 sm:col-span-1 flex gap-2">
+              <Popover
+                open={isCalendarOpen}
+                onOpenChange={(open) => {
+                  setIsCalendarOpen(open);
+                  if (open) setTempDate(dateFilter);
+                }}
+              >
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full sm:w-[200px] justify-start text-left font-normal flex-1",
+                      !dateFilter && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 size-4" />
+                    {dateFilter ? format(dateFilter, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={tempDate}
+                    onSelect={setTempDate}
+                    initialFocus
+                  />
+                  <div className="p-3 border-t">
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        setDateFilter(tempDate);
+                        setIsCalendarOpen(false);
+                      }}
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {dateFilter && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDateFilter(undefined);
+                  }}
+                  size="icon"
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="size-4" />
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Table */}
-        <div className="rounded-lg border">
+        {/* Desktop Table View */}
+        <div className="hidden md:block rounded-lg border">
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -712,6 +789,114 @@ export default function AllSubmissionsPage({
               )}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-4">
+          {table.getRowModel().rows.length > 0 ? (
+            table.getRowModel().rows.map((row) => {
+              const submission = row.original;
+              const isPending = submission.status === 'pending';
+              const isValidating = validatingId === submission.id;
+              const currentStatus = submission.status;
+              const canOverride = isHost || isGovernor;
+
+              return (
+                <div key={submission.id} className="rounded-lg border bg-card p-3 shadow-sm flex flex-col gap-2">
+                  {/* Top Row: Identity + Date + Points */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="size-8">
+                        <AvatarFallback className="text-[10px]">{submission.member.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm leading-none truncate">{submission.member.username}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{submission.member.team_name || 'Unassigned'}</p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0 ml-2">
+                      <div className="text-sm font-bold text-primary">{submission.rr_value !== null ? `${submission.rr_value.toFixed(1)} RR` : '-'}</div>
+                      <div className="text-[10px] text-muted-foreground">{format(parseISO(submission.date), 'MMM d')}</div>
+                    </div>
+                  </div>
+
+                  {/* Middle Row: Type + Status */}
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      {submission.type === 'workout' ? (
+                        <Dumbbell className="size-3.5" />
+                      ) : submission.type === 'rest' && submission.notes?.includes('[EXEMPTION_REQUEST]') ? (
+                        <ShieldAlert className="size-3.5 text-amber-500" />
+                      ) : (
+                        <Moon className="size-3.5" />
+                      )}
+                      <span>
+                        {submission.type === 'workout'
+                          ? formatWorkoutType(submission.workout_type)
+                          : submission.notes?.includes('[EXEMPTION_REQUEST]')
+                            ? 'Exemption'
+                            : 'Rest Day'}
+                      </span>
+                    </div>
+                    <div className="scale-90 origin-right">
+                      <StatusBadge status={submission.status} />
+                    </div>
+                  </div>
+
+                  {/* Actions Toolbar */}
+                  <div className="flex items-center gap-2 pt-2 border-t mt-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 h-8 text-xs bg-background"
+                      onClick={() => { setSelectedSubmission(submission); setDetailDialogOpen(true); }}
+                    >
+                      <Eye className="size-3.5 mr-1.5" /> View
+                    </Button>
+
+                    {(isPending || (canOverride && currentStatus !== 'approved')) && (
+                      <>
+                        <Input
+                          type="number"
+                          placeholder="Pts"
+                          value={tableAwardedPoints[submission.id] ?? ''}
+                          onChange={(e) => setTableAwardedPoints((p) => ({ ...p, [submission.id]: e.target.value === '' ? '' : Number(e.target.value) }))}
+                          className="w-14 h-8 text-center px-1 text-xs"
+                        />
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="flex-[2] h-8 bg-green-600 hover:bg-green-700 text-white text-xs"
+                          onClick={() => handleValidate(submission.id, 'approved', tableAwardedPoints[submission.id] === '' ? undefined : (tableAwardedPoints[submission.id] as number))}
+                          disabled={isValidating}
+                        >
+                          {isValidating ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5 mr-1.5" />}
+                          Approve
+                        </Button>
+                      </>
+                    )}
+
+                    {(isPending || (canOverride && currentStatus !== 'rejected')) && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="h-8 w-10 shrink-0"
+                        onClick={() => handleValidate(submission.id, 'rejected', null)}
+                        disabled={isValidating}
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-3 text-center p-8 border border-dashed rounded-lg text-muted-foreground">
+              <ClipboardCheck className="size-8 opacity-50" />
+              <p>No submissions found</p>
+            </div>
+          )}
         </div>
 
         {/* Pagination */}

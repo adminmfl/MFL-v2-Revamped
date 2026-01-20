@@ -23,6 +23,7 @@ import {
   Flame,
   Award,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { useLeague } from '@/contexts/league-context';
 import { Button } from '@/components/ui/button';
@@ -423,8 +424,8 @@ export default function ProfilePage() {
         </div>
       </div>
 
-       {/* Profile Form */}
-       <div className="px-4 lg:px-6">
+      {/* Profile Form */}
+      <div className="px-4 lg:px-6">
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
