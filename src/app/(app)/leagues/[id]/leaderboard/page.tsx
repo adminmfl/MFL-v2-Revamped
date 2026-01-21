@@ -225,123 +225,127 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
       {/* Header + Filter Card */}
       <div className="px-4 lg:px-6">
         <div className="rounded-lg border bg-card/70 shadow-sm px-3 py-3">
-          <div className="flex items-start justify-between gap-3 mb-2">
+          <div className="flex items-center justify-between gap-2 mb-2">
             <div>
               <h1 className="text-xl font-bold tracking-tight">Leaderboard</h1>
-              <p className="text-sm text-muted-foreground">
-                {league?.league_name || 'Rankings'}
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-muted-foreground mr-auto leading-none">
+                  {league?.league_name || 'Rankings'}
+                </p>
                 {normalizationActive && (
-                  <Badge variant="secondary" className="ml-2 text-xs">Normalized</Badge>
+                  <Badge variant="secondary" className="text-[10px] h-5 px-1.5 pointer-events-none">Normalized</Badge>
                 )}
-              </p>
+              </div>
             </div>
-            <Button variant="outline" size="sm" onClick={refetch}>
-              <RefreshCw className="size-4" />
-            </Button>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {normalizationActive && canToggleRaw && (
-              <Button variant="ghost" size="sm" onClick={() => setViewRawTotals(v => !v)}>
-                {viewRawTotals ? 'Normalized' : 'Raw'}
-              </Button>
-            )}
-            <Popover open={filterOpen} onOpenChange={setFilterOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="text-sm">
-                  <Calendar className="size-4 mr-2" />
-                  {selectedWeek === 'all'
-                    ? 'All Time'
-                    : selectedWeek === 'custom'
-                      ? (startDate && endDate
-                        ? `${format(startDate, 'MMM d')} – ${format(endDate, 'MMM d')}`
-                        : 'Custom Range')
-                      : weekPresets.find(w => w.weekNumber === selectedWeek)?.label || 'All Time'}
-                  <ChevronDown className="size-4 ml-2" />
+            <div className="flex items-center gap-1.5 shrink-0">
+              {normalizationActive && canToggleRaw && (
+                <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setViewRawTotals(v => !v)}>
+                  {viewRawTotals ? 'Normalized' : 'Raw'}
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-56 p-2" align="start">
-                <div className="flex flex-col gap-1">
-              {/* All Time Option */}
-              <Button
-                variant={selectedWeek === 'all' ? 'secondary' : 'ghost'}
-                size="sm"
-                className="justify-start"
-                onClick={() => handleWeekSelect('all')}
-              >
-                All Time
-              </Button>
-
-              {/* Week Presets */}
-              {weekPresets.length > 0 && (
-                <>
-                  <div className="text-xs font-medium text-muted-foreground px-2 py-1 mt-1">
-                    Weeks
-                  </div>
-                  {weekPresets.map((week) => (
+              )}
+              <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 text-xs font-normal">
+                    <Calendar className="size-3.5 mr-1.5" />
+                    <span className="truncate max-w-[80px] sm:max-w-none">
+                      {selectedWeek === 'all'
+                        ? 'All Time'
+                        : selectedWeek === 'custom'
+                          ? (startDate && endDate
+                            ? `${format(startDate, 'MMM d')} - ${format(endDate, 'MMM d')}`
+                            : 'Custom')
+                          : weekPresets.find(w => w.weekNumber === selectedWeek)?.label || 'All Time'}
+                    </span>
+                    <ChevronDown className="size-3.5 ml-1.5 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2" align="end">
+                  <div className="flex flex-col gap-1">
+                    {/* All Time Option */}
                     <Button
-                      key={week.weekNumber}
-                      variant={selectedWeek === week.weekNumber ? 'secondary' : 'ghost'}
+                      variant={selectedWeek === 'all' ? 'secondary' : 'ghost'}
                       size="sm"
                       className="justify-start"
-                      onClick={() => handleWeekSelect(week.weekNumber)}
+                      onClick={() => handleWeekSelect('all')}
                     >
-                      {week.label}
-                      <span className="ml-auto text-xs text-muted-foreground">
-                        {format(parseISO(week.startDate), 'MMM d')} – {format(parseISO(week.endDate), 'MMM d')}
-                      </span>
+                      All Time
                     </Button>
-                  ))}
-                </>
-              )}
 
-              {/* Custom Date Range */}
-              <div className="text-xs font-medium text-muted-foreground px-2 py-1 mt-1">
-                Custom Range
-              </div>
-              <div className="flex flex-col gap-2 p-2 rounded border bg-muted/30">
-                <div className="flex items-center gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className={cn('flex-1 text-xs', !startDate && 'text-muted-foreground')}>
-                        {startDate ? format(startDate, 'MMM d') : 'Start'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={startDate}
-                        onSelect={setStartDate}
-                        disabled={(date) => endDate ? date > endDate : false}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <span className="text-xs text-muted-foreground">–</span>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className={cn('flex-1 text-xs', !endDate && 'text-muted-foreground')}>
-                        {endDate ? format(endDate, 'MMM d') : 'End'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={endDate}
-                        onSelect={setEndDate}
-                        disabled={(date) => startDate ? date < startDate : false}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={handleResetDateRange}>Reset</Button>
-                  <Button size="sm" className="flex-1 text-xs" onClick={handleApplyDateRange}>Apply</Button>
-                </div>
-              </div>
+                    {/* Week Presets */}
+                    {weekPresets.length > 0 && (
+                      <>
+                        <div className="text-xs font-medium text-muted-foreground px-2 py-1 mt-1">
+                          Weeks
+                        </div>
+                        {weekPresets.map((week) => (
+                          <Button
+                            key={week.weekNumber}
+                            variant={selectedWeek === week.weekNumber ? 'secondary' : 'ghost'}
+                            size="sm"
+                            className="justify-start"
+                            onClick={() => handleWeekSelect(week.weekNumber)}
+                          >
+                            {week.label}
+                            <span className="ml-auto text-xs text-muted-foreground">
+                              {format(parseISO(week.startDate), 'MMM d')} – {format(parseISO(week.endDate), 'MMM d')}
+                            </span>
+                          </Button>
+                        ))}
+                      </>
+                    )}
+
+                    {/* Custom Date Range */}
+                    <div className="text-xs font-medium text-muted-foreground px-2 py-1 mt-1">
+                      Custom Range
+                    </div>
+                    <div className="flex flex-col gap-2 p-2 rounded border bg-muted/30">
+                      <div className="flex items-center gap-2">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className={cn('flex-1 text-xs', !startDate && 'text-muted-foreground')}>
+                              {startDate ? format(startDate, 'MMM d') : 'Start'}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <CalendarComponent
+                              mode="single"
+                              selected={startDate}
+                              onSelect={setStartDate}
+                              disabled={(date) => endDate ? date > endDate : false}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <span className="text-xs text-muted-foreground">–</span>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className={cn('flex-1 text-xs', !endDate && 'text-muted-foreground')}>
+                              {endDate ? format(endDate, 'MMM d') : 'End'}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <CalendarComponent
+                              mode="single"
+                              selected={endDate}
+                              onSelect={setEndDate}
+                              disabled={(date) => startDate ? date < startDate : false}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={handleResetDateRange}>Reset</Button>
+                        <Button size="sm" className="flex-1 text-xs" onClick={handleApplyDateRange}>Apply</Button>
+                      </div>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={refetch}>
+                <RefreshCw className="size-3.5" />
+              </Button>
             </div>
-          </PopoverContent>
-        </Popover>
           </div>
         </div>
       </div>
