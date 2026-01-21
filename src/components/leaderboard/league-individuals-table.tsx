@@ -104,20 +104,19 @@ export function LeagueIndividualsTable({
       accessorKey: 'rank',
       header: 'Rank',
       cell: ({ row }) => <RankBadge rank={row.original.rank} />,
-      size: 60,
     },
     {
       accessorKey: 'username',
       header: 'Player',
       cell: ({ row }) => (
-        <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-full bg-primary/10">
-            <User className="size-5 text-primary" />
+        <div className="flex items-center gap-2">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+            <User className="size-4 text-primary" />
           </div>
           <div>
-            <p className="font-semibold">{row.original.username}</p>
+            <p className="font-semibold text-sm whitespace-nowrap">{row.original.username}</p>
             {row.original.team_name && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground whitespace-nowrap">
                 {row.original.team_name}
               </p>
             )}
@@ -129,15 +128,8 @@ export function LeagueIndividualsTable({
       accessorKey: 'points',
       header: 'Points',
       cell: ({ row }) => (
-        <div>
-          <div className="text-lg font-bold text-primary tabular-nums">
-            {row.original.points}
-          </div>
-          {(row.original as any).challenge_points > 0 && (
-            <div className="text-[10px] text-muted-foreground whitespace-nowrap">
-              (+{(row.original as any).challenge_points} Challenge)
-            </div>
-          )}
+        <div className="text-base font-bold text-primary tabular-nums">
+          {row.original.points}
         </div>
       ),
     },
@@ -147,9 +139,9 @@ export function LeagueIndividualsTable({
           accessorKey: 'avg_rr',
           header: 'RR',
           cell: ({ row }) => (
-            <div className="flex items-center gap-1.5">
-              <Star className="size-4 text-yellow-500" />
-              <span className="font-medium">
+            <div className="flex items-center gap-1">
+              <Star className="size-3.5 text-yellow-500" />
+              <span className="text-sm font-medium whitespace-nowrap">
                 {row.original.avg_rr.toFixed(2)}
               </span>
             </div>
@@ -157,13 +149,6 @@ export function LeagueIndividualsTable({
         },
       ]
       : []),
-    {
-      accessorKey: 'submission_count',
-      header: 'Submissions',
-      cell: ({ row }) => (
-        <Badge variant="secondary">{row.original.submission_count}</Badge>
-      ),
-    },
   ], [showAvgRR]);
 
   const table = useReactTable({
@@ -196,8 +181,8 @@ export function LeagueIndividualsTable({
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border">
-        <Table>
+      <div className="rounded-lg border overflow-x-auto">
+        <Table className="w-full">
           <TableHeader>
             {table.getHeaderGroups().map((hg) => (
               <TableRow key={hg.id}>
@@ -240,7 +225,7 @@ export function LeagueIndividualsTable({
 
             {/* Top count (centered) */}
             <div className="text-center text-sm text-muted-foreground">
-              {totalRows} submission{totalRows === 1 ? '' : 's'}
+              {totalRows} player{totalRows === 1 ? '' : 's'}
             </div>
 
             {/* Controls row */}

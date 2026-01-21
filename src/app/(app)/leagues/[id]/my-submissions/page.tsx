@@ -1,11 +1,11 @@
 /**
- * My Submissions Page
- * Displays a player's workout submissions for the selected league.
+ * My Activities Page
+ * Displays a player's activity submissions for the selected league.
  */
 'use client';
 
 import { use } from 'react';
-import { ClipboardCheck, Plus, AlertCircle } from 'lucide-react';
+import { ClipboardCheck, Plus, AlertCircle, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 
 import { useLeague } from '@/contexts/league-context';
@@ -39,7 +39,7 @@ export default function MySubmissionsPage({
             <AlertCircle className="size-4" />
             <AlertTitle>Access Restricted</AlertTitle>
             <AlertDescription>
-              You are currently viewing as {activeRole}. To view and submit workouts,
+              You are currently viewing as {activeRole}. To view and submit activities,
               you need to be participating as a player in this league.
             </AlertDescription>
           </Alert>
@@ -51,27 +51,38 @@ export default function MySubmissionsPage({
   return (
     <div className="@container/main flex flex-1 flex-col gap-4 lg:gap-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 px-4 lg:px-6 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-4">
-          <div className="size-14 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shrink-0 shadow-lg">
-            <ClipboardCheck className="size-7 text-primary-foreground" />
+      {/* Header */}
+      <div className="flex flex-col gap-4 px-4 lg:px-6">
+        {/* Top Row: Title + Refresh */}
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shrink-0 shadow-md">
+              <ClipboardCheck className="size-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight">My Activities</h1>
+              <p className="text-xs text-muted-foreground">
+                Track your activity submissions
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">My Submissions</h1>
-            <p className="text-muted-foreground">
-              Track your workout submissions and their approval status
-            </p>
-          </div>
+
+          <Button variant="ghost" size="icon" onClick={() => refetch()} title="Refresh" className="size-8">
+            <RefreshCw className="size-4 text-muted-foreground" />
+            <span className="sr-only">Refresh</span>
+          </Button>
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Action Row */}
+        <div className="flex items-center justify-between sm:justify-end gap-3">
           {activeLeague?.team_name && (
-            <Badge variant="outline" className="text-sm">
-              Team: {activeLeague.team_name}
+            <Badge variant="secondary" className="text-xs font-normal">
+              Team: <span className="font-medium ml-1">{activeLeague.team_name}</span>
             </Badge>
           )}
-          <Button asChild>
+          <Button asChild size="sm" className="shadow-sm">
             <Link href={`/leagues/${leagueId}/submit`}>
-              <Plus className="mr-2 size-4" />
+              <Plus className="mr-2 size-3.5" />
               New Submission
             </Link>
           </Button>

@@ -67,18 +67,18 @@ export function RealTimeScoreboardTable({ dates, teams }: RealTimeScoreboardTabl
   if (!dates.length) return null;
 
   return (
-    <div className="rounded-lg border">
-      <Table>
+    <div className="rounded-lg border overflow-hidden">
+      <Table className="w-full">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[80px]">Rank</TableHead>
-            <TableHead>Team</TableHead>
+            <TableHead className="w-[50px] px-2 text-center">Rank</TableHead>
+            <TableHead className="px-2">Team</TableHead>
             {dates.map((d) => (
-              <TableHead key={d} className="text-right tabular-nums">
+              <TableHead key={d} className="text-right tabular-nums whitespace-nowrap w-[65px] px-2 text-xs sm:text-sm">
                 {formatHeaderDate(d)}
               </TableHead>
             ))}
-            <TableHead className="text-right">RR</TableHead>
+            <TableHead className="text-right w-[65px] px-2">RR</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -88,40 +88,40 @@ export function RealTimeScoreboardTable({ dates, teams }: RealTimeScoreboardTabl
                 key={t.team_id}
                 className={cn(t.rank <= 3 && 'bg-muted/30')}
               >
-                <TableCell>
+                <TableCell className="px-2">
                   <RankBadge rank={t.rank} />
                 </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar className="size-10 rounded-lg">
+                <TableCell className="px-2">
+                  <div className="flex items-center gap-2">
+                    <Avatar className="size-8 rounded-md shrink-0">
                       {t.logo_url ? (
                         <AvatarImage src={t.logo_url} alt={t.team_name} />
                       ) : (
-                        <AvatarFallback className="rounded-lg text-xs uppercase">
+                        <AvatarFallback className="rounded-md text-xs uppercase">
                           {t.team_name.slice(0, 2)}
                         </AvatarFallback>
                       )}
                     </Avatar>
-                    <div>
-                      <p className="font-semibold">{t.team_name}</p>
-                      <p className="text-xs text-muted-foreground">2-day delay window</p>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm leading-tight">{t.team_name}</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">2-day delay</p>
                     </div>
                   </div>
                 </TableCell>
                 {dates.map((d) => {
                   const points = t.pointsByDate?.[d] ?? 0;
                   return (
-                    <TableCell key={d} className="text-right tabular-nums">
-                      <span className={cn('text-lg font-bold', points > 0 ? 'text-primary' : 'text-muted-foreground')}>
+                    <TableCell key={d} className="text-right tabular-nums px-2">
+                      <span className={cn('text-base font-bold', points > 0 ? 'text-primary' : 'text-muted-foreground')}>
                         {points}
                       </span>
                     </TableCell>
                   );
                 })}
-                <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-1.5">
-                    <Star className="size-4 text-yellow-500" />
-                    <span className="font-medium tabular-nums">{t.avg_rr.toFixed(2)}</span>
+                <TableCell className="text-right px-2">
+                  <div className="flex items-center justify-end gap-1">
+                    <Star className="size-3.5 text-yellow-500" />
+                    <span className="text-sm font-medium tabular-nums whitespace-nowrap">{t.avg_rr.toFixed(2)}</span>
                   </div>
                 </TableCell>
               </TableRow>

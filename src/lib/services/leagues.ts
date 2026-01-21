@@ -30,6 +30,8 @@ export interface League extends LeagueInput {
   is_active: boolean;
   invite_code: string | null;
   logo_url?: string | null;
+  rules_summary?: string | null;
+  rules_doc_url?: string | null;
   created_by: string;
   created_date: string;
   modified_by: string;
@@ -325,6 +327,67 @@ export async function updateLeagueLogoUrl(
     return false;
   }
 }
+
+/**
+ * Update league rules document URL (host only)
+ */
+export async function updateLeagueRulesDocUrl(
+  leagueId: string,
+  userId: string,
+  rulesDocUrl: string | null
+): Promise<boolean> {
+  try {
+    const role = await getUserRoleInLeague(userId, leagueId);
+    if (role !== 'host') {
+      return false;
+    }
+
+    const { error } = await getSupabaseServiceRole()
+      .from('leagues')
+      .update({
+        rules_doc_url: rulesDocUrl,
+        modified_by: userId,
+        modified_date: new Date().toISOString(),
+      })
+      .eq('league_id', leagueId);
+
+    return !error;
+  } catch (err) {
+    console.error('Error updating league rules doc:', err);
+    return false;
+  }
+}
+
+/**
+ * Update league rules summary (host only)
+ */
+export async function updateLeagueRulesSummary(
+  leagueId: string,
+  userId: string,
+  rulesSummary: string | null
+): Promise<boolean> {
+  try {
+    const role = await getUserRoleInLeague(userId, leagueId);
+    if (role !== 'host') {
+      return false;
+    }
+
+    const { error } = await getSupabaseServiceRole()
+      .from('leagues')
+      .update({
+        rules_summary: rulesSummary,
+        modified_by: userId,
+        modified_date: new Date().toISOString(),
+      })
+      .eq('league_id', leagueId);
+
+    return !error;
+  } catch (err) {
+    console.error('Error updating league rules summary:', err);
+    return false;
+  }
+}
+
 
 /**
  * Get all leagues for a user

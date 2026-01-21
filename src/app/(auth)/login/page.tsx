@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Dumbbell } from "lucide-react";
 
 import { LoginForm } from "@/components/auth/login-form";
+import { getLastLeagueId } from "@/lib/last-league-storage";
 
 // ============================================================================
 // Config
@@ -38,7 +39,46 @@ export default function LoginPage() {
         // Redirect admins to /admin unless they have a specific callbackUrl
         router.replace("/admin");
       } else {
-        router.replace(callbackUrl);
+        // Default: try to restore the user's last league; otherwise try first league.
+        (async () => {
+          try {
+            if (callbackUrl === "/dashboard") {
+              // Check if there's a last visited league
+              const lastLeagueId = getLastLeagueId();
+              if (lastLeagueId) {
+                // Verify the user still has access to that league
+                const res = await fetch("/api/leagues");
+                if (res.ok) {
+                  const json = await res.json();
+                  const leagues = Array.isArray(json?.data) ? json.data : [];
+                  const hasLastLeague = leagues.some((l: any) => (l?.league_id || l?.id || l?.leagueId) === lastLeagueId);
+                  if (hasLastLeague) {
+                    router.replace(`/leagues/${lastLeagueId}`);
+                    return;
+                  }
+                }
+              }
+
+              // Fallback: try to redirect to first league
+              const res = await fetch("/api/leagues");
+              if (res.ok) {
+                const json = await res.json();
+                const leagues = Array.isArray(json?.data) ? json.data : [];
+                const first = leagues[0];
+                const firstId = first?.league_id || first?.id || first?.leagueId;
+                if (firstId) {
+                  router.replace(`/leagues/${firstId}`);
+                  return;
+                }
+              }
+            }
+          } catch (err) {
+            console.error("Login redirect league fetch failed:", err);
+          }
+
+          // Fallback to provided callbackUrl (or /dashboard)
+          router.replace(callbackUrl);
+        })();
       }
     }
   }, [status, session, router, callbackUrl]);

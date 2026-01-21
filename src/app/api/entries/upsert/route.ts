@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
       timezone_offset, // Legacy: sign-inverted offset (e.g., +330 for IST = UTC+5:30)
       tzOffsetMinutes, // Preferred: same value as `new Date().getTimezoneOffset()` (e.g., -330 for IST)
       ianaTimezone, // Preferred IANA tz (e.g., 'America/Los_Angeles')
+      overwrite, // Boolean flag to allow overwriting existing entry
     } = body;
 
     // Validate required fields
@@ -141,7 +142,7 @@ export async function POST(req: NextRequest) {
       // Even if "today" is valid (e.g. user is submitting on Jan 10 via the grace period),
       // they should not be able to log a workout FOR Jan 10 if the league ended on Jan 9.
       if (normalizedDate > dateStr && !reupload_of) {
-         return NextResponse.json(
+        return NextResponse.json(
           { error: `League ended on ${dateStr}. You cannot submit activities for ${normalizedDate}.` },
           { status: 400 }
         );
@@ -225,7 +226,18 @@ export async function POST(req: NextRequest) {
 
         const usedDates = new Set(
           (weeklyEntries || [])
-            .filter((row: any) => row?.status && row.status !== 'rejected')
+            .filter((row: any) => {
+              // Exclude rejected entries
+              if (row?.status === 'rejected') return false;
+
+              // If overwriting, exclude the entry for the current date from the count
+              // This assumes only one entry per day is allowed active
+              if (overwrite && normalizeDateOnly(row.date) === normalizedDate) {
+                return false;
+              }
+
+              return true;
+            })
             .map((row: any) => normalizeDateOnly(row.date))
             .filter(Boolean)
         );
@@ -364,7 +376,7 @@ export async function POST(req: NextRequest) {
       holes: holes || null,
       proof_url: proof_url || null,
       notes: notes || null,
-      status: 'pending',
+      status: 'approved',
       created_by: userId,
       reupload_of: reupload_of || null,
     };
@@ -423,39 +435,52 @@ export async function POST(req: NextRequest) {
     }
 
     // If an entry already exists for the day:
-    // - If this is a reupload (reupload_of is set), always create a new entry
+    // - If overwrite is true, allow updating regardless of status (unless it's a reupload flow)
+    // - If this is a reupload (reupload_of is set), always create a new entry (handled below)
     // - Otherwise, block if any existing entry is pending/approved
     // - Allow update/replace only when previous submissions for that day are rejected
     if (existing && !reupload_of) {
-      if (!canReplaceRejected) {
-        return NextResponse.json(
-          { error: `You already submitted an entry for ${normalizedDate}. You can only resubmit if it was rejected.` },
-          { status: 409 }
-        );
+      // Logic: Allow update if overwrite is requested OR if we are replacing a rejected entry
+      // Note: overwrite flag comes from frontend when user confirms they want to update
+      if (overwrite || canReplaceRejected) {
+        const { data: updated, error: updateError } = await supabase
+          .from('effortentry')
+          .update({
+            ...payload,
+            modified_by: userId,
+            modified_date: new Date().toISOString(),
+          })
+          .eq('id', existing.id)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error('Update error:', updateError);
+          return NextResponse.json({ error: updateError.message }, { status: 400 });
+        }
+
+        return NextResponse.json({
+          success: true,
+          data: updated,
+          updated: true,
+          replacedRejected: canReplaceRejected,
+          overwritten: !!overwrite
+        });
       }
 
-      const { data: updated, error: updateError } = await supabase
-        .from('effortentry')
-        .update({
-          ...payload,
-          modified_by: userId,
-          modified_date: new Date().toISOString(),
-        })
-        .eq('id', existing.id)
-        .select()
-        .single();
-
-      if (updateError) {
-        console.error('Update error:', updateError);
-        return NextResponse.json({ error: updateError.message }, { status: 400 });
-      }
-
-      return NextResponse.json({
-        success: true,
-        data: updated,
-        updated: true,
-        replacedRejected: true,
-      });
+      // If we get here, it means we have an existing entry that is NOT rejected, and overwrite was NOT requested.
+      return NextResponse.json(
+        {
+          error: `You already submitted an entry for ${normalizedDate}.`,
+          // Return info about existing entry so frontend can check effectively
+          existing: {
+            id: existing.id,
+            type: existing.type,
+            status: existing.status
+          }
+        },
+        { status: 409 }
+      );
     }
 
     // Insert new entry

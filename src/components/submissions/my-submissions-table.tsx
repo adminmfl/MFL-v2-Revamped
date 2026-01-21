@@ -1,6 +1,6 @@
 /**
- * My Submissions Table
- * DataTable component for displaying player's submissions with filtering and pagination.
+ * My Activities Table
+ * DataTable component for displaying player's activities with filtering and pagination.
  */
 'use client';
 
@@ -102,7 +102,7 @@ function TableSkeleton() {
 // Stats Cards Component
 // ============================================================================
 
-function StatsCards({ stats }: { stats: SubmissionStats }) {
+function StatsCards({ stats, restDaysUsed }: { stats: SubmissionStats; restDaysUsed: number }) {
   const cards = [
     {
       label: 'Total',
@@ -128,22 +128,28 @@ function StatsCards({ stats }: { stats: SubmissionStats }) {
       icon: XCircle,
       color: 'text-red-600 bg-red-100 dark:bg-red-900/30',
     },
+    {
+      label: 'Rest Days',
+      value: restDaysUsed,
+      icon: Moon,
+      color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30',
+    },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    <div className="grid grid-cols-5 gap-2">
       {cards.map((card) => (
         <div
           key={card.label}
-          className="flex items-center gap-3 p-4 rounded-lg border bg-card"
+          className="flex flex-col items-center justify-center p-2 rounded-md border bg-card hover:bg-accent/50 transition-colors h-14"
         >
-          <div className={cn('flex size-10 items-center justify-center rounded-lg', card.color)}>
-            <card.icon className="size-5" />
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <card.icon className={cn("size-3", card.color.split(' ')[0])} />
+            <span className="text-sm font-bold leading-none">{card.value}</span>
           </div>
-          <div>
-            <p className="text-sm text-muted-foreground">{card.label}</p>
-            <p className="text-2xl font-bold">{card.value}</p>
-          </div>
+          <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium truncate w-full text-center">
+            {card.label}
+          </span>
         </div>
       ))}
     </div>
@@ -287,47 +293,41 @@ export function MySubmissionsTable({
       accessorKey: 'date',
       header: 'Date',
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <Calendar className="size-4 text-muted-foreground" />
-          <span className="font-medium">
-            {format(parseISO(row.original.date), 'MMM d, yyyy')}
-          </span>
-        </div>
+        <span className="font-medium text-sm whitespace-nowrap">
+          {format(parseISO(row.original.date), 'MMM d')}
+        </span>
       ),
     },
     {
       accessorKey: 'type',
-      header: 'Type',
+      header: 'Activity',
       cell: ({ row }) => {
         const isWorkout = row.original.type === 'workout';
         const isExemption = isExemptionRequest(row.original);
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 min-w-0">
             {isWorkout ? (
-              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
-                <Dumbbell className="size-4 text-primary" />
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                <Dumbbell className="size-3.5 text-primary" />
               </div>
             ) : isExemption ? (
-              <div className="flex size-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
-                <ShieldAlert className="size-4 text-amber-600" />
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-amber-100 dark:bg-amber-900/30">
+                <ShieldAlert className="size-3.5 text-amber-600" />
               </div>
             ) : (
-              <div className="flex size-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                <Moon className="size-4 text-blue-600" />
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-blue-100 dark:bg-blue-900/30">
+                <Moon className="size-3.5 text-blue-600" />
               </div>
             )}
-            <div>
-              <p className="font-medium">
-                {isWorkout ? 'Workout' : isExemption ? 'Exemption' : 'Rest'}
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium">
+                {isWorkout
+                  ? (row.original.workout_type ? formatWorkoutType(row.original.workout_type) : 'Workout')
+                  : isExemption ? 'Exemption' : 'Rest'}
               </p>
-              {isWorkout && row.original.workout_type && (
+              {row.original.rr_value != null && (
                 <p className="text-xs text-muted-foreground">
-                  {formatWorkoutType(row.original.workout_type)}
-                </p>
-              )}
-              {isExemption && (
-                <p className="text-xs text-amber-600 dark:text-amber-400">
-                  Awaiting approval
+                  {row.original.rr_value.toFixed(1)} RR
                 </p>
               )}
             </div>
@@ -336,73 +336,43 @@ export function MySubmissionsTable({
       },
     },
     {
-      accessorKey: 'rr_value',
-      header: 'Points',
-      cell: ({ row }) => {
-        const value = row.original.rr_value;
-        if (value === null || value === undefined) {
-          return <span className="text-muted-foreground">-</span>;
-        }
-        return (
-          <span className="font-semibold text-primary">
-            {value.toFixed(1)} RR
-          </span>
-        );
-      },
-    },
-    {
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => (
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <StatusBadge status={row.original.status} />
-            {/* Show (Re-submitted) label on reupload entries */}
-            {Boolean(row.original.reupload_of) && (
-              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800">
-                <RefreshCw className="size-2.5 mr-1" />
-                Re-submitted
-              </Badge>
-            )}
-
-            {/* Version badge removed per UX: no vX display */}
-          </div>
-          {/* Show rejection reason below status */}
-          {row.original.status === 'rejected' && row.original.rejection_reason && (
-            <p className="text-xs text-red-600 dark:text-red-400 line-clamp-1" title={row.original.rejection_reason}>
-              {row.original.rejection_reason}
-            </p>
+        <div className="flex items-center gap-1">
+          <StatusBadge status={row.original.status} />
+          {Boolean(row.original.reupload_of) && (
+            <RefreshCw className="size-3 text-blue-500" />
           )}
         </div>
       ),
     },
     {
       id: 'actions',
-      header: 'Actions',
+      header: '',
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-1">
           <Button
             variant="ghost"
             size="icon"
-            className="size-8"
+            className="size-7"
             onClick={() => {
               setSelectedSubmission(row.original);
               setDetailDialogOpen(true);
             }}
           >
-            <Eye className="size-4" />
+            <Eye className="size-3.5" />
             <span className="sr-only">View details</span>
           </Button>
-          {/* Re-submit button: ONLY on original submissions when rejected */}
           {resubmittableIds.has(row.original.id) && (
             <Button
-              variant="outline"
-              size="sm"
-              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+              variant="ghost"
+              size="icon"
+              className="size-7 text-blue-600"
               onClick={() => handleResubmit(row.original)}
             >
-              <Upload className="size-3.5 mr-1" />
-              Re-submit
+              <Upload className="size-3.5" />
+              <span className="sr-only">Re-submit</span>
             </Button>
           )}
         </div>
@@ -436,23 +406,14 @@ export function MySubmissionsTable({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight">My Submissions</h2>
-          <p className="text-sm text-muted-foreground">
-            Track your workout submissions and their approval status
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={onRefresh}>
-          <RefreshCw className="mr-2 size-4" />
-          Refresh
-        </Button>
-      </div>
+    <div className="space-y-4">
+      {/* Header section deleted */}
 
       {/* Stats Cards */}
-      <StatsCards stats={stats} />
+      <StatsCards
+        stats={stats}
+        restDaysUsed={submissions.filter(s => s.type === 'rest' && s.status === 'approved').length}
+      />
 
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -494,8 +455,8 @@ export function MySubmissionsTable({
       )}
 
       {/* Table */}
-      <div className="rounded-lg border">
-        <Table>
+      <div className="rounded-lg border overflow-hidden">
+        <Table className="w-full">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -512,7 +473,10 @@ export function MySubmissionsTable({
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow
+                  key={row.id}
+                  className={row.original.status === 'rejected' ? 'bg-red-50/50 dark:bg-red-950/20' : ''}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -528,11 +492,11 @@ export function MySubmissionsTable({
                       <Dumbbell className="size-6 text-muted-foreground" />
                     </div>
                     <div>
-                      <p className="font-medium">No submissions yet</p>
+                      <p className="font-medium">No activities yet</p>
                       <p className="text-sm text-muted-foreground">
                         {statusFilter !== 'all'
-                          ? `No ${statusFilter} submissions found`
-                          : 'Submit your first workout to get started!'}
+                          ? `No ${statusFilter} activities found`
+                          : 'Submit your first activity to get started!'}
                       </p>
                     </div>
                   </div>
@@ -546,9 +510,8 @@ export function MySubmissionsTable({
       {/* Pagination */}
       {filteredSubmissions.length > 0 && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          {/* Left info */}
           <div className="text-sm text-muted-foreground text-center sm:text-left">
-            {table.getFilteredRowModel().rows.length} submission(s)
+            {table.getFilteredRowModel().rows.length} activit{table.getFilteredRowModel().rows.length === 1 ? 'y' : 'ies'}
           </div>
 
           {/* Right controls */}
