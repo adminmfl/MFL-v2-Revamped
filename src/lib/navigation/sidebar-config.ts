@@ -176,11 +176,18 @@ export function getSidebarNavItems(
 
   // Team Management - Host & Governor only
   if (role === 'host' || role === 'governor') {
-    leagueItems.push({
-      title: 'Team Management',
-      url: leagueUrl('/team'),
-      icon: Users,
-    });
+    leagueItems.push(
+      {
+        title: 'Team Management',
+        url: leagueUrl('/team'),
+        icon: Users,
+      },
+      {
+        title: 'Activities',
+        url: leagueUrl('/activities'),
+        icon: Activity,
+      }
+    );
   }
 
   // League Settings - Host only
@@ -204,11 +211,6 @@ export function getSidebarNavItems(
       url: leagueUrl('/challenges'),
       icon: Flag,
       viewOnly: role === 'governor' || role === 'player',
-    },
-    {
-      title: 'Activities',
-      url: leagueUrl('/activities'),
-      icon: Activity,
     }
   );
 

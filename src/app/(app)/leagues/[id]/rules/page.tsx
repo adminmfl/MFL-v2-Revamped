@@ -1,279 +1,512 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckCircle, X, Clock, Trophy, Users, Calendar, Award, Heart, ShieldCheck } from "lucide-react"
+'use client';
 
-export default function RulesPage() {
+import React, { use, useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
+import { useRole } from '@/contexts/role-context';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  FileText,
+  Download,
+  Upload,
+  Loader2,
+  Edit3,
+  Trash2,
+  FileIcon,
+  AlertCircle,
+  Activity,
+  ArrowRight,
+} from 'lucide-react';
+import { toast } from 'sonner';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface RulesData {
+  rules_summary: string | null;
+  rules_doc_url: string | null;
+  file_type: 'pdf' | 'doc' | 'docx' | 'document' | 'unknown';
+}
+
+// ============================================================================
+// Rules Editor Dialog Component
+// ============================================================================
+
+function RulesEditorDialog({
+  leagueId,
+  currentData,
+  open,
+  onOpenChange,
+  onSaved,
+}: {
+  leagueId: string;
+  currentData: RulesData | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSaved: () => void;
+}) {
+  const [summary, setSummary] = useState(currentData?.rules_summary || '');
+  const [file, setFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      setSummary(currentData?.rules_summary || '');
+      setFile(null);
+    }
+  }, [open, currentData]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      // Validate file type
+      const validTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      ];
+      if (!validTypes.includes(selectedFile.type)) {
+        toast.error('Please upload a PDF, DOC, or DOCX file');
+        return;
+      }
+      // Validate file size (10MB)
+      if (selectedFile.size > 10 * 1024 * 1024) {
+        toast.error('File size must be less than 10MB');
+        return;
+      }
+      setFile(selectedFile);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const formData = new FormData();
+      formData.append('rules_summary', summary);
+      if (file) {
+        formData.append('file', file);
+      }
+
+      const res = await fetch(`/api/leagues/${leagueId}/rules`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'Failed to save rules');
+      }
+
+      toast.success('League rules saved successfully');
+      onSaved();
+      onOpenChange(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save rules');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteDocument = async () => {
+    if (!currentData?.rules_doc_url) return;
+
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/leagues/${leagueId}/rules`, {
+        method: 'DELETE',
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'Failed to delete document');
+      }
+
+      toast.success('Rules document deleted');
+      onSaved();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete document');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
-    <div className="container mx-auto px-4 py-8">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Edit3 className="size-5" />
+            Edit League Rules
+          </DialogTitle>
+          <DialogDescription>
+            Add a brief summary and upload a rules document (PDF, DOC, DOCX).
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          {/* Rules Summary */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="rules_summary">Rules Summary</Label>
+              <span className="text-xs text-muted-foreground">
+                {summary.length}/200
+              </span>
+            </div>
+            <Textarea
+              id="rules_summary"
+              value={summary}
+              onChange={(e) => setSummary(e.target.value.slice(0, 200))}
+              placeholder="Brief overview of league rules..."
+              rows={3}
+            />
+          </div>
+
+          {/* File Upload */}
+          <div className="space-y-2">
+            <Label>Rules Document</Label>
+
+            {currentData?.rules_doc_url && !file && (
+              <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
+                <div className="flex items-center gap-2">
+                  <FileIcon className="size-5 text-primary" />
+                  <span className="text-sm">
+                    Current: {currentData.file_type.toUpperCase()} document
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleDeleteDocument}
+                  disabled={deleting}
+                >
+                  {deleting ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="size-4 text-destructive" />
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {file && (
+              <div className="flex items-center justify-between p-3 rounded-lg border bg-green-50 dark:bg-green-950">
+                <div className="flex items-center gap-2">
+                  <FileIcon className="size-5 text-green-600" />
+                  <span className="text-sm truncate max-w-[280px]">{file.name}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setFile(null)}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            )}
+
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="size-4 mr-2" />
+              {file ? 'Change File' : currentData?.rules_doc_url ? 'Replace Document' : 'Upload Document'}
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              onChange={handleFileChange}
+            />
+            <p className="text-xs text-muted-foreground">
+              Accepted formats: PDF, DOC, DOCX. Max size: 10MB
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? (
+              <>
+                <Loader2 className="size-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save Rules'
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============================================================================
+// Document Viewer Component
+// ============================================================================
+
+function DocumentViewer({ url, fileType }: { url: string; fileType: string }) {
+  const [loadError, setLoadError] = useState(false);
+
+  if (fileType === 'pdf' && !loadError) {
+    return (
+      <div className="w-full rounded-lg border overflow-auto bg-muted" style={{ height: '80vh', minHeight: '500px' }}>
+        <object
+          data={`${url}#toolbar=1&navpanes=1&scrollbar=1&view=FitH`}
+          type="application/pdf"
+          className="w-full h-full"
+          style={{ minHeight: '100%' }}
+        >
+          {/* Fallback for browsers that don't support object tag for PDFs */}
+          <iframe
+            src={`${url}#toolbar=1&navpanes=1&scrollbar=1`}
+            className="w-full h-full border-0"
+            title="League Rules PDF"
+            style={{ minHeight: '100%' }}
+            onError={() => setLoadError(true)}
+          />
+        </object>
+      </div>
+    );
+  }
+
+  // For Word documents or PDF load failure, show download prompt
+  return (
+    <Card className="w-full">
+      <CardContent className="py-12 text-center">
+        <FileText className="size-16 mx-auto mb-4 text-muted-foreground" />
+        <h3 className="text-lg font-semibold mb-2">
+          {fileType === 'pdf' ? 'Unable to display PDF' : `${fileType.toUpperCase()} Document`}
+        </h3>
+        <p className="text-muted-foreground mb-4">
+          {fileType === 'pdf'
+            ? 'Your browser cannot display this PDF. Please download to view.'
+            : 'Word documents cannot be previewed in browser. Please download to view.'}
+        </p>
+        <Button asChild>
+          <a href={url} download target="_blank" rel="noopener noreferrer">
+            <Download className="size-4 mr-2" />
+            Download Document
+          </a>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================================
+// Main Rules Page
+// ============================================================================
+
+export default function RulesPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
+  const { isHost } = useRole();
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [rulesData, setRulesData] = useState<RulesData | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+
+  const fetchRules = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const res = await fetch(`/api/leagues/${id}/rules`);
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json.error || 'Failed to load rules');
+      }
+
+      setRulesData(json.data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load rules');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRules();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-6 py-4 md:py-6">
+        <div className="px-4 lg:px-6">
+          <Card className="max-w-lg mx-auto">
+            <CardContent className="pt-6 text-center space-y-3">
+              <Loader2 className="size-10 animate-spin text-primary mx-auto" />
+              <p className="text-muted-foreground">Loading league rules...</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col gap-6 py-4 md:py-6">
+        <div className="px-4 lg:px-6">
+          <Card className="max-w-lg mx-auto">
+            <CardContent className="pt-6 text-center space-y-4">
+              <AlertCircle className="size-10 text-destructive mx-auto" />
+              <div className="space-y-1">
+                <h2 className="text-lg font-semibold">Unable to load rules</h2>
+                <p className="text-muted-foreground">{error}</p>
+              </div>
+              <Button variant="outline" onClick={fetchRules}>
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  const hasRules = rulesData?.rules_summary || rulesData?.rules_doc_url;
+
+  return (
+    <div className="flex flex-col gap-6 py-4 md:py-6">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-rfl-navy mb-2">FFL Rules & Guidelines</h1>
-        <p className="text-gray-600">Clear, simple rules for a fair and fun season — PWA‑friendly on phone and desktop.</p>
+      <div className="flex flex-col gap-4 px-4 lg:px-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
+              <FileText className="size-6 text-primary" />
+              League Rules
+            </h1>
+            <p className="text-muted-foreground">
+              Official rules and guidelines for this league
+            </p>
+          </div>
+          {isHost && (
+            <Button onClick={() => setEditorOpen(true)}>
+              <Edit3 className="size-4 mr-2" />
+              {hasRules ? 'Edit Rules' : 'Add Rules'}
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* Challenge Overview */}
-      <Card className="bg-white shadow-md mb-8">
-        <CardHeader>
-          <CardTitle className="text-xl text-rfl-navy flex items-center gap-2">
-            <Trophy className="w-6 h-6 text-yellow-500" />
-            Season Overview
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-start gap-3">
-            <Calendar className="w-5 h-5 text-rfl-coral mt-0.5" />
-            <div>
-              <strong>Oct 15, 2025 – Jan 12, 2026</strong>
-              <div className="text-sm text-gray-600">90‑day team challenge to sweat, smile and win.</div>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Heart className="w-5 h-5 text-pink-500 mt-0.5" />
-            <div>
-              <strong>Fitness • Fun • Friendship</strong>
-              <div className="text-sm text-gray-600">8 teams × 12–13 players each.</div>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Trophy className="w-5 h-5 text-green-600 mt-0.5" />
-            <div>
-              Fun competitions for extra points. Grand Finale & Awards — around Jan 25th.
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Content */}
+      <div className="px-4 lg:px-6">
+        {!hasRules ? (
+          <Card className="max-w-2xl mx-auto">
+            <CardContent className="py-12 text-center">
+              <FileText className="size-16 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">No Rules Set</h3>
+              <p className="text-muted-foreground mb-4">
+                {isHost
+                  ? 'Add league rules and guidelines for your participants.'
+                  : 'The league host has not added any rules yet.'}
+              </p>
+              {isHost && (
+                <Button onClick={() => setEditorOpen(true)}>
+                  <Edit3 className="size-4 mr-2" />
+                  Add Rules
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="max-w-4xl mx-auto space-y-6">
+            {/* Rules Summary */}
+            {rulesData?.rules_summary && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Summary</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground whitespace-pre-wrap">
+                    {rulesData.rules_summary}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
-      {/* Approved Workouts */}
-      <Card className="bg-white shadow-md mb-8">
-        <CardHeader>
-          <CardTitle className="text-xl text-rfl-navy">Approved Workouts</CardTitle>
-          <CardDescription>Simple, consistent rules for counting your effort</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <ul className="space-y-2 list-disc list-inside">
-              <li><strong>Brisk Walk / Jog / Run</strong> — 4 km OR 45 mins</li>
-              <li><strong>Weightlifting / Gym</strong> — 45 mins</li>
-              <li><strong>Yoga / Pilates / Zumba / Dance / Swimming / Cycling / Horse Riding</strong> — 45 mins</li>
-              <li><strong>Field Sports</strong> (Badminton, Pickleball, Tennis, Cricket, Basketball, etc.) — 45 mins</li>
-              <li><strong>Golf</strong> — 9‑hole round</li>
-              <li><strong>Steps</strong> — 10,000 steps in a day</li>
-              <li><strong>65+ (Seniors)</strong>: 30 mins or 5,000 steps count. Seniors‑only extras: meditation, chanting, writing, breathing (pranayama).</li>
-            </ul>
-            
-            <div className="mt-4 space-y-3">
-              <div className="flex items-start gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
-                <CheckCircle className="w-6 h-6 text-green-500 mt-0.5 flex-shrink-0" />
-                <div className="text-sm sm:text-base">
-                  <strong>Combine different activities</strong> in one continuous 45‑min session (e.g., 20 min run + 25 min weights). Session must complete within 60 mins.
+            {/* View Allowed Activities Link */}
+            <Link href={`/leagues/${id}/activities`}>
+              <Card className="hover:shadow-md transition-all hover:border-primary/30 cursor-pointer group">
+                <CardContent className="p-3 flex items-center gap-3">
+                  <div className="size-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-md shrink-0">
+                    <Activity className="size-5 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold group-hover:text-primary transition-colors">View Allowed Activities</h3>
+                    <p className="text-xs text-muted-foreground">See which activities count</p>
+                  </div>
+                  <ArrowRight className="size-4 text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all" />
+                </CardContent>
+              </Card>
+            </Link>
+
+            {/* Document Viewer */}
+            {rulesData?.rules_doc_url && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">Rules Document</h2>
+                  <Button variant="outline" size="sm" asChild>
+                    <a
+                      href={rulesData.rules_doc_url}
+                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Download className="size-4 mr-2" />
+                      Download
+                    </a>
+                  </Button>
                 </div>
+                <DocumentViewer
+                  url={rulesData.rules_doc_url}
+                  fileType={rulesData.file_type}
+                />
               </div>
-              <div className="flex items-start gap-3 p-4 bg-red-50 rounded-lg border border-red-200">
-                <X className="w-6 h-6 text-red-500 mt-0.5 flex-shrink-0" />
-                <div className="text-sm sm:text-base">
-                  <strong>Splitting across separate sessions</strong> (e.g., 25 min AM + 20 min PM) does not count.
-                </div>
-              </div>
-            </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
 
-      {/* Workout Rules */}
-      <Card className="bg-white shadow-md mb-8">
-        <CardHeader>
-          <CardTitle className="text-xl text-rfl-navy">Workout Session Rules</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-start gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
-            <CheckCircle className="w-6 h-6 text-green-500 mt-0.5 flex-shrink-0" />
-            <div className="text-sm sm:text-base">
-              <strong>Accepted:</strong> A single continuous session of at least 45 minutes, completed within 60 minutes. 
-              Different activities can be combined (e.g., 20 min run + 25 min weights) as long as they are tracked as one workout.
-            </div>
-          </div>
-          <div className="flex items-start gap-3 p-4 bg-red-50 rounded-lg border border-red-200">
-            <X className="w-6 h-6 text-red-500 mt-0.5 flex-shrink-0" />
-            <div className="text-sm sm:text-base">
-              <strong>Not Accepted:</strong> Splitting time into separate sessions (e.g., 25 min in the morning + 20 min in the evening) 
-              — the full 45 minutes must be done in one session.
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Scoring System */}
-      <Card className="bg-white shadow-md mb-8">
-        <CardHeader>
-          <CardTitle className="text-xl text-rfl-navy">Scoring System</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <Clock className="w-6 h-6 text-rfl-light-blue mt-0.5 flex-shrink-0" />
-              <span className="text-sm sm:text-base"><strong>Workout Submission:</strong> Post your approved workout with screenshot in the FFL website by 11:59pm. Your captain/VC will send them all to Governors in provided format.</span>
-            </div>
-            <div className="flex items-start gap-3">
-              <Trophy className="w-6 h-6 text-yellow-500 mt-0.5 flex-shrink-0" />
-              <span className="text-sm sm:text-base"><strong>Point Earning:</strong> 1 point per member per day for completing an approved workout.</span>
-            </div>
-            <div className="flex items-start gap-3">
-              <Trophy className="w-6 h-6 text-rfl-coral mt-0.5 flex-shrink-0" />
-              <span className="text-sm sm:text-base"><strong>Point Cap:</strong> Each participant can earn a maximum of 1 point per day.</span>
-            </div>
-            <div className="flex items-start gap-3">
-              <Users className="w-6 h-6 text-green-500 mt-0.5 flex-shrink-0" />
-              <span className="text-sm sm:text-base"><strong>Daily Workout Weightage:</strong> 90% team points from daily workouts.</span>
-            </div>
-            <div className="flex items-start gap-3">
-              <Trophy className="w-6 h-6 text-rfl-coral mt-0.5 flex-shrink-0" />
-              <span className="text-sm sm:text-base"><strong>Bonus Points:</strong> Earn up to 10% extra points from the Sports tournaments, and staycation fun games.</span>
-            </div>
-            <div className="flex items-start gap-3">
-              <Trophy className="w-6 h-6 text-rfl-coral mt-0.5 flex-shrink-0" />
-              <span className="text-sm sm:text-base"><strong>Winners:</strong> Team with the most points wins.</span>
-            </div>
-            <div className="flex items-start gap-3">
-              <ShieldCheck className="w-6 h-6 text-yellow-500 mt-0.5 flex-shrink-0" />
-              <span className="text-sm sm:text-base"><strong>Fair Play:</strong> "FFL FAIR PLAY" award for honesty and sportsmanship. <em>Negative points possible</em> for cheating.</span>
-            </div>
-            <div className="flex items-start gap-3">
-              <Users className="w-6 h-6 text-rfl-light-blue mt-0.5 flex-shrink-0" />
-              <span className="text-sm sm:text-base"><strong>Leaderboards:</strong> Team & individual leaderboards are posted regularly.</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Rest Days */}
-      <Card className="bg-white shadow-md mb-8">
-        <CardHeader>
-          <CardTitle className="text-xl text-rfl-navy">Rest Days</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <Calendar className="w-6 h-6 text-rfl-coral mt-0.5 flex-shrink-0" />
-              <span className="text-sm sm:text-base">Each participant is allowed <strong>18 rest days</strong> during the challenge.</span>
-            </div>
-            <div className="flex items-start gap-3">
-              <CheckCircle className="w-6 h-6 text-green-500 mt-0.5 flex-shrink-0" />
-              <span className="text-sm sm:text-base">To claim: log <strong>"Rest Day"</strong> in your PFL account that day (by 11:59 PM) — earns <strong>1 point</strong>.</span>
-            </div>
-            <div className="flex items-start gap-3">
-              <Trophy className="w-6 h-6 text-yellow-500 mt-0.5 flex-shrink-0" />
-              <span className="text-sm sm:text-base">If not logged: <strong>0 points</strong>. No points beyond 18 rest days.</span>
-            </div>
-            <div className="flex items-start gap-3">
-              <X className="w-6 h-6 text-red-500 mt-0.5 flex-shrink-0" />
-              <span className="text-sm sm:text-base">Rest days / workouts are individual and non‑transferable.</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Accepted Proofs */}
-      <Card className="bg-white shadow-md mb-8">
-        <CardHeader>
-          <CardTitle className="text-xl text-rfl-navy">Accepted Proofs (Wearable Mandatory)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-start gap-3">
-            <CheckCircle className="w-6 h-6 text-green-500 mt-0.5 flex-shrink-0" />
-            <span className="text-sm sm:text-base">Screenshot from a fitness app posted same day in your PFL account.</span>
-          </div>
-          <div className="flex items-start gap-3">
-            <CheckCircle className="w-6 h-6 text-green-500 mt-0.5 flex-shrink-0" />
-            <span className="text-sm sm:text-base">Screenshot must show: <strong>1) Date 2) Activity 3) Duration 4) Distance/Steps</strong> (add heart rate & calories if available or if any of these are missing).</span>
-          </div>
-          <div className="flex items-start gap-3">
-            <CheckCircle className="w-6 h-6 text-green-500 mt-0.5 flex-shrink-0" />
-            <span className="text-sm sm:text-base"><strong>Golf:</strong> Photo of player at course (tee/green/club sign) plus scorecard photo or golf app screenshot showing date and holes played.</span>
-          </div>
-          <div className="flex items-start gap-3">
-            <Clock className="w-6 h-6 text-rfl-light-blue mt-0.5 flex-shrink-0" />
-            <span className="text-sm sm:text-base">Keep full 90‑day history on your device for final tally.</span>
-          </div>
-          <div className="flex items-start gap-3">
-            <Users className="w-6 h-6 text-rfl-light-blue mt-0.5 flex-shrink-0" />
-            <span className="text-sm sm:text-base">Kids under 18 without watches in school: post day, activity & minutes in the Team's WhatsApp group and use that screenshot as proof.</span>
-          </div>
-          <div className="flex items-start gap-3">
-            <X className="w-6 h-6 text-red-500 mt-0.5 flex-shrink-0" />
-            <span className="text-sm sm:text-base">No dropouts expected except verified Medical Emergency (ME).</span>
-          </div>
-          <div className="flex items-start gap-3">
-            <Heart className="w-6 h-6 text-pink-500 mt-0.5 flex-shrink-0" />
-            <span className="text-sm sm:text-base"><strong>FFL Medical Emergency (ME) Rule:</strong> If a player has a verified ME (7+ days, approved by Governors), their rest days are used first. If more days are needed, other PFL players may voluntarily donate unused rest days.</span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Run Rate */}
-      <Card className="bg-white shadow-md">
-        <CardHeader>
-          <CardTitle className="text-xl text-rfl-navy">Run Rate (RR) System</CardTitle>
-          <CardDescription>Shows effort beyond minimum and acts as a tiebreaker</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <Trophy className="w-6 h-6 text-yellow-500 mt-0.5 flex-shrink-0" />
-              <span className="text-sm sm:text-base"><strong>Purpose:</strong> RR measures workout effort above the minimum (baseline RR = 1.0) and encourages longer workouts.</span>
-            </div>
-            <div className="flex items-start gap-3">
-              <Trophy className="w-6 h-6 text-rfl-coral mt-0.5 flex-shrink-0" />
-              <span className="text-sm sm:text-base"><strong>Points:</strong> Still max 1 point/day — RR is for tie‑breaks and insight.</span>
-            </div>
-            <div className="flex items-start gap-3">
-              <Trophy className="w-6 h-6 text-green-500 mt-0.5 flex-shrink-0" />
-              <span className="text-sm sm:text-base"><strong>Tiebreaker:</strong> Used when teams or individuals finish with equal points.</span>
-            </div>
-            <div className="flex items-start gap-3">
-              <Trophy className="w-6 h-6 text-rfl-coral mt-0.5 flex-shrink-0" />
-              <span className="text-sm sm:text-base"><strong>Effort vs. Points:</strong> More effort = higher RR ... but remember, get your point first!</span>
-            </div>
-          </div>
-
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-semibold text-rfl-navy mb-3">RR Examples:</h4>
-            <div className="space-y-2 text-sm">
-              <div><strong>Workout Duration:</strong> 45 mins = RR 1.0 | 60 mins = RR 1.33</div>
-              <div><strong>Steps:</strong> 10,000 steps = RR 1.0 | 18,000 steps = RR 1.8</div>
-              <div><strong>Golf:</strong> 9 holes = RR 1.0 | 18 holes = RR 2.0</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Grand Finale & Awards */}
-      <Card className="bg-white shadow-md mt-8">
-        <CardHeader>
-          <CardTitle className="text-xl text-rfl-navy flex items-center gap-2"><Award className="w-5 h-5 text-yellow-500" /> Grand Finale & Awards</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-start gap-3">
-            <Trophy className="w-6 h-6 text-rfl-coral mt-0.5 flex-shrink-0" />
-            <span className="text-sm sm:text-base">On‑site games & challenges for extra points + Awards around <strong>Jan 24–25</strong>.</span>
-          </div>
-          <div className="flex items-start gap-3">
-            <Trophy className="w-6 h-6 text-green-600 mt-0.5 flex-shrink-0" />
-            <span className="text-sm sm:text-base"><strong>Prizes:</strong> Winner ₹25,000 • Runner ₹15,000 • Third ₹10,000 • FFL FAIR PLAY award + team/individual prizes.</span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Play Fair */}
-      <Card className="bg-white shadow-md mt-8">
-        <CardHeader>
-          <CardTitle className="text-xl text-rfl-navy">Play Fair & Have Fun</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <div>• This is a friendly fitness initiative to promote bonding, health & fun.</div>
-          <div>• No cheating, tampering, or misuse of devices.</div>
-          <div>• Board of Governors’ decisions are final — no appeals, discussions or displeasure.</div>
-          <div>• Let’s cheer loud, lift each other up, and crush this challenge together!</div>
-        </CardContent>
-      </Card>
+      {/* Editor Dialog */}
+      <RulesEditorDialog
+        leagueId={id}
+        currentData={rulesData}
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        onSaved={fetchRules}
+      />
     </div>
-  )
+  );
 }
