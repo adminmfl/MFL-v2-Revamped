@@ -257,7 +257,10 @@ export function SignupForm({
   const handleGoogleSignUp = async () => {
     setIsGoogleLoading(true);
     try {
-      await signIn("google", { callbackUrl });
+      // When no explicit callback is provided, return to /login so the client
+      // can fetch leagues and redirect to the first one.
+      const googleCallback = callbackUrl === '/dashboard' ? '/login' : callbackUrl;
+      await signIn("google", { callbackUrl: googleCallback });
     } catch (error) {
       console.error("Google sign-up error:", error);
       toast.error("Failed to sign up with Google. Please try again.");

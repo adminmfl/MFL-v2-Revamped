@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useSession } from 'next-auth/react';
+import { useTheme } from 'next-themes';
 import {
   User,
   Mail,
@@ -41,6 +42,13 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // ============================================================================
@@ -63,6 +71,7 @@ interface StatCard {
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const { userLeagues, isLoading: leaguesLoading } = useLeague();
+  const { theme, setTheme } = useTheme();
   const [saving, setSaving] = React.useState(false);
 
   const user = session?.user;
@@ -545,6 +554,29 @@ export default function ProfilePage() {
         </Card>
       </div>
 
+      <div className="px-4 lg:px-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">System Theme</CardTitle>
+            <CardDescription>Choose your preferred appearance</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="w-full sm:max-w-xs">
+              <Select value={theme ?? 'system'} onValueChange={setTheme}>
+                <SelectTrigger aria-label="Theme preference">
+                  <SelectValue placeholder="Theme preference" />
+                </SelectTrigger>
+                <SelectContent align="start">
+                  <SelectItem value="light">Light Mode</SelectItem>
+                  <SelectItem value="dark">Dark Mode</SelectItem>
+                  <SelectItem value="system">System Preference</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Activity Stats - SectionCards Style */}
       <div className="px-4 lg:px-6">
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -552,20 +584,20 @@ export default function ProfilePage() {
           Activity Overview
         </h2>
       </div>
-      <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-2 gap-3 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
         {activityStats.map((stat, index) => {
           const isPositive = stat.change >= 0;
           const TrendIcon = isPositive ? TrendingUp : TrendingDown;
           const StatIcon = stat.icon;
 
           return (
-            <Card key={index} className="@container/card">
-              <CardHeader>
-                <CardDescription className="flex items-center gap-2">
+            <Card key={index} className="@container/card py-4 sm:py-6">
+              <CardHeader className="gap-1.5 px-4 sm:px-6">
+                <CardDescription className="flex items-center gap-2 text-xs sm:text-sm">
                   <StatIcon className="size-4" />
                   {stat.title}
                 </CardDescription>
-                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                <CardTitle className="text-xl font-semibold tabular-nums sm:text-2xl @[250px]/card:text-3xl">
                   {stat.value}
                 </CardTitle>
                 <CardAction>
@@ -576,7 +608,7 @@ export default function ProfilePage() {
                   </Badge>
                 </CardAction>
               </CardHeader>
-              <CardFooter className="flex-col items-start gap-1.5 text-sm">
+              <CardFooter className="flex-col items-start gap-1 text-xs px-4 pt-3 sm:px-6 sm:pt-6 sm:text-sm">
                 <div className="line-clamp-1 flex gap-2 font-medium">
                   {stat.changeLabel} <TrendIcon className="size-4" />
                 </div>
@@ -595,7 +627,7 @@ export default function ProfilePage() {
         </h2>
       </div>
       {leaguesLoading ? (
-        <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 px-4 lg:px-6 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i}>
               <CardHeader>
@@ -610,20 +642,20 @@ export default function ProfilePage() {
           ))}
         </div>
       ) : (
-        <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-2 gap-3 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
           {leagueStatCards.map((stat, index) => {
             const isPositive = stat.change >= 0;
             const TrendIcon = isPositive ? TrendingUp : TrendingDown;
             const StatIcon = stat.icon;
 
             return (
-              <Card key={index} className="@container/card">
-                <CardHeader>
-                  <CardDescription className="flex items-center gap-2">
+              <Card key={index} className="@container/card py-4 sm:py-6">
+                <CardHeader className="gap-1.5 px-4 sm:px-6">
+                  <CardDescription className="flex items-center gap-2 text-xs sm:text-sm">
                     <StatIcon className="size-4" />
                     {stat.title}
                   </CardDescription>
-                  <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                  <CardTitle className="text-xl font-semibold tabular-nums sm:text-2xl @[250px]/card:text-3xl">
                     {stat.value}
                   </CardTitle>
                   <CardAction>
@@ -634,7 +666,7 @@ export default function ProfilePage() {
                     </Badge>
                   </CardAction>
                 </CardHeader>
-                <CardFooter className="flex-col items-start gap-1.5 text-sm">
+                <CardFooter className="flex-col items-start gap-1 text-xs px-4 pt-3 sm:px-6 sm:pt-6 sm:text-sm">
                   <div className="line-clamp-1 flex gap-2 font-medium">
                     {stat.changeLabel} <TrendIcon className="size-4" />
                   </div>

@@ -19,6 +19,7 @@ import {
   Gift,
   HeartHandshake,
   LucideIcon,
+  BookOpen,
 } from 'lucide-react';
 
 // ============================================================================
@@ -67,16 +68,6 @@ const baseNavItems: NavItem[] = [
     title: 'Payments',
     url: '/payments',
     icon: CreditCard,
-  },
-  {
-    title: 'Join League',
-    url: '/leagues/join',
-    icon: Search,
-  },
-  {
-    title: 'Create League',
-    url: '/leagues/create',
-    icon: Plus,
   },
 ];
 
@@ -134,16 +125,6 @@ export function getSidebarNavItems(
         url: '/payments',
         icon: CreditCard,
       },
-      {
-        title: 'Join League',
-        url: '/leagues/join',
-        icon: Search,
-      },
-      {
-        title: 'Create League',
-        url: '/leagues/create',
-        icon: Plus,
-      },
     ],
   });
 
@@ -164,7 +145,7 @@ export function getSidebarNavItems(
       title: 'Player',
       items: [
         {
-          title: 'My Submissions',
+          title: 'My Activities',
           url: leagueUrl('/my-submissions'),
           icon: ClipboardCheck,
         },
@@ -177,11 +158,6 @@ export function getSidebarNavItems(
           title: 'My Team',
           url: leagueUrl('/my-team-view'),
           icon: Eye,
-        },
-        {
-          title: 'Donate Rest Days',
-          url: leagueUrl('/rest-day-donations'),
-          icon: Gift,
         },
       ],
     });
@@ -201,11 +177,18 @@ export function getSidebarNavItems(
 
   // Team Management - Host & Governor only
   if (role === 'host' || role === 'governor') {
-    leagueItems.push({
-      title: 'Team Management',
-      url: leagueUrl('/team'),
-      icon: Users,
-    });
+    leagueItems.push(
+      {
+        title: 'Team Management',
+        url: leagueUrl('/team'),
+        icon: Users,
+      },
+      {
+        title: 'Activities',
+        url: leagueUrl('/activities'),
+        icon: Activity,
+      }
+    );
   }
 
   // League Settings - Host only
@@ -218,7 +201,13 @@ export function getSidebarNavItems(
   }
 
   // Common league items for all roles
+  // Common league items for all roles
   leagueItems.push(
+    {
+      title: 'Rules',
+      url: leagueUrl('/rules'),
+      icon: BookOpen,
+    },
     {
       title: 'Leaderboard',
       url: leagueUrl('/leaderboard'),
@@ -229,11 +218,6 @@ export function getSidebarNavItems(
       url: leagueUrl('/challenges'),
       icon: Flag,
       viewOnly: role === 'governor' || role === 'player',
-    },
-    {
-      title: 'Activities',
-      url: leagueUrl('/activities'),
-      icon: Activity,
     }
   );
 
@@ -251,7 +235,7 @@ export function getSidebarNavItems(
       title: 'Oversight',
       items: [
         {
-          title: 'All Submissions',
+          title: 'All Activities',
           url: leagueUrl('/submissions'),
           icon: ClipboardCheck,
         },
@@ -283,7 +267,7 @@ export function getSidebarNavItems(
           icon: Users,
         },
         {
-          title: 'Team Submissions',
+          title: 'Team Activities',
           url: leagueUrl('/my-team/submissions'),
           icon: ClipboardCheck,
         },
@@ -295,7 +279,6 @@ export function getSidebarNavItems(
       ],
     });
   }
-
 
   return sections;
 }

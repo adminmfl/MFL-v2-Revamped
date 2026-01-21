@@ -16,7 +16,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 // ============================================================================
 // Route Title Mapping
@@ -118,8 +117,6 @@ export function SiteHeader() {
 
         {/* Right Side Actions */}
         <div className="ml-auto flex items-center gap-2">
-          {/* Theme Toggle */}
-          <ThemeToggle />
         </div>
       </div>
     </header>

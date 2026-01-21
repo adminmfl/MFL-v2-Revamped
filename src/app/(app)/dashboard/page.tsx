@@ -91,7 +91,6 @@ export default function DashboardPage() {
     const hostingCount = userLeagues.filter((l) => l.is_host).length;
     const governorCount = userLeagues.filter((l) => l.roles.includes('governor')).length;
     const captainCount = userLeagues.filter((l) => l.roles.includes('captain')).length;
-    const needsAttentionCount = rejectedSummary?.totalRejected ?? 0;
 
     return [
       {
@@ -115,15 +114,8 @@ export default function DashboardPage() {
         changeLabel: 'Governor & Captain',
         description: 'Management positions held',
       },
-      {
-        title: 'Submissions Needing Attention',
-        value: needsAttentionCount,
-        change: 0,
-        changeLabel: needsAttentionCount > 0 ? 'Action required' : 'All clear',
-        description: 'Rejected submissions across leagues',
-      },
     ];
-  }, [userLeagues, rejectedSummary?.totalRejected]);
+  }, [userLeagues]);
 
   // Fetch rejected submissions summary (cached client-side to avoid unnecessary load)
   React.useEffect(() => {
@@ -283,6 +275,21 @@ export default function DashboardPage() {
               ))}
           </div>
         )}
+
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
+          <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
+            <Link href="/leagues">
+              <Search className="mr-2 size-4" />
+              Search Leagues
+            </Link>
+          </Button>
+          <Button size="sm" asChild className="w-full sm:w-auto">
+            <Link href="/leagues/join">
+              <Users className="mr-2 size-4" />
+              Join League
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Stats Section Cards */}
@@ -301,7 +308,7 @@ export default function DashboardPage() {
 
 function SectionCards({ stats }: { stats: StatCard[] }) {
   return (
-    <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-2 gap-2 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-2 gap-2 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 sm:grid-cols-2 lg:grid-cols-3 @5xl/main:grid-cols-3">
       {stats.map((stat, index) => {
         const isPositive = stat.change >= 0;
         const TrendIcon = isPositive ? TrendingUp : TrendingDown;
@@ -456,8 +463,8 @@ function LeaguesEmptyState() {
 
 function SectionCardsSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-2 px-4 lg:px-6 sm:grid-cols-2 lg:grid-cols-4">
-      {[1, 2, 3, 4].map((i) => (
+    <div className="grid grid-cols-2 gap-2 px-4 lg:px-6 sm:grid-cols-2 lg:grid-cols-3">
+      {[1, 2, 3].map((i) => (
         <Card key={i} className="p-2.5 sm:p-4">
           <CardHeader className="p-0 sm:p-4 sm:pb-1.5">
             <Skeleton className="h-3 w-24" />

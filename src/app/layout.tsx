@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Manrope } from "next/font/google";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
 import { Toaster } from "sonner";
@@ -8,11 +8,11 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth/config";
 
-const inter = Inter({
+const manrope = Manrope({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   display: 'swap',
-  variable: "--font-inter",
+  variable: "--font-manrope",
   fallback: ["system-ui", "-apple-system", "Segoe UI", "Roboto", "Helvetica", "Arial", "sans-serif"],
 });
 
@@ -42,7 +42,7 @@ export default async function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={`${manrope.variable} font-sans antialiased`}>
         <ThemeProvider>
           <AuthProvider session={session}>{children}</AuthProvider>
           <Toaster

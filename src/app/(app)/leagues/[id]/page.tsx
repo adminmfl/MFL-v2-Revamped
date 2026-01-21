@@ -25,11 +25,13 @@ import {
   TrendingUp,
   RefreshCw,
   Moon,
+  Gift,
 } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
 import { useAuth } from '@/hooks/use-auth';
 import { useRole } from '@/contexts/role-context';
+import { saveLastLeagueId } from '@/lib/last-league-storage';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { InviteDialog } from '@/components/league/invite-dialog';
@@ -48,6 +50,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { getClientCache, setClientCache, invalidateClientCache } from '@/lib/client-cache';
 import { DownloadReportButton, DownloadCertificateButton } from '@/components/leagues/download-report-button';
+import { DynamicReportDialog } from '@/components/leagues/dynamic-report-dialog';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -173,6 +176,8 @@ export default function LeagueDashboardPage({
         setActiveLeague(matchingLeague);
       }
     }
+    // Save this league as the last visited
+    saveLastLeagueId(id);
   }, [id, userLeagues, activeLeague, setActiveLeague]);
 
   const fetchLeagueData = React.useCallback(
@@ -934,68 +939,86 @@ export default function LeagueDashboardPage({
             </div>
           </div>
           <div className="px-4 lg:px-6 mt-2">
-            <Card className="py-3 gap-2">
+            <Card className="py-4 gap-2">
               <CardHeader className="pb-0">
                 <div className="flex items-start justify-between gap-3">
                   <CardTitle className="text-base pt-1">My Summary</CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => fetchLeagueData(true)}
-                    aria-label="Refresh summary"
-                  >
-                    <RefreshCw className="size-4" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {league?.start_date && league?.end_date && league?.status !== 'completed' && (
+                      <DynamicReportDialog
+                        leagueId={id}
+                        leagueStartDate={league.start_date}
+                        leagueEndDate={league.end_date}
+                      />
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => fetchLeagueData(true)}
+                      aria-label="Refresh summary"
+                    >
+                      <RefreshCw className="size-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
-                    <div className="text-[11px] text-muted-foreground">Points</div>
-                    <div className="text-base font-semibold text-primary tabular-nums flex flex-col items-center leading-tight">
-                      <span>{mySummary?.totalPoints.toLocaleString() ?? '—'}</span>
-                      {mySummary && mySummary.challengePoints > 0 && (
-                        <span className="text-[10px] text-muted-foreground font-normal">
-                          (+{mySummary.challengePoints} Challenge Points)
-                        </span>
-                      )}
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
+                    <div className="text-xs text-muted-foreground">Total Points</div>
+                    <div className="text-base font-semibold text-foreground tabular-nums">
+                      {mySummary?.totalPoints.toLocaleString() ?? '—'}
                     </div>
                   </div>
-                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
-                    <div className="text-[11px] text-muted-foreground">Avg RR</div>
-                    <div className="text-base font-semibold text-primary tabular-nums">
+                  <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
+                    <div className="text-xs text-muted-foreground">Avg RR</div>
+                    <div className="text-base font-semibold text-foreground tabular-nums">
                       {mySummary?.avgRR !== null && typeof mySummary?.avgRR === 'number'
                         ? mySummary.avgRR.toFixed(2)
                         : '—'}
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-2.5 py-2 text-center">
-                    <div className="text-[10px] text-muted-foreground">Rest Days Used</div>
-                    <div className="text-sm font-semibold text-primary tabular-nums">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
+                    <div className="text-xs text-muted-foreground">Activity Points</div>
+                    <div className="text-base font-semibold text-foreground tabular-nums">
+                      {mySummary?.points.toLocaleString() ?? '—'}
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
+                    <div className="text-xs text-muted-foreground">Challenge Points</div>
+                    <div className="text-base font-semibold text-foreground tabular-nums">
+                      {mySummary?.challengePoints.toLocaleString() ?? '—'}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-md border border-border/60 bg-muted/40 px-2.5 py-2.5 text-center">
+                    <div className="text-[11px] text-muted-foreground">Rest Days Used</div>
+                    <div className="text-sm font-semibold text-foreground tabular-nums">
                       {mySummary?.restUsed.toLocaleString() ?? '—'}
                     </div>
                   </div>
-                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-2.5 py-2 text-center">
-                    <div className="text-[10px] text-muted-foreground">Rest Days Unused</div>
-                    <div className="text-sm font-semibold text-primary tabular-nums">
+                  <div className="rounded-md border border-border/60 bg-muted/40 px-2.5 py-2.5 text-center">
+                    <div className="text-[11px] text-muted-foreground">Rest Days Unused</div>
+                    <div className="text-sm font-semibold text-foreground tabular-nums">
                       {mySummary?.restUnused !== null && typeof mySummary?.restUnused === 'number'
                         ? mySummary.restUnused.toLocaleString()
                         : '—'}
                     </div>
                   </div>
-                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-2.5 py-2 text-center">
-                    <div className="text-[10px] text-muted-foreground">Days Missed</div>
-                    <div className="text-sm font-semibold text-primary tabular-nums">
+                  <div className="rounded-md border border-border/60 bg-muted/40 px-2.5 py-2.5 text-center">
+                    <div className="text-[11px] text-muted-foreground">Days Missed</div>
+                    <div className="text-sm font-semibold text-foreground tabular-nums">
                       {mySummary?.missedDays.toLocaleString() ?? '—'}
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-lg border bg-muted/20 p-3">
+                <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
                   <div className="flex flex-row items-center justify-between gap-4">
-                    <span className="text-sm font-medium">Avg RR — You vs Team</span>
+                    <span className="text-sm font-medium text-foreground">Avg RR — You vs Team</span>
                     <span className="text-xs text-muted-foreground">Scale: 1.00 → 2.00</span>
                   </div>
                   <div className="mt-2.5">
@@ -1083,39 +1106,39 @@ export default function LeagueDashboardPage({
             </Card>
           </div>
           <div className="px-4 lg:px-6 mt-2">
-            <Card className="py-3 gap-2">
+            <Card className="py-4 gap-2">
               <CardHeader className="pb-0">
                 <CardTitle className="text-base">Team Summary</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
-                    <div className="text-[11px] text-muted-foreground">Points</div>
-                    <div className="text-base font-semibold text-primary tabular-nums">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
+                    <div className="text-xs text-muted-foreground">Points</div>
+                    <div className="text-base font-semibold text-foreground tabular-nums">
                       {typeof mySummary?.teamPoints === 'number'
                         ? mySummary.teamPoints.toLocaleString()
                         : '—'}
                     </div>
                   </div>
-                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
-                    <div className="text-[11px] text-muted-foreground">Avg RR</div>
-                    <div className="text-base font-semibold text-primary tabular-nums">
+                  <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
+                    <div className="text-xs text-muted-foreground">Avg RR</div>
+                    <div className="text-base font-semibold text-foreground tabular-nums">
                       {typeof mySummary?.teamAvgRR === 'number'
                         ? mySummary.teamAvgRR.toFixed(2)
                         : '—'}
                     </div>
                   </div>
-                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
-                    <div className="text-[11px] text-muted-foreground">Days Missed</div>
-                    <div className="text-sm font-semibold text-primary tabular-nums">
+                  <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
+                    <div className="text-xs text-muted-foreground">Days Missed</div>
+                    <div className="text-sm font-semibold text-foreground tabular-nums">
                       {typeof mySummary?.teamMissedDays === 'number'
                         ? mySummary.teamMissedDays.toLocaleString()
                         : '—'}
                     </div>
                   </div>
-                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
-                    <div className="text-[11px] text-muted-foreground">Rest Days Used</div>
-                    <div className="text-sm font-semibold text-primary tabular-nums">
+                  <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
+                    <div className="text-xs text-muted-foreground">Rest Days Used</div>
+                    <div className="text-sm font-semibold text-foreground tabular-nums">
                       {typeof mySummary?.teamRestUsed === 'number'
                         ? mySummary.teamRestUsed.toLocaleString()
                         : '—'}
@@ -1226,6 +1249,24 @@ export default function LeagueDashboardPage({
             </div>
           </CardContent>
         </Card>
+
+        {/* Donate Rest Days Button */}
+        <Link href={`/leagues/${id}/rest-day-donations`} className="mt-4 block">
+          <Card className="hover:shadow-md transition-all hover:border-primary/30 cursor-pointer group">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="size-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shrink-0">
+                <Gift className="size-6 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold group-hover:text-primary transition-colors">Donate Rest Days</h3>
+                <p className="text-sm text-muted-foreground">Help a teammate in need</p>
+              </div>
+              <ArrowRight className="size-5 text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all" />
+            </CardContent>
+          </Card>
+        </Link>
+
+
       </div>
 
       {/* Progress Bar (for launched/active leagues) */}

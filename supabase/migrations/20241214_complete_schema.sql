@@ -173,6 +173,8 @@ CREATE TABLE IF NOT EXISTS public.leagues (
   league_name varchar NOT NULL UNIQUE CHECK (char_length(league_name) >= 3),
   description text,
   logo_url text,
+  rules_summary varchar(250),
+  rules_doc_url text,
   start_date date NOT NULL,
   end_date date NOT NULL,
   status varchar DEFAULT 'scheduled' CHECK (status IN ('scheduled','active','ended','completed','cancelled','abandoned')),
@@ -212,6 +214,8 @@ COMMENT ON COLUMN public.leagues.actual_participants IS 'Current participant cou
 COMMENT ON COLUMN public.leagues.price_paid IS 'Final price paid for this league';
 COMMENT ON COLUMN public.leagues.auto_rest_day_enabled IS 'When true, missing submissions are auto-marked as rest days via cron';
 COMMENT ON COLUMN public.leagues.normalize_points_by_team_size IS 'When true, points are normalized by team size to account for teams with different number of members';
+COMMENT ON COLUMN public.leagues.rules_summary IS 'Short text summary of league rules (max 250 chars)';
+COMMENT ON COLUMN public.leagues.rules_doc_url IS 'URL to uploaded rules document (PDF/Word)';
 
 -- =====================================================================================
 
@@ -866,6 +870,44 @@ TO authenticated
 USING (
     bucket_id = 'donation-proofs'
     AND auth.uid()::text = (storage.foldername(name))[2]
+);
+
+-- =====================================================================================
+-- LEAGUE RULES STORAGE BUCKET
+-- =====================================================================================
+
+-- Create league-rules bucket (10MB limit for PDF/Word documents)
+INSERT INTO storage.buckets (id, name, public, file_size_limit)
+VALUES ('league-rules', 'league-rules', true, 10485760)
+ON CONFLICT (id) DO NOTHING;
+
+-- Public read access for league rules
+CREATE POLICY "league-rules_public_read"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'league-rules');
+
+-- Host can insert rules documents
+CREATE POLICY "league-rules_host_insert"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'league-rules'
+  AND public.is_host(auth.uid(), split_part(split_part(name, '/', 1), '.', 1)::uuid)
+);
+
+-- Host can update rules documents
+CREATE POLICY "league-rules_host_update"
+ON storage.objects FOR UPDATE
+USING (
+  bucket_id = 'league-rules'
+  AND public.is_host(auth.uid(), split_part(split_part(name, '/', 1), '.', 1)::uuid)
+);
+
+-- Host can delete rules documents
+CREATE POLICY "league-rules_host_delete"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'league-rules'
+  AND public.is_host(auth.uid(), split_part(split_part(name, '/', 1), '.', 1)::uuid)
 );
 
 

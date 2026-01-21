@@ -138,76 +138,89 @@ export default function LeaguesPage() {
 
       {/* Stats Cards - Section Cards Style */}
       {!isLoading && userLeagues.length > 0 && (
-        <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-3">
-          <Card className="@container/card">
-            <CardHeader>
-              <CardDescription className="flex items-center gap-2">
+        <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-2 gap-3 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 sm:grid-cols-2 sm:gap-4 @xl/main:grid-cols-3">
+          <Card className="@container/card py-4 sm:py-6">
+            <CardHeader className="gap-1.5 px-4 sm:px-6">
+              <CardDescription className="flex items-center gap-2 text-xs sm:text-sm">
                 <Trophy className="size-4" />
                 Total Leagues
               </CardDescription>
-              <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              <CardTitle className="text-xl font-semibold tabular-nums sm:text-2xl @[250px]/card:text-3xl">
                 {stats.total}
               </CardTitle>
               <CardAction>
-                <Badge variant="outline" className="text-green-600">
+                <Badge variant="outline" className="text-green-600 text-[10px] sm:text-xs whitespace-nowrap">
                   <TrendingUp className="size-3" />
                   Active
                 </Badge>
               </CardAction>
             </CardHeader>
-            <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <CardFooter className="flex-col items-start gap-1 text-xs px-4 pt-3 sm:px-6 sm:pt-6 sm:text-sm">
               <div className="line-clamp-1 flex gap-2 font-medium">
                 All your leagues <Trophy className="size-4" />
               </div>
-              <div className="text-muted-foreground">Across all roles and statuses</div>
+              <div className="text-muted-foreground line-clamp-2">Across all roles and statuses</div>
             </CardFooter>
           </Card>
 
-          <Card className="@container/card">
-            <CardHeader>
-              <CardDescription className="flex items-center gap-2">
+          <Card className="@container/card py-4 sm:py-6">
+            <CardHeader className="gap-1.5 px-4 sm:px-6">
+              <CardDescription className="flex items-center gap-2 text-xs sm:text-sm">
                 <Dumbbell className="size-4" />
                 Active Leagues
               </CardDescription>
-              <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              <CardTitle className="text-xl font-semibold tabular-nums sm:text-2xl @[250px]/card:text-3xl">
                 {stats.active}
               </CardTitle>
               <CardAction>
-                <Badge variant="outline" className={stats.active > 0 ? 'text-green-600' : 'text-muted-foreground'}>
+                <Badge
+                  variant="outline"
+                  className={`${stats.active > 0 ? 'text-green-600' : 'text-muted-foreground'} text-[10px] sm:text-xs whitespace-nowrap`}
+                >
                   {stats.active > 0 ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
-                  {stats.active > 0 ? 'In Progress' : 'None'}
+                  {stats.active > 0 ? (
+                    <>
+                      <span className="sm:hidden">In Prog</span>
+                      <span className="hidden sm:inline">In Progress</span>
+                    </>
+                  ) : (
+                    'None'
+                  )}
                 </Badge>
               </CardAction>
             </CardHeader>
-            <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <CardFooter className="flex-col items-start gap-1 text-xs px-4 pt-3 sm:px-6 sm:pt-6 sm:text-sm">
               <div className="line-clamp-1 flex gap-2 font-medium">
                 Currently competing <Dumbbell className="size-4" />
               </div>
-              <div className="text-muted-foreground">Leagues you're participating in</div>
+              <div className="text-muted-foreground line-clamp-2">Leagues you're participating in</div>
             </CardFooter>
           </Card>
 
-          <Card className="@container/card">
-            <CardHeader>
-              <CardDescription className="flex items-center gap-2">
+          <Card className="@container/card py-4 sm:py-6">
+            <CardHeader className="gap-1.5 px-4 sm:px-6">
+              <CardDescription className="flex items-center gap-2 text-xs sm:text-sm">
                 <Crown className="size-4" />
                 Hosting
               </CardDescription>
-              <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              <CardTitle className="text-xl font-semibold tabular-nums sm:text-2xl @[250px]/card:text-3xl">
                 {stats.hosting}
               </CardTitle>
               <CardAction>
-                <Badge variant="outline" className={stats.hosting > 0 ? 'text-amber-600' : 'text-muted-foreground'}>
+                <Badge
+                  variant="outline"
+                  className={`${stats.hosting > 0 ? 'text-amber-600' : 'text-muted-foreground'} text-[10px] sm:text-xs whitespace-nowrap`}
+                >
                   <Crown className="size-3" />
                   Host
                 </Badge>
               </CardAction>
             </CardHeader>
-            <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <CardFooter className="flex-col items-start gap-1 text-xs px-4 pt-3 sm:px-6 sm:pt-6 sm:text-sm">
               <div className="line-clamp-1 flex gap-2 font-medium">
                 Leagues you manage <Crown className="size-4" />
               </div>
-              <div className="text-muted-foreground">Full admin control</div>
+              <div className="text-muted-foreground line-clamp-2">Full admin control</div>
             </CardFooter>
           </Card>
         </div>
