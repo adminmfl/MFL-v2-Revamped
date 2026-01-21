@@ -821,7 +821,7 @@ export default function LeagueDashboardPage({
 
       {mySummaryLoading || !mySummaryStats ? (
         <>
-          <div className="px-4 lg:px-6 mt-2">
+          <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-4 lg:px-6 py-2 border-b">
             <div className="grid grid-cols-2 gap-2">
               <Button
                 asChild
@@ -914,7 +914,7 @@ export default function LeagueDashboardPage({
         </>
       ) : (
         <>
-          <div className="px-4 lg:px-6 mt-2">
+          <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-4 lg:px-6 py-2 border-b">
             <div className="grid grid-cols-2 gap-2">
               <Button
                 asChild
