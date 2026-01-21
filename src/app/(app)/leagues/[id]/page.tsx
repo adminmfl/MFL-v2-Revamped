@@ -941,14 +941,24 @@ export default function LeagueDashboardPage({
               <CardHeader className="pb-0">
                 <div className="flex items-start justify-between gap-3">
                   <CardTitle className="text-base pt-1">My Summary</CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => fetchLeagueData(true)}
-                    aria-label="Refresh summary"
-                  >
-                    <RefreshCw className="size-4" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {league?.start_date && league?.end_date && league?.status !== 'completed' && (
+                      <DynamicReportDialog
+                        leagueId={id}
+                        leagueStartDate={league.start_date}
+                        leagueEndDate={league.end_date}
+                        triggerProps={{ variant: 'ghost', size: 'icon', 'aria-label': 'Open progress report' }}
+                      />
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => fetchLeagueData(true)}
+                      aria-label="Refresh summary"
+                    >
+                      <RefreshCw className="size-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -1137,17 +1147,6 @@ export default function LeagueDashboardPage({
               </CardContent>
             </Card>
           </div>
-          {league?.start_date && league?.end_date && league?.status !== 'completed' && (
-            <div className="px-4 lg:px-6 mt-2">
-              <div className="flex justify-end">
-                <DynamicReportDialog
-                  leagueId={id}
-                  leagueStartDate={league.start_date}
-                  leagueEndDate={league.end_date}
-                />
-              </div>
-            </div>
-          )}
         </>
       )}
 

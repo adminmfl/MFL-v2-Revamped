@@ -83,7 +83,25 @@ export default function CompleteProfilePage() {
       setFormData((prev) => ({ ...prev, username: session.user?.name || '' }));
     }
     if (session && !(session as any).user?.needsProfileCompletion) {
-      router.replace('/dashboard');
+      // Try to land the user on their first league dashboard; fallback to /dashboard
+      (async () => {
+        try {
+          const res = await fetch('/api/leagues');
+          if (res.ok) {
+            const json = await res.json();
+            const leagues = Array.isArray(json?.data) ? json.data : [];
+            const first = leagues[0];
+            const firstId = first?.league_id || first?.id || first?.leagueId;
+            if (firstId) {
+              router.replace(`/leagues/${firstId}`);
+              return;
+            }
+          }
+        } catch (err) {
+          console.error('Complete-profile redirect league fetch failed:', err);
+        }
+        router.replace('/dashboard');
+      })();
     }
   }, [session, status, router, formData.username]);
 
@@ -153,7 +171,25 @@ export default function CompleteProfilePage() {
 
         if ((signRes as any)?.ok) {
           setSuccess(true);
-          setTimeout(() => (window.location.href = '/dashboard'), 400);
+          // Try to redirect to first league, otherwise dashboard
+          setTimeout(async () => {
+            try {
+              const res = await fetch('/api/leagues');
+              if (res.ok) {
+                const json = await res.json();
+                const leagues = Array.isArray(json?.data) ? json.data : [];
+                const first = leagues[0];
+                const firstId = first?.league_id || first?.id || first?.leagueId;
+                if (firstId) {
+                  window.location.href = `/leagues/${firstId}`;
+                  return;
+                }
+              }
+            } catch (err) {
+              console.error('Complete-profile post-submit league fetch failed:', err);
+            }
+            window.location.href = '/dashboard';
+          }, 400);
           return;
         }
         setError(
