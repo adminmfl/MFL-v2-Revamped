@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useSession } from 'next-auth/react';
+import { useTheme } from 'next-themes';
 import {
   User,
   Mail,
@@ -41,7 +42,13 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ThemeToggle } from '@/components/theme-toggle';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // ============================================================================
@@ -64,6 +71,7 @@ interface StatCard {
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const { userLeagues, isLoading: leaguesLoading } = useLeague();
+  const { theme, setTheme } = useTheme();
   const [saving, setSaving] = React.useState(false);
 
   const user = session?.user;
@@ -477,18 +485,6 @@ export default function ProfilePage() {
 
             <Separator />
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-md border bg-muted/30 p-3">
-              <div className="space-y-0.5">
-                <Label className="text-xs font-medium">Theme Preference</Label>
-                <p className="text-[11px] text-muted-foreground">
-                  Choose light, dark, or system appearance
-                </p>
-              </div>
-              <ThemeToggle />
-            </div>
-
-            <Separator />
-
             {/* Form */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -555,6 +551,29 @@ export default function ProfilePage() {
               )}
             </Button>
           </CardFooter>
+        </Card>
+      </div>
+
+      <div className="px-4 lg:px-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">System Theme</CardTitle>
+            <CardDescription>Choose your preferred appearance</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="w-full sm:max-w-xs">
+              <Select value={theme ?? 'system'} onValueChange={setTheme}>
+                <SelectTrigger aria-label="Theme preference">
+                  <SelectValue placeholder="Theme preference" />
+                </SelectTrigger>
+                <SelectContent align="start">
+                  <SelectItem value="light">Light Mode</SelectItem>
+                  <SelectItem value="dark">Dark Mode</SelectItem>
+                  <SelectItem value="system">System Preference</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
         </Card>
       </div>
 
