@@ -943,23 +943,14 @@ export default function LeagueDashboardPage({
               <CardHeader className="pb-0">
                 <div className="flex items-start justify-between gap-3">
                   <CardTitle className="text-base pt-1">My Summary</CardTitle>
-                  <div className="flex items-center gap-2">
-                    {league?.start_date && league?.end_date && league?.status !== 'completed' && (
-                      <DynamicReportDialog
-                        leagueId={id}
-                        leagueStartDate={league.start_date}
-                        leagueEndDate={league.end_date}
-                      />
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => fetchLeagueData(true)}
-                      aria-label="Refresh summary"
-                    >
-                      <RefreshCw className="size-4" />
-                    </Button>
-                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => fetchLeagueData(true)}
+                    aria-label="Refresh summary"
+                  >
+                    <RefreshCw className="size-4" />
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -1249,6 +1240,31 @@ export default function LeagueDashboardPage({
             </div>
           </CardContent>
         </Card>
+
+        {/* Progress Report Card */}
+        {league?.start_date && league?.end_date && league?.status !== 'completed' && (
+          <div className="mt-4">
+            <DynamicReportDialog
+              leagueId={id}
+              leagueStartDate={league.start_date}
+              leagueEndDate={league.end_date}
+              trigger={(
+                <Card className="hover:shadow-md transition-all hover:border-primary/30 cursor-pointer group">
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <div className="size-12 rounded-xl bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center shadow-lg shrink-0">
+                      <ClipboardCheck className="size-6 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold group-hover:text-primary transition-colors">Progress Report</h3>
+                      <p className="text-sm text-muted-foreground">Download your latest report</p>
+                    </div>
+                    <ArrowRight className="size-5 text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all" />
+                  </CardContent>
+                </Card>
+              )}
+            />
+          </div>
+        )}
 
         {/* Donate Rest Days Button */}
         <Link href={`/leagues/${id}/rest-day-donations`} className="mt-4 block">

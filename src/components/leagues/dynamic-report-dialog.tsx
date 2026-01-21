@@ -32,6 +32,7 @@ interface DynamicReportDialogProps {
     leagueId: string;
     leagueStartDate: string; // YYYY-MM-DD
     leagueEndDate: string;   // YYYY-MM-DD
+    trigger?: React.ReactNode;
 }
 
 type ReportType = 'tillDate' | 'lastWeek' | 'custom';
@@ -63,6 +64,7 @@ export function DynamicReportDialog({
     leagueId,
     leagueStartDate,
     leagueEndDate,
+    trigger,
 }: DynamicReportDialogProps) {
     const [open, setOpen] = useState(false);
     const [reportType, setReportType] = useState<ReportType>('tillDate');
@@ -143,10 +145,12 @@ export function DynamicReportDialog({
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                    <IconFileAnalytics className="h-4 w-4 mr-2" />
-                    Progress Report
-                </Button>
+                {trigger ?? (
+                    <Button variant="outline" size="sm">
+                        <IconFileAnalytics className="h-4 w-4 mr-2" />
+                        Progress Report
+                    </Button>
+                )}
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
