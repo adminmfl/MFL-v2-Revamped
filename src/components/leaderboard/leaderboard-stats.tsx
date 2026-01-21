@@ -60,7 +60,7 @@ export function LeaderboardStats({ stats }: LeaderboardStatsProps) {
     : 0;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card/60 p-2 sm:p-3">
+    <div className="flex flex-wrap items-center justify-center gap-2 rounded-xl border bg-card/60 p-2 sm:p-3">
       <StatItem
         label="Submissions"
         value={stats.total_submissions}
