@@ -49,6 +49,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { getClientCache, setClientCache, invalidateClientCache } from '@/lib/client-cache';
 import { DownloadReportButton, DownloadCertificateButton } from '@/components/leagues/download-report-button';
+import { DynamicReportDialog } from '@/components/leagues/dynamic-report-dialog';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -1135,6 +1136,17 @@ export default function LeagueDashboardPage({
               </CardContent>
             </Card>
           </div>
+          {league?.start_date && league?.end_date && league?.status !== 'completed' && (
+            <div className="px-4 lg:px-6 mt-2">
+              <div className="flex justify-end">
+                <DynamicReportDialog
+                  leagueId={id}
+                  leagueStartDate={league.start_date}
+                  leagueEndDate={league.end_date}
+                />
+              </div>
+            </div>
+          )}
         </>
       )}
 

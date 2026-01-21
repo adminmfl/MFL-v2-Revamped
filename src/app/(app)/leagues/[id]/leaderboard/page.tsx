@@ -45,7 +45,6 @@ import {
   ChallengeSpecificLeaderboard,
   RealTimeScoreboardTable,
 } from '@/components/leaderboard';
-import { DynamicReportDialog } from '@/components/leagues/dynamic-report-dialog';
 
 // ============================================================================
 // Week Calculation Helper
@@ -223,57 +222,45 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="@container/main flex flex-1 flex-col gap-3 lg:gap-4">
-      {/* Compact Header */}
+      {/* Header + Filter Card */}
       <div className="px-4 lg:px-6">
-        <div className="flex items-start justify-between gap-3 mb-2">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">Leaderboard</h1>
-            <p className="text-sm text-muted-foreground">
-              {league?.league_name || 'Rankings'}
-              {normalizationActive && (
-                <Badge variant="secondary" className="ml-2 text-xs">Normalized</Badge>
-              )}
-            </p>
+        <div className="rounded-lg border bg-card/70 shadow-sm px-3 py-3">
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <div>
+              <h1 className="text-xl font-bold tracking-tight">Leaderboard</h1>
+              <p className="text-sm text-muted-foreground">
+                {league?.league_name || 'Rankings'}
+                {normalizationActive && (
+                  <Badge variant="secondary" className="ml-2 text-xs">Normalized</Badge>
+                )}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={refetch}>
+              <RefreshCw className="size-4" />
+            </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={refetch}>
-            <RefreshCw className="size-4" />
-          </Button>
-        </div>
-        <div className="flex items-center gap-2">
-          {league?.start_date && league?.end_date && league?.status !== 'completed' && (
-            <DynamicReportDialog
-              leagueId={leagueId}
-              leagueStartDate={league.start_date}
-              leagueEndDate={league.end_date}
-            />
-          )}
-          {normalizationActive && canToggleRaw && (
-            <Button variant="ghost" size="sm" onClick={() => setViewRawTotals(v => !v)}>
-              {viewRawTotals ? 'Normalized' : 'Raw'}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Week Filter Only */}
-      <div className="px-4 lg:px-6">
-        {/* Date Range Filter Dropdown */}
-        <Popover open={filterOpen} onOpenChange={setFilterOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="text-sm">
-              <Calendar className="size-4 mr-2" />
-              {selectedWeek === 'all'
-                ? 'All Time'
-                : selectedWeek === 'custom'
-                  ? (startDate && endDate
-                    ? `${format(startDate, 'MMM d')} – ${format(endDate, 'MMM d')}`
-                    : 'Custom Range')
-                  : weekPresets.find(w => w.weekNumber === selectedWeek)?.label || 'All Time'}
-              <ChevronDown className="size-4 ml-2" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-56 p-2" align="start">
-            <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            {normalizationActive && canToggleRaw && (
+              <Button variant="ghost" size="sm" onClick={() => setViewRawTotals(v => !v)}>
+                {viewRawTotals ? 'Normalized' : 'Raw'}
+              </Button>
+            )}
+            <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="text-sm">
+                  <Calendar className="size-4 mr-2" />
+                  {selectedWeek === 'all'
+                    ? 'All Time'
+                    : selectedWeek === 'custom'
+                      ? (startDate && endDate
+                        ? `${format(startDate, 'MMM d')} – ${format(endDate, 'MMM d')}`
+                        : 'Custom Range')
+                      : weekPresets.find(w => w.weekNumber === selectedWeek)?.label || 'All Time'}
+                  <ChevronDown className="size-4 ml-2" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-2" align="start">
+                <div className="flex flex-col gap-1">
               {/* All Time Option */}
               <Button
                 variant={selectedWeek === 'all' ? 'secondary' : 'ghost'}
@@ -355,6 +342,8 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
             </div>
           </PopoverContent>
         </Popover>
+          </div>
+        </div>
       </div>
 
       {/* Tabbed Leaderboards - Teams & Challenges Only */}
