@@ -68,16 +68,6 @@ const baseNavItems: NavItem[] = [
     url: '/payments',
     icon: CreditCard,
   },
-  {
-    title: 'Join League',
-    url: '/leagues/join',
-    icon: Search,
-  },
-  {
-    title: 'Create League',
-    url: '/leagues/create',
-    icon: Plus,
-  },
 ];
 
 // ============================================================================
@@ -133,16 +123,6 @@ export function getSidebarNavItems(
         title: 'Payments',
         url: '/payments',
         icon: CreditCard,
-      },
-      {
-        title: 'Join League',
-        url: '/leagues/join',
-        icon: Search,
-      },
-      {
-        title: 'Create League',
-        url: '/leagues/create',
-        icon: Plus,
       },
     ],
   });
