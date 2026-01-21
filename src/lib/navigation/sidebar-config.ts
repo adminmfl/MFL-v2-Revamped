@@ -291,7 +291,6 @@ export function getSidebarNavItems(
     });
   }
 
-
   return sections;
 }
 
