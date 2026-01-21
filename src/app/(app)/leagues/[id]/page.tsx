@@ -32,6 +32,7 @@ import {
 import { useLeague } from '@/contexts/league-context';
 import { useAuth } from '@/hooks/use-auth';
 import { useRole } from '@/contexts/role-context';
+import { saveLastLeagueId } from '@/lib/last-league-storage';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { InviteDialog } from '@/components/league/invite-dialog';
@@ -176,6 +177,8 @@ export default function LeagueDashboardPage({
         setActiveLeague(matchingLeague);
       }
     }
+    // Save this league as the last visited
+    saveLastLeagueId(id);
   }, [id, userLeagues, activeLeague, setActiveLeague]);
 
   const fetchLeagueData = React.useCallback(
@@ -947,7 +950,6 @@ export default function LeagueDashboardPage({
                         leagueId={id}
                         leagueStartDate={league.start_date}
                         leagueEndDate={league.end_date}
-                        triggerProps={{ variant: 'ghost', size: 'icon', 'aria-label': 'Open progress report' }}
                       />
                     )}
                     <Button

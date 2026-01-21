@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { getLastLeagueId } from '@/lib/last-league-storage';
 
 // ============================================================================
 // Types
@@ -83,9 +84,25 @@ export default function CompleteProfilePage() {
       setFormData((prev) => ({ ...prev, username: session.user?.name || '' }));
     }
     if (session && !(session as any).user?.needsProfileCompletion) {
-      // Try to land the user on their first league dashboard; fallback to /dashboard
+      // Try to redirect to last league, otherwise first league, otherwise dashboard
       (async () => {
         try {
+          const lastLeagueId = getLastLeagueId();
+          if (lastLeagueId) {
+            // Verify the user still has access to that league
+            const res = await fetch('/api/leagues');
+            if (res.ok) {
+              const json = await res.json();
+              const leagues = Array.isArray(json?.data) ? json.data : [];
+              const hasLastLeague = leagues.some((l: any) => (l?.league_id || l?.id || l?.leagueId) === lastLeagueId);
+              if (hasLastLeague) {
+                router.replace(`/leagues/${lastLeagueId}`);
+                return;
+              }
+            }
+          }
+
+          // Fallback: try first league
           const res = await fetch('/api/leagues');
           if (res.ok) {
             const json = await res.json();
@@ -100,6 +117,7 @@ export default function CompleteProfilePage() {
         } catch (err) {
           console.error('Complete-profile redirect league fetch failed:', err);
         }
+
         router.replace('/dashboard');
       })();
     }
@@ -171,9 +189,25 @@ export default function CompleteProfilePage() {
 
         if ((signRes as any)?.ok) {
           setSuccess(true);
-          // Try to redirect to first league, otherwise dashboard
+          // Try to redirect to last league, otherwise first league, otherwise dashboard
           setTimeout(async () => {
             try {
+              const lastLeagueId = getLastLeagueId();
+              if (lastLeagueId) {
+                // Verify the user still has access to that league
+                const res = await fetch('/api/leagues');
+                if (res.ok) {
+                  const json = await res.json();
+                  const leagues = Array.isArray(json?.data) ? json.data : [];
+                  const hasLastLeague = leagues.some((l: any) => (l?.league_id || l?.id || l?.leagueId) === lastLeagueId);
+                  if (hasLastLeague) {
+                    window.location.href = `/leagues/${lastLeagueId}`;
+                    return;
+                  }
+                }
+              }
+
+              // Fallback: try first league
               const res = await fetch('/api/leagues');
               if (res.ok) {
                 const json = await res.json();

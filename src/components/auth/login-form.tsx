@@ -16,6 +16,7 @@ import {
   FieldLabel,
   FieldSeparator,
 } from "@/components/ui/field";
+import { getLastLeagueId } from "@/lib/last-league-storage";
 
 import type { LoginFormProps } from "@/types/auth";
 
@@ -104,13 +105,25 @@ export function LoginForm({
           return;
         }
 
-        // If no explicit callback (defaults to /dashboard), try first league dashboard
+        // If no explicit callback (defaults to /dashboard), try last league or first league
         if (callbackUrl === '/dashboard') {
           try {
             const res = await fetch('/api/leagues');
             if (res.ok) {
               const json = await res.json();
               const leagues = Array.isArray(json?.data) ? json.data : [];
+
+              // Try to restore last league
+              const lastLeagueId = getLastLeagueId();
+              if (lastLeagueId) {
+                const hasLastLeague = leagues.some((l: any) => (l?.league_id || l?.id || l?.leagueId) === lastLeagueId);
+                if (hasLastLeague) {
+                  window.location.replace(`/leagues/${lastLeagueId}`);
+                  return;
+                }
+              }
+
+              // Fallback to first league
               const first = leagues[0];
               const firstId = first?.league_id || first?.id || first?.leagueId;
               if (firstId) {
