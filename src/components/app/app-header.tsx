@@ -8,7 +8,6 @@ import { Home, Shield } from 'lucide-react';
 import { useLeague } from '@/contexts/league-context';
 import { useRole } from '@/contexts/role-context';
 import { RoleSwitcher } from './role-switcher';
-import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -220,8 +219,6 @@ export function AppHeader() {
           )}
 
           {/* Theme Toggle */}
-          <ThemeToggle />
-
           {/* Admin Panel Link (only for admins) */}
           {isAdmin && (
             <Button variant="ghost" asChild size="sm" className="hidden sm:flex">
