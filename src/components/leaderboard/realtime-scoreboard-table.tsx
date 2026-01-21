@@ -67,18 +67,18 @@ export function RealTimeScoreboardTable({ dates, teams }: RealTimeScoreboardTabl
   if (!dates.length) return null;
 
   return (
-    <div className="rounded-lg border overflow-x-auto">
+    <div className="rounded-lg border overflow-hidden">
       <Table className="w-full">
         <TableHeader>
           <TableRow>
-            <TableHead>Rank</TableHead>
-            <TableHead>Team</TableHead>
+            <TableHead className="w-[50px] px-2 text-center">Rank</TableHead>
+            <TableHead className="px-2">Team</TableHead>
             {dates.map((d) => (
-              <TableHead key={d} className="text-right tabular-nums">
+              <TableHead key={d} className="text-right tabular-nums whitespace-nowrap w-[65px] px-2 text-xs sm:text-sm">
                 {formatHeaderDate(d)}
               </TableHead>
             ))}
-            <TableHead className="text-right">RR</TableHead>
+            <TableHead className="text-right w-[65px] px-2">RR</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -88,10 +88,10 @@ export function RealTimeScoreboardTable({ dates, teams }: RealTimeScoreboardTabl
                 key={t.team_id}
                 className={cn(t.rank <= 3 && 'bg-muted/30')}
               >
-                <TableCell>
+                <TableCell className="px-2">
                   <RankBadge rank={t.rank} />
                 </TableCell>
-                <TableCell>
+                <TableCell className="px-2">
                   <div className="flex items-center gap-2">
                     <Avatar className="size-8 rounded-md shrink-0">
                       {t.logo_url ? (
@@ -102,23 +102,23 @@ export function RealTimeScoreboardTable({ dates, teams }: RealTimeScoreboardTabl
                         </AvatarFallback>
                       )}
                     </Avatar>
-                    <div>
-                      <p className="font-semibold text-sm whitespace-nowrap">{t.team_name}</p>
-                      <p className="text-xs text-muted-foreground whitespace-nowrap">2-day delay window</p>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm leading-tight">{t.team_name}</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">2-day delay</p>
                     </div>
                   </div>
                 </TableCell>
                 {dates.map((d) => {
                   const points = t.pointsByDate?.[d] ?? 0;
                   return (
-                    <TableCell key={d} className="text-right tabular-nums">
-                      <span className={cn('text-lg font-bold', points > 0 ? 'text-primary' : 'text-muted-foreground')}>
+                    <TableCell key={d} className="text-right tabular-nums px-2">
+                      <span className={cn('text-base font-bold', points > 0 ? 'text-primary' : 'text-muted-foreground')}>
                         {points}
                       </span>
                     </TableCell>
                   );
                 })}
-                <TableCell className="text-right">
+                <TableCell className="text-right px-2">
                   <div className="flex items-center justify-end gap-1">
                     <Star className="size-3.5 text-yellow-500" />
                     <span className="text-sm font-medium tabular-nums whitespace-nowrap">{t.avg_rr.toFixed(2)}</span>
