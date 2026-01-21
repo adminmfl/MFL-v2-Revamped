@@ -275,22 +275,18 @@ function DocumentViewer({ url, fileType }: { url: string; fileType: string }) {
   if (fileType === 'pdf' && !loadError) {
     return (
       <div
-        className="w-full rounded-lg border bg-muted overflow-auto overscroll-contain"
-        style={{
-          height: '80vh',
-          minHeight: '500px',
-          WebkitOverflowScrolling: 'touch' // Smooth scrolling on iOS
-        }}
+        className="w-full rounded-lg border bg-muted"
+        style={{ height: '80vh', minHeight: '500px' }}
       >
         <object
-          data={`${url}#toolbar=1&navpanes=1&scrollbar=1&view=FitH`}
+          data={`${url}#toolbar=1`}
           type="application/pdf"
-          className="w-full h-full min-w-[320px]" // Ensure minimum width to prevent cramping
+          className="w-full h-full"
           style={{ minHeight: '100%' }}
         >
           {/* Fallback for browsers that don't support object tag for PDFs */}
           <iframe
-            src={`${url}#toolbar=1&navpanes=1&scrollbar=1`}
+            src={`${url}#toolbar=1`}
             className="w-full h-full border-0"
             title="League Rules PDF"
             style={{ minHeight: '100%' }}
