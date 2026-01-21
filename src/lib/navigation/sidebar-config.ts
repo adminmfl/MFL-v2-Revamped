@@ -19,6 +19,7 @@ import {
   Gift,
   HeartHandshake,
   LucideIcon,
+  BookOpen,
 } from 'lucide-react';
 
 // ============================================================================
@@ -200,7 +201,13 @@ export function getSidebarNavItems(
   }
 
   // Common league items for all roles
+  // Common league items for all roles
   leagueItems.push(
+    {
+      title: 'Rules',
+      url: leagueUrl('/rules'),
+      icon: BookOpen,
+    },
     {
       title: 'Leaderboard',
       url: leagueUrl('/leaderboard'),
