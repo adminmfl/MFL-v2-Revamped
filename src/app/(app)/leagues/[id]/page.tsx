@@ -26,7 +26,6 @@ import {
   RefreshCw,
   Moon,
   Gift,
-  BookOpen,
 } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
@@ -1267,21 +1266,7 @@ export default function LeagueDashboardPage({
           </Card>
         </Link>
 
-        {/* League Rules Button */}
-        <Link href={`/leagues/${id}/rules`} className="mt-2 block">
-          <Card className="hover:shadow-md transition-all hover:border-primary/30 cursor-pointer group">
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className="size-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shrink-0">
-                <BookOpen className="size-6 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold group-hover:text-primary transition-colors">League Rules</h3>
-                <p className="text-sm text-muted-foreground">View rules and guidelines</p>
-              </div>
-              <ArrowRight className="size-5 text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all" />
-            </CardContent>
-          </Card>
-        </Link>
+
       </div>
 
       {/* Progress Bar (for launched/active leagues) */}

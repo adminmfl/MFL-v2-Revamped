@@ -1312,86 +1312,88 @@ export default function SubmitActivityPage({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Overwrite Existing Entry?</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-4 pt-2 text-left">
-              <p>
-                You have already submitted an activity for <strong>{format(activityDate, 'MMMM d, yyyy')}</strong>.
-              </p>
+            <AlertDialogDescription asChild className="space-y-4 pt-2 text-left">
+              <div>
+                <p>
+                  You have already submitted an activity for <strong>{format(activityDate, 'MMMM d, yyyy')}</strong>.
+                </p>
 
-              {existingEntry && (
-                <div className="rounded-md bg-muted p-3 text-sm">
-                  <div className="font-semibold mb-2">Existing Entry Details:</div>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                    <div className="col-span-2 sm:col-span-1">
-                      <span className="text-muted-foreground block text-xs">Activity Type</span>
-                      <span className="font-medium capitalize">
-                        {existingEntry.type === 'workout'
-                          ? (existingEntry.workout_type?.replace(/_/g, ' ') || 'Workout')
-                          : 'Rest Day'}
-                      </span>
-                    </div>
-                    <div className="col-span-2 sm:col-span-1">
-                      <span className="text-muted-foreground block text-xs">Status</span>
-                      <span className={cn(
-                        "capitalize font-medium",
-                        existingEntry.status === 'approved' ? "text-green-600 dark:text-green-400" :
-                          existingEntry.status === 'rejected' ? "text-red-600 dark:text-red-400" :
-                            "text-yellow-600 dark:text-yellow-400"
-                      )}>
-                        {existingEntry.status}
-                      </span>
+                {existingEntry && (
+                  <div className="rounded-md bg-muted p-3 text-sm">
+                    <div className="font-semibold mb-2">Existing Entry Details:</div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                      <div className="col-span-2 sm:col-span-1">
+                        <span className="text-muted-foreground block text-xs">Activity Type</span>
+                        <span className="font-medium capitalize">
+                          {existingEntry.type === 'workout'
+                            ? (existingEntry.workout_type?.replace(/_/g, ' ') || 'Workout')
+                            : 'Rest Day'}
+                        </span>
+                      </div>
+                      <div className="col-span-2 sm:col-span-1">
+                        <span className="text-muted-foreground block text-xs">Status</span>
+                        <span className={cn(
+                          "capitalize font-medium",
+                          existingEntry.status === 'approved' ? "text-green-600 dark:text-green-400" :
+                            existingEntry.status === 'rejected' ? "text-red-600 dark:text-red-400" :
+                              "text-yellow-600 dark:text-yellow-400"
+                        )}>
+                          {existingEntry.status}
+                        </span>
+                      </div>
+
+                      {(existingEntry.duration !== null && existingEntry.duration !== undefined) && (
+                        <div className="col-span-2 sm:col-span-1">
+                          <span className="text-muted-foreground block text-xs">Duration</span>
+                          <span>{existingEntry.duration} mins</span>
+                        </div>
+                      )}
+                      {(existingEntry.distance !== null && existingEntry.distance !== undefined) && (
+                        <div className="col-span-2 sm:col-span-1">
+                          <span className="text-muted-foreground block text-xs">Distance</span>
+                          <span>{existingEntry.distance} km</span>
+                        </div>
+                      )}
+                      {(existingEntry.steps !== null && existingEntry.steps !== undefined) && (
+                        <div className="col-span-2 sm:col-span-1">
+                          <span className="text-muted-foreground block text-xs">Steps</span>
+                          <span>{existingEntry.steps}</span>
+                        </div>
+                      )}
+                      {(existingEntry.holes !== null && existingEntry.holes !== undefined) && (
+                        <div className="col-span-2 sm:col-span-1">
+                          <span className="text-muted-foreground block text-xs">Holes</span>
+                          <span>{existingEntry.holes}</span>
+                        </div>
+                      )}
+                      {(existingEntry.rr_value !== null && existingEntry.rr_value !== undefined) && (
+                        <div className="col-span-2 sm:col-span-1">
+                          <span className="text-muted-foreground block text-xs">RR Value</span>
+                          <span>{Number(existingEntry.rr_value).toFixed(1)}</span>
+                        </div>
+                      )}
                     </div>
 
-                    {(existingEntry.duration !== null && existingEntry.duration !== undefined) && (
-                      <div className="col-span-2 sm:col-span-1">
-                        <span className="text-muted-foreground block text-xs">Duration</span>
-                        <span>{existingEntry.duration} mins</span>
-                      </div>
-                    )}
-                    {(existingEntry.distance !== null && existingEntry.distance !== undefined) && (
-                      <div className="col-span-2 sm:col-span-1">
-                        <span className="text-muted-foreground block text-xs">Distance</span>
-                        <span>{existingEntry.distance} km</span>
-                      </div>
-                    )}
-                    {(existingEntry.steps !== null && existingEntry.steps !== undefined) && (
-                      <div className="col-span-2 sm:col-span-1">
-                        <span className="text-muted-foreground block text-xs">Steps</span>
-                        <span>{existingEntry.steps}</span>
-                      </div>
-                    )}
-                    {(existingEntry.holes !== null && existingEntry.holes !== undefined) && (
-                      <div className="col-span-2 sm:col-span-1">
-                        <span className="text-muted-foreground block text-xs">Holes</span>
-                        <span>{existingEntry.holes}</span>
-                      </div>
-                    )}
-                    {(existingEntry.rr_value !== null && existingEntry.rr_value !== undefined) && (
-                      <div className="col-span-2 sm:col-span-1">
-                        <span className="text-muted-foreground block text-xs">RR Value</span>
-                        <span>{Number(existingEntry.rr_value).toFixed(1)}</span>
+                    {existingEntry.proof_url && (
+                      <div className="mt-3 pt-3 border-t">
+                        <span className="text-muted-foreground block text-xs mb-1">Proof</span>
+                        <button
+                          type="button"
+                          onClick={() => setViewProofUrl(existingEntry.proof_url)}
+                          className="text-primary hover:underline flex items-center gap-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-sm"
+                        >
+                          <ImageIcon className="size-4" />
+                          View Uploaded Image
+                        </button>
                       </div>
                     )}
                   </div>
+                )}
 
-                  {existingEntry.proof_url && (
-                    <div className="mt-3 pt-3 border-t">
-                      <span className="text-muted-foreground block text-xs mb-1">Proof</span>
-                      <button
-                        type="button"
-                        onClick={() => setViewProofUrl(existingEntry.proof_url)}
-                        className="text-primary hover:underline flex items-center gap-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-sm"
-                      >
-                        <ImageIcon className="size-4" />
-                        View Uploaded Image
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <p>
-                Submitting this new entry will <strong>overwrite</strong> the existing one permanently.
-              </p>
+                <p>
+                  Submitting this new entry will <strong>overwrite</strong> the existing one permanently.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
