@@ -37,7 +37,28 @@ export default function SignupPage() {
       } else if (isAdmin && callbackUrl === "/dashboard") {
         router.replace("/admin");
       } else {
-        router.replace(callbackUrl);
+        // Default: try to land the user on their first league dashboard.
+        (async () => {
+          try {
+            if (callbackUrl === "/dashboard") {
+              const res = await fetch("/api/leagues");
+              if (res.ok) {
+                const json = await res.json();
+                const leagues = Array.isArray(json?.data) ? json.data : [];
+                const first = leagues[0];
+                const firstId = first?.league_id || first?.id || first?.leagueId;
+                if (firstId) {
+                  router.replace(`/leagues/${firstId}`);
+                  return;
+                }
+              }
+            }
+          } catch (err) {
+            console.error("Signup redirect league fetch failed:", err);
+          }
+
+          router.replace(callbackUrl);
+        })();
       }
     }
   }, [status, session, router, callbackUrl]);
