@@ -998,7 +998,7 @@ export default function LeagueDashboardPage({
                   </div>
                   <div
                     className={`rounded-md border border-border/60 px-3 py-2.5 text-center ${
-                      rejectedCount > 0 ? 'bg-red-100' : 'bg-muted/40'
+                      rejectedCount > 0 ? 'bg-red-100 dark:bg-red-950/40' : 'bg-muted/40'
                     }`}
                   >
                     <div className="text-xs text-muted-foreground">Rejected Workouts</div>
