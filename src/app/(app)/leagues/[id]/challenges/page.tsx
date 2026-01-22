@@ -172,6 +172,13 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
   // Team/Sub-team level score setting (for team & sub_team challenges)
   const [teamScores, setTeamScores] = React.useState<Record<string, number | ''>>({});
   const [subTeamScores, setSubTeamScores] = React.useState<Record<string, number | ''>>({});
+
+  // Largest current team size (used for per-member visible cap on team challenges)
+  const maxTeamSize = React.useMemo(() => {
+    const sizes = Object.values(teamMemberCounts || {});
+    if (!sizes.length) return 1;
+    return Math.max(...sizes, 1);
+  }, [teamMemberCounts]);
   
   const [shareOpen, setShareOpen] = React.useState(false);
   const [shareLink, setShareLink] = React.useState('');
@@ -929,20 +936,34 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                 </div>
 
                 {/* Points Display */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
-                    <div className="text-[11px] text-muted-foreground">Max Points</div>
-                    <div className="text-base font-semibold text-primary tabular-nums">
-                      {challenge.total_points}
+                {(() => {
+                  const isTeamChallenge = challenge.challenge_type === 'team';
+                  const perMemberMax = isTeamChallenge
+                    ? Math.round((challenge.total_points || 0) / Math.max(1, maxTeamSize))
+                    : challenge.total_points;
+
+                  return (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
+                        <div className="text-[11px] text-muted-foreground">
+                          {isTeamChallenge ? 'Per Member Max' : 'Max Points'}
+                        </div>
+                        <div className="text-base font-semibold text-primary tabular-nums">
+                          {perMemberMax}
+                        </div>
+                        {isTeamChallenge && (
+                          <div className="mt-1 text-[10px] text-muted-foreground">Team cap {challenge.total_points}</div>
+                        )}
+                      </div>
+                      <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
+                        <div className="text-[11px] text-muted-foreground">Your Points</div>
+                        <div className="text-base font-semibold text-primary tabular-nums">
+                          {challenge.my_submission?.awarded_points ? challenge.my_submission.awarded_points : '—'}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
-                    <div className="text-[11px] text-muted-foreground">Your Points</div>
-                    <div className="text-base font-semibold text-primary tabular-nums">
-                      {challenge.my_submission?.awarded_points ? challenge.my_submission.awarded_points : '—'}
-                    </div>
-                  </div>
-                </div>
+                  );
+                })()}
 
                 {(challenge.start_date || challenge.end_date) && (
                   <div className="text-xs text-muted-foreground">
