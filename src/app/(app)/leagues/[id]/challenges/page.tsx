@@ -21,7 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Upload, Plus, CheckCircle2, Clock3, XCircle, Shield, FileText, Trash2, Share2, Copy } from 'lucide-react';
+import { Upload, Plus, CheckCircle2, Clock3, XCircle, Shield, FileText, Trash2, Share2, Copy, InfoIcon } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +36,7 @@ import {
 import { useRole } from '@/contexts/role-context';
 import { cn } from '@/lib/utils';
 import { SubTeamManager } from '@/components/challenges/sub-team-manager';
+import { getPointDistributionInfo, validateTeamChallengePoints } from '@/lib/utils/challenge-point-distribution';
 
 // Types ---------------------------------------------------------------------
 
@@ -70,7 +71,7 @@ type SubmissionRow = ChallengeSubmission & {
   league_member_id: string;
   leaguemembers?: {
     role: string | null;
-    teams?: { team_name: string | null } | null;
+    teams?: { team_name: string | null; team_id?: string } | null;
     users?: { username: string | null } | null;
   } | null;
 };
@@ -132,7 +133,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
     name: '',
     description: '',
     challengeType: 'individual' as Challenge['challenge_type'],
-    totalPoints: 0,
+    totalPoints: '' as string | number,
     docUrl: '',
   });
 
@@ -144,7 +145,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
   const [viewProofUrl, setViewProofUrl] = React.useState<string | null>(null);
   const [selectedPreset, setSelectedPreset] = React.useState<any | null>(null);
   const [activateForm, setActivateForm] = React.useState({
-    totalPoints: 50,
+    totalPoints: '' as string | number,
     startDate: '',
     endDate: '',
   });
@@ -165,7 +166,13 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
   const [reviewFilterTeamId, setReviewFilterTeamId] = React.useState<string>('');
   const [reviewFilterSubTeamId, setReviewFilterSubTeamId] = React.useState<string>('');
   const [teams, setTeams] = React.useState<Array<{ team_id: string; team_name: string }>>([]);
+  const [teamMemberCounts, setTeamMemberCounts] = React.useState<Record<string, number>>({});
   const [subTeams, setSubTeams] = React.useState<Array<{ subteam_id: string; name: string }>>([]);
+  
+  // Team/Sub-team level score setting (for team & sub_team challenges)
+  const [teamScores, setTeamScores] = React.useState<Record<string, number | ''>>({});
+  const [subTeamScores, setSubTeamScores] = React.useState<Record<string, number | ''>>({});
+  
   const [shareOpen, setShareOpen] = React.useState(false);
   const [shareLink, setShareLink] = React.useState('');
   const [shareChallengeName, setShareChallengeName] = React.useState('');
@@ -295,7 +302,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
     if (preset) {
       setSelectedPreset(preset);
       setActivateForm({
-        totalPoints: 50,
+        totalPoints: '',
         startDate: '',
         endDate: '',
       });
@@ -393,7 +400,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
         name: '',
         description: '',
         challengeType: 'individual',
-        totalPoints: 0,
+        totalPoints: '',
         docUrl: '',
       });
       fetchChallenges();
@@ -649,7 +656,14 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
       const res = await fetch(`/api/leagues/${leagueId}/teams`);
       const json = await res.json();
       if (res.ok && json.success) {
-        setTeams(json.data?.teams || []);
+        const teamsList = json.data?.teams || [];
+        setTeams(teamsList);
+        // Build member count map
+        const counts: Record<string, number> = {};
+        teamsList.forEach((team: any) => {
+          counts[team.team_id] = team.member_count || 0;
+        });
+        setTeamMemberCounts(counts);
       }
     } catch (err) {
       console.error('Failed to load teams:', err);
@@ -1121,8 +1135,13 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                   type="number"
                   value={createForm.totalPoints}
                   min={0}
-                  onChange={(e) => setCreateForm((p) => ({ ...p, totalPoints: Number(e.target.value) }))}
+                  onChange={(e) => setCreateForm((p) => ({ ...p, totalPoints: e.target.value }))}
                 />
+                <p className="text-xs text-muted-foreground">
+                  {createForm.challengeType === 'individual' && '💡 Points per person'}
+                  {createForm.challengeType === 'team' && '💡 Total points for entire team (divided fairly among members)'}
+                  {createForm.challengeType === 'sub_team' && '💡 Total points for entire sub-team (divided fairly among members)'}
+                </p>
               </div>
             </div>
             <div className="space-y-2">
@@ -1193,9 +1212,14 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                   min={0}
                   value={activateForm.totalPoints}
                   onChange={(e) =>
-                    setActivateForm((p) => ({ ...p, totalPoints: Number(e.target.value) }))
+                    setActivateForm((p) => ({ ...p, totalPoints: e.target.value }))
                   }
                 />
+                <p className="text-xs text-muted-foreground">
+                  {selectedPreset?.challenge_type === 'individual' && '💡 Points per person'}
+                  {selectedPreset?.challenge_type === 'team' && '💡 Total points for entire team (divided fairly among members)'}
+                  {selectedPreset?.challenge_type === 'sub_team' && '💡 Total points for entire sub-team (divided fairly among members)'}
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
@@ -1329,11 +1353,50 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
             {submissions.length === 0 && (
               <p className="text-muted-foreground text-sm">No submissions yet.</p>
             )}
-            {submissions.length > 0 && (
-              <div className="space-y-3">
+            {submissions.length > 0 && reviewChallenge && (
+              <div className="space-y-4">
+                {/* Point Distribution Info for Team Challenges */}
+                {reviewChallenge.challenge_type === 'team' && reviewFilterTeamId && (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900/30 dark:bg-blue-950/20 p-4">
+                    <div className="flex items-start gap-3">
+                      <InfoIcon className="size-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                      <div className="space-y-2 flex-1">
+                        <h4 className="font-semibold text-sm text-blue-900 dark:text-blue-100">Team Challenge Point Distribution</h4>
+                        <p className="text-xs text-blue-800 dark:text-blue-200">
+                          {(() => {
+                            const teamSize = teamMemberCounts[reviewFilterTeamId] || 0;
+                            if (teamSize === 0) return 'Loading team info...';
+                            const distribution = getPointDistributionInfo(
+                              reviewChallenge.total_points,
+                              teamSize,
+                              reviewChallenge.challenge_type
+                            );
+                            return distribution.description;
+                          })()}
+                        </p>
+                        <p className="text-xs text-blue-700 dark:text-blue-300">
+                          💡 Each team member's contribution earns a fair share of the total points, ensuring balanced scoring regardless of team size.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {submissions.map((s) => {
                   const username = s.leaguemembers?.users?.username || 'Member';
                   const teamName = s.leaguemembers?.teams?.team_name;
+                  const teamId = s.leaguemembers?.teams?.team_id;
+                  const teamSize = teamId ? (teamMemberCounts[teamId] || 0) : 0;
+                  
+                  // Calculate validation for this submission
+                  const currentPoints = reviewAwardedPoints[s.id] !== '' ? reviewAwardedPoints[s.id] : s.awarded_points;
+                  const validation = validateTeamChallengePoints(
+                    typeof currentPoints === 'number' ? currentPoints : 0,
+                    reviewChallenge.total_points,
+                    teamSize,
+                    reviewChallenge.challenge_type
+                  );
+
                   return (
                     <div key={s.id} className="border rounded-lg p-3 space-y-2">
                       <div className="flex items-center gap-2 justify-between">
@@ -1363,19 +1426,34 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                           View Proof
                         </Button>
                         {isAdmin && (
-                          <div className="flex gap-2 ml-auto items-center">
+                          <div className="flex gap-2 ml-auto items-center flex-wrap">
                             {(s.status === 'pending' || s.status === 'approved') && (
-                              <Input
-                                type="number"
-                                min={0}
-                                max={reviewChallenge?.total_points}
-                                placeholder="Points"
-                                value={reviewAwardedPoints[s.id] ?? s.awarded_points ?? ''}
-                                onChange={(e) =>
-                                  setReviewAwardedPoints((p) => ({ ...p, [s.id]: e.target.value === '' ? '' : Number(e.target.value) }))
-                                }
-                                className="w-28"
-                              />
+                              <div className="flex flex-col gap-1">
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  max={validation.maxAllowed}
+                                  placeholder="Points"
+                                  value={reviewAwardedPoints[s.id] ?? s.awarded_points ?? ''}
+                                  onChange={(e) =>
+                                    setReviewAwardedPoints((p) => ({ ...p, [s.id]: e.target.value === '' ? '' : Number(e.target.value) }))
+                                  }
+                                  className={cn(
+                                    'w-28',
+                                    typeof currentPoints === 'number' && !validation.valid && 'border-red-500 focus:ring-red-500'
+                                  )}
+                                />
+                                {reviewChallenge.challenge_type === 'team' && teamSize > 0 && (
+                                  <span className="text-xs text-muted-foreground">
+                                    Max: {validation.maxAllowed}
+                                  </span>
+                                )}
+                                {typeof currentPoints === 'number' && !validation.valid && (
+                                  <span className="text-xs text-red-600 font-medium">
+                                    {validation.reason}
+                                  </span>
+                                )}
+                              </div>
                             )}
                             <Button
                               size="sm"
@@ -1388,7 +1466,10 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                             </Button>
                             <Button
                               size="sm"
-                              disabled={validatingId === s.id}
+                              disabled={
+                                validatingId === s.id || 
+                                (typeof currentPoints === 'number' && !validation.valid)
+                              }
                               onClick={() => handleValidate(s.id, 'approved', reviewAwardedPoints[s.id] === '' ? undefined : (reviewAwardedPoints[s.id] as number))}
                             >
                               {s.status === 'approved' ? 'Update' : 'Approve'}
