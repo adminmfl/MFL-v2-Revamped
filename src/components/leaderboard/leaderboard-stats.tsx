@@ -59,6 +59,8 @@ export function LeaderboardStats({ stats }: LeaderboardStatsProps) {
     ? Math.round((stats.approved / stats.total_submissions) * 100)
     : 0;
 
+  const rejected = stats.total_submissions - stats.approved - stats.pending;
+
   return (
     <div className="flex flex-wrap items-center justify-center gap-2 rounded-xl border bg-card/60 p-2 sm:p-3">
       <StatItem
@@ -69,7 +71,7 @@ export function LeaderboardStats({ stats }: LeaderboardStatsProps) {
       />
       <StatItem
         label="Approved"
-        value={stats.approved}
+        value={`${stats.approved} (${approvalRate}%)`}
         icon={CheckCircle2}
         colorClass="text-emerald-500"
       />
@@ -80,10 +82,10 @@ export function LeaderboardStats({ stats }: LeaderboardStatsProps) {
         colorClass="text-amber-500"
       />
       <StatItem
-        label="Approval"
-        value={`${approvalRate}%`}
+        label="Rejected"
+        value={rejected}
         icon={TrendingUp}
-        colorClass="text-blue-500"
+        colorClass="text-red-500"
       />
     </div>
   );
