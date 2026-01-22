@@ -1147,23 +1147,34 @@ export default function SubmitActivityPage({
                     ~{estimatedRR.toFixed(1)} RR
                   </span>
                 </div>
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={loading || uploadingImage || !formData.activity_type || !selectedFile}
-                >
-                  {loading || uploadingImage ? (
-                    <>
-                      <Loader2 className="mr-2 size-4 animate-spin" />
-                      {uploadingImage ? 'Uploading...' : 'Submitting...'}
-                    </>
-                  ) : (
-                    <>
-                      Submit Activity
-                      <ArrowRight className="ml-2 size-4" />
-                    </>
-                  )}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    asChild
+                  >
+                    <Link href={`/leagues/${leagueId}`}>
+                      Cancel
+                    </Link>
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1"
+                    disabled={loading || uploadingImage || !formData.activity_type || !selectedFile}
+                  >
+                    {loading || uploadingImage ? (
+                      <>
+                        <Loader2 className="mr-2 size-4 animate-spin" />
+                        {uploadingImage ? 'Uploading...' : 'Submitting...'}
+                      </>
+                    ) : (
+                      <>
+                        Submit Activity
+                        <ArrowRight className="ml-2 size-4" />
+                      </>
+                    )}
+                  </Button>
+                </div>
                 <p className="text-xs text-muted-foreground text-center">
                   Submission will be reviewed by your captain
                 </p>
@@ -1291,28 +1302,39 @@ export default function SubmitActivityPage({
                     <span className="text-sm text-muted-foreground">RR Points</span>
                     <span className="text-lg font-bold text-primary">+1.0 RR</span>
                   </div>
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={loading || (restDayStats?.isAtLimit && !restDayReason.trim())}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 size-4 animate-spin" />
-                        Submitting...
-                      </>
-                    ) : restDayStats?.isAtLimit ? (
-                      <>
-                        Request Exemption
-                        <ArrowRight className="ml-2 size-4" />
-                      </>
-                    ) : (
-                      <>
-                        Log Rest Day
-                        <ArrowRight className="ml-2 size-4" />
-                      </>
-                    )}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      asChild
+                    >
+                      <Link href={`/leagues/${leagueId}`}>
+                        Cancel
+                      </Link>
+                    </Button>
+                    <Button
+                      type="submit"
+                      className="flex-1"
+                      disabled={loading || (restDayStats?.isAtLimit && !restDayReason.trim())}
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="mr-2 size-4 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : restDayStats?.isAtLimit ? (
+                        <>
+                          Request Exemption
+                          <ArrowRight className="ml-2 size-4" />
+                        </>
+                      ) : (
+                        <>
+                          Log Rest Day
+                          <ArrowRight className="ml-2 size-4" />
+                        </>
+                      )}
+                    </Button>
+                  </div>
                   <p className="text-xs text-muted-foreground text-center">
                     {restDayStats?.isAtLimit
                       ? 'Requires approval from Captain or Governor'
