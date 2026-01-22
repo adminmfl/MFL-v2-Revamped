@@ -677,6 +677,11 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
     }
   };
 
+  // Ensure we know the largest team size so per-member caps display consistently
+  React.useEffect(() => {
+    fetchTeams();
+  }, [leagueId]);
+
   const fetchSubTeams = async (challengeId: string, teamId: string) => {
     try {
       console.log('[fetchSubTeams] Fetching for challenge:', challengeId, 'team:', teamId);
@@ -1383,20 +1388,26 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                       <InfoIcon className="size-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                       <div className="space-y-2 flex-1">
                         <h4 className="font-semibold text-sm text-blue-900 dark:text-blue-100">Team Challenge Point Distribution</h4>
-                        <p className="text-xs text-blue-800 dark:text-blue-200">
-                          {(() => {
-                            const teamSize = teamMemberCounts[reviewFilterTeamId] || 0;
-                            if (teamSize === 0) return 'Loading team info...';
-                            const distribution = getPointDistributionInfo(
-                              reviewChallenge.total_points,
-                              teamSize,
-                              reviewChallenge.challenge_type
-                            );
-                            return distribution.description;
-                          })()}
-                        </p>
+                        {(() => {
+                          const teamSize = teamMemberCounts[reviewFilterTeamId] || 0;
+                          const total = reviewChallenge.total_points || 0;
+                          if (teamSize === 0) return <p className="text-xs text-blue-800 dark:text-blue-200">Loading team info...</p>;
+
+                          const internalCap = Math.round((total / Math.max(teamSize, 1)) * 100) / 100; // I
+                          const visibleCap = Math.round((total / Math.max(maxTeamSize, 1)) * 100) / 100; // V
+                          const distribution = getPointDistributionInfo(total, teamSize, reviewChallenge.challenge_type);
+
+                          return (
+                            <div className="space-y-1 text-xs">
+                              <p className="text-blue-800 dark:text-blue-200">{distribution.description}</p>
+                              <p className="text-blue-700 dark:text-blue-300">Internal per-member cap (I): {internalCap} (used for backend validation)</p>
+                              <p className="text-blue-700 dark:text-blue-300">Player-visible per-member cap (V): {visibleCap} (shown to all teams, based on largest team size)</p>
+                              <p className="text-blue-700 dark:text-blue-300">Awarded points are scaled for visibility: visible = (awarded / I) × V, capped at V.</p>
+                            </div>
+                          );
+                        })()}
                         <p className="text-xs text-blue-700 dark:text-blue-300">
-                          💡 Each team member's contribution earns a fair share of the total points, ensuring balanced scoring regardless of team size.
+                          💡 This keeps effort fair across team sizes and makes the player-facing points consistent.
                         </p>
                       </div>
                     </div>
