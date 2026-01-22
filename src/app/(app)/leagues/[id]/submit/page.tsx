@@ -916,21 +916,21 @@ export default function SubmitActivityPage({
       </div>
 
       <Tabs value={submissionType} onValueChange={(v) => setSubmissionType(v as 'workout' | 'rest')} className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="workout" className="flex items-center gap-2">
-            <Dumbbell className="size-4" />
-            Workout
-          </TabsTrigger>
-          <TabsTrigger value="rest" className="flex items-center gap-2">
-            <Moon className="size-4" />
-            Rest Day
-          </TabsTrigger>
-        </TabsList>
-
         {/* Workout Tab Content */}
-        <TabsContent value="workout" className="mt-6">
+        <TabsContent value="workout" className="mt-3">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="rounded-lg border p-4 space-y-4 max-w-2xl">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="workout" className="flex items-center gap-2">
+                  <Dumbbell className="size-4" />
+                  Workout
+                </TabsTrigger>
+                <TabsTrigger value="rest" className="flex items-center gap-2">
+                  <Moon className="size-4" />
+                  Rest Day
+                </TabsTrigger>
+              </TabsList>
+
               {/* Activity Type - Dropdown */}
               <div className="space-y-2">
                 <Label htmlFor="activity-type">Activity Type *</Label>
@@ -1173,9 +1173,20 @@ export default function SubmitActivityPage({
         </TabsContent>
 
         {/* Rest Day Tab Content */}
-        <TabsContent value="rest" className="mt-6">
+        <TabsContent value="rest" className="mt-3">
           <form onSubmit={handleRestDaySubmit} className="space-y-6">
             <div className="rounded-lg border p-4 space-y-4 max-w-2xl">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="workout" className="flex items-center gap-2">
+                  <Dumbbell className="size-4" />
+                  Workout
+                </TabsTrigger>
+                <TabsTrigger value="rest" className="flex items-center gap-2">
+                  <Moon className="size-4" />
+                  Rest Day
+                </TabsTrigger>
+              </TabsList>
+
               {/* Rest Day Stats */}
               {restDayLoading ? (
                 <div className="flex items-center justify-center py-4">
@@ -1463,7 +1474,7 @@ export default function SubmitActivityPage({
       }
 
       <Dialog open={submitted} onOpenChange={(open) => !open && handleSubmitAnother()}>
-        <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+        <DialogContent className="sm:max-w-md py-5" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader className="text-center sm:text-center">
             <div className="mx-auto mb-4">
               <div className={cn(
@@ -1519,10 +1530,6 @@ export default function SubmitActivityPage({
           )}
 
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-center pt-2">
-            <Button variant="outline" onClick={handleSubmitAnother} className="flex-1">
-              <RotateCcw className="mr-2 size-4" />
-              Submit Another
-            </Button>
             <Button asChild className="flex-1">
               <Link href={`/leagues/${leagueId}`}>
                 <Eye className="mr-2 size-4" />
