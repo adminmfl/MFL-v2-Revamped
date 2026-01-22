@@ -180,14 +180,14 @@ export function getSidebarNavItems(
   // Common league items for all roles
   leagueItems.push(
     {
-      title: 'Rules',
-      url: leagueUrl('/rules'),
-      icon: BookOpen,
-    },
-    {
       title: 'Leaderboard',
       url: leagueUrl('/leaderboard'),
       icon: BarChart3,
+    },
+    {
+      title: 'Rules',
+      url: leagueUrl('/rules'),
+      icon: BookOpen,
     },
     {
       title: 'Challenges',
