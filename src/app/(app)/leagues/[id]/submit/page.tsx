@@ -1045,7 +1045,7 @@ export default function SubmitActivityPage({
                 );
               })()}
 
-              {/* Date and Notes */}
+              {/* Date */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Activity Date</Label>
@@ -1076,19 +1076,6 @@ export default function SubmitActivityPage({
                       />
                     </PopoverContent>
                   </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes (Optional)</Label>
-                  <Textarea
-                    id="notes"
-                    placeholder="How did it feel?"
-                    rows={2}
-                    value={formData.notes}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, notes: e.target.value }))
-                    }
-                  />
                 </div>
               </div>
 
@@ -1136,6 +1123,20 @@ export default function SubmitActivityPage({
                     )}
                   </div>
                 )}
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes (Optional)</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="How did it feel?"
+                  rows={2}
+                  value={formData.notes}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, notes: e.target.value }))
+                  }
+                />
               </div>
 
               {/* Summary and Submit */}
@@ -1523,9 +1524,9 @@ export default function SubmitActivityPage({
               Submit Another
             </Button>
             <Button asChild className="flex-1">
-              <Link href={`/leagues/${leagueId}/my-submissions`}>
+              <Link href={`/leagues/${leagueId}`}>
                 <Eye className="mr-2 size-4" />
-                View Submissions
+                My Activities
               </Link>
             </Button>
           </div>
