@@ -38,7 +38,7 @@ const routeTitles: Record<string, string> = {
 
 // Dynamic route patterns
 const dynamicRoutePatterns: [RegExp, (match: RegExpMatchArray) => string][] = [
-  [/^\/leagues\/([^/]+)$/, () => 'League Dashboard'],
+  [/^\/leagues\/([^/]+)$/, () => 'My Activities'],
   [/^\/leagues\/([^/]+)\/team$/, () => 'Team Management'],
   [/^\/leagues\/([^/]+)\/my-team$/, () => 'My Team'],
   [/^\/leagues\/([^/]+)\/my-team-view$/, () => 'My Team'],

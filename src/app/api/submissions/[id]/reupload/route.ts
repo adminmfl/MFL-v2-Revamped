@@ -9,6 +9,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth/config';
 import { getSupabaseServiceRole } from '@/lib/supabase/client';
 import { z } from 'zod';
+import { getReuploadCutoffUtc } from '@/lib/utils/reupload-window';
 
 const reuploadSchema = z.object({
   proof_url: z.string().url().optional(),
@@ -17,6 +18,8 @@ const reuploadSchema = z.object({
   distance: z.number().positive().optional(),
   steps: z.number().int().positive().optional(),
   holes: z.number().int().positive().optional(),
+  tzOffsetMinutes: z.number().int().min(-720).max(840).optional(),
+  timeZone: z.string().max(128).optional(),
 });
 
 export async function POST(
@@ -73,6 +76,26 @@ export async function POST(
     // Parse and validate the update data
     const body = await request.json();
     const validated = reuploadSchema.parse(body);
+
+    const offsetMinutes = validated.tzOffsetMinutes ?? 0;
+    const rejectionTimestamp =
+      originalSubmission.reviewed_at || originalSubmission.modified_date || originalSubmission.created_date;
+
+    const cutoffUtc = getReuploadCutoffUtc(rejectionTimestamp, offsetMinutes);
+
+    if (!cutoffUtc) {
+      return NextResponse.json(
+        { error: 'Unable to determine reupload window for this submission' },
+        { status: 400 }
+      );
+    }
+
+    if (Date.now() > cutoffUtc) {
+      return NextResponse.json(
+        { error: 'Reupload window has passed (allowed until next-day 11:59pm local time).' },
+        { status: 400 }
+      );
+    }
 
     // Create new submission as a reupload
     const { data: newSubmission, error: insertError } = await supabase

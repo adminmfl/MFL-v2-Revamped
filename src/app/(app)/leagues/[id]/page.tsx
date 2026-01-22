@@ -26,16 +26,17 @@ import {
   RefreshCw,
   Moon,
   Gift,
+  Eye,
 } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
 import { useAuth } from '@/hooks/use-auth';
 import { useRole } from '@/contexts/role-context';
+import { type MySubmission } from '@/hooks/use-my-submissions';
 import { saveLastLeagueId } from '@/lib/last-league-storage';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { InviteDialog } from '@/components/league/invite-dialog';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Card,
   CardAction,
@@ -51,6 +52,8 @@ import { Progress } from '@/components/ui/progress';
 import { getClientCache, setClientCache, invalidateClientCache } from '@/lib/client-cache';
 import { DownloadReportButton, DownloadCertificateButton } from '@/components/leagues/download-report-button';
 import { DynamicReportDialog } from '@/components/leagues/dynamic-report-dialog';
+import { SubmissionDetailDialog } from '@/components/submissions';
+import { useRouter } from 'next/navigation';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -75,6 +78,16 @@ function startOfWeekSunday(d: Date) {
   const out = new Date(d);
   out.setHours(0, 0, 0, 0);
   out.setDate(out.getDate() - out.getDay());
+  return out;
+}
+
+// Start of week anchored to a specific weekday (0=Sun ... 6=Sat)
+function startOfWeekAnchored(d: Date, anchorDay: number) {
+  const out = new Date(d);
+  out.setHours(0, 0, 0, 0);
+  const day = out.getDay();
+  const diff = (day - anchorDay + 7) % 7; // days since last anchor day
+  out.setDate(out.getDate() - diff);
   return out;
 }
 
@@ -121,12 +134,14 @@ interface LeagueStats {
   dailyAverage: number;
   maxCapacity: number;
 }
+
 type RecentDayRow = {
   date: string; // YYYY-MM-DD (local)
   label: string;
   subtitle: string;
   status?: string;
   pointsLabel: string;
+  submission?: MySubmission | null;
 };
 
 // ============================================================================
@@ -140,7 +155,8 @@ export default function LeagueDashboardPage({
 }) {
   const { id } = React.use(params);
   const { activeLeague, setActiveLeague, userLeagues } = useLeague();
-  const { activeRole, isHost, isGovernor, isCaptain } = useRole();
+  const { isHost } = useRole();
+  const router = useRouter();
 
   const [league, setLeague] = React.useState<LeagueDetails | null>(null);
   const [stats, setStats] = React.useState<LeagueStats | null>(null);
@@ -149,6 +165,8 @@ export default function LeagueDashboardPage({
   const [rejectedCount, setRejectedCount] = React.useState<number>(0);
   const [recentDays, setRecentDays] = React.useState<RecentDayRow[] | null>(null);
   const [weekOffset, setWeekOffset] = React.useState(0);
+  const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
+  const [selectedSubmission, setSelectedSubmission] = React.useState<MySubmission | null>(null);
   const [mySummaryLoading, setMySummaryLoading] = React.useState(true);
 
 
@@ -166,6 +184,8 @@ export default function LeagueDashboardPage({
     teamPoints: number | null;
     teamMissedDays: number | null;
     teamRestUsed: number | null;
+    teamActivityPoints?: number;
+    teamChallengePoints?: number;
   } | null>(null);
 
   // Sync active league if navigated directly
@@ -286,7 +306,7 @@ export default function LeagueDashboardPage({
     fetchLeagueData();
   }, [fetchLeagueData]);
 
-  // Week view (Sunday → Saturday) with navigation
+  // Week view anchored to league start weekday (e.g., Thu→Wed)
   React.useEffect(() => {
     if (!league) return;
 
@@ -298,7 +318,10 @@ export default function LeagueDashboardPage({
         const todayLocal = new Date();
         const todayStr = localYmd(todayLocal);
 
-        const currentWeekStart = startOfWeekSunday(todayLocal);
+        // Anchor the week to the league's start weekday
+        const leagueStartLocal = parseLocalYmd(league.start_date);
+        const anchorDay = leagueStartLocal ? leagueStartLocal.getDay() : 0; // default Sunday
+        const currentWeekStart = startOfWeekAnchored(todayLocal, anchorDay);
         const weekStartLocal = addDays(currentWeekStart, -weekOffset * 7);
         const startDate = localYmd(weekStartLocal);
         const endDate = localYmd(addDays(weekStartLocal, 6));
@@ -311,10 +334,10 @@ export default function LeagueDashboardPage({
         }
 
         const recentData = await recentRes.json();
-        const submissions: any[] =
-          recentData?.success && recentData?.data?.submissions ? (recentData.data.submissions as any[]) : [];
+        const submissions: MySubmission[] =
+          recentData?.success && recentData?.data?.submissions ? (recentData.data.submissions as MySubmission[]) : [];
 
-        const byDate = new Map<string, any>();
+        const byDate = new Map<string, MySubmission>();
         for (const s of submissions) {
           if (!s?.date) continue;
           const existing = byDate.get(s.date);
@@ -343,23 +366,23 @@ export default function LeagueDashboardPage({
 
           const outOfRange = (leagueStart && ymd < leagueStart) || (leagueEnd && ymd > leagueEnd);
           if (outOfRange) {
-            rows.push({ date: ymd, label, subtitle: '—', pointsLabel: '—' });
+            rows.push({ date: ymd, label, subtitle: '—', pointsLabel: '—', submission: null });
             continue;
           }
 
-          const entry = byDate.get(ymd);
+          const entry = byDate.get(ymd) || null;
           if (!entry) {
             if (ymd > todayStr) {
-              rows.push({ date: ymd, label, subtitle: 'Upcoming', pointsLabel: '—' });
+              rows.push({ date: ymd, label, subtitle: 'Upcoming', pointsLabel: '—', submission: null });
               continue;
             }
 
             if (ymd === todayStr) {
-              rows.push({ date: ymd, label, subtitle: 'No submission yet', pointsLabel: '—' });
+              rows.push({ date: ymd, label, subtitle: 'No submission yet', pointsLabel: '—', submission: null });
               continue;
             }
 
-            rows.push({ date: ymd, label, subtitle: 'Missed day', pointsLabel: '0 pt' });
+            rows.push({ date: ymd, label, subtitle: 'Missed day', pointsLabel: '0 pt', submission: null });
             continue;
           }
 
@@ -372,7 +395,7 @@ export default function LeagueDashboardPage({
           const rr = typeof entry.rr_value === 'number' ? entry.rr_value : null;
           const pointsLabel = rr === null ? '0 pt' : `${rr.toFixed(1)} RR`;
 
-          rows.push({ date: ymd, label, subtitle, status: statusLabel, pointsLabel });
+          rows.push({ date: ymd, label, subtitle, status: statusLabel, pointsLabel, submission: entry });
         }
 
         if (!cancelled) setRecentDays(rows);
@@ -550,6 +573,8 @@ export default function LeagueDashboardPage({
         let leaderboardData: any = null;
         let totalPoints = points;
         let challengePoints = 0;
+        let teamActivityPoints = 0;
+        let teamChallengePoints = 0;
 
         try {
           const tzOffsetMinutes = new Date().getTimezoneOffset();
@@ -578,6 +603,25 @@ export default function LeagueDashboardPage({
                     ? mine.points
                     : null;
               teamPoints = typeof p === 'number' && Number.isFinite(p) ? Math.max(0, p) : null;
+
+              // Extract team members' activity and challenge points
+              const individuals: Array<{
+                user_id?: string;
+                points?: number;
+                challenge_points?: number;
+                team_id?: string;
+              }> = leaderboardData?.data?.individuals || leaderboardData?.data?.individualRankings || [];
+
+              if (Array.isArray(individuals)) {
+                individuals.forEach((ind) => {
+                  if (String(ind.team_id) === String(teamId)) {
+                    const actPoints = typeof ind.points === 'number' ? Math.max(0, ind.points) : 0;
+                    const chalPoints = typeof ind.challenge_points === 'number' ? Math.max(0, ind.challenge_points) : 0;
+                    teamActivityPoints += actPoints;
+                    teamChallengePoints += chalPoints;
+                  }
+                });
+              }
             }
 
             // Extract individual stats for user's total points (includes challenge bonuses)
@@ -627,6 +671,8 @@ export default function LeagueDashboardPage({
           teamPoints,
           teamMissedDays,
           teamRestUsed,
+          teamActivityPoints,
+          teamChallengePoints,
         };
         setMySummary(summaryData);
 
@@ -643,6 +689,30 @@ export default function LeagueDashboardPage({
 
     run();
   }, [id, league, user]);
+
+  const openSubmissionDetails = (submission: MySubmission | null) => {
+    if (!submission) return;
+    setSelectedSubmission(submission);
+    setDetailDialogOpen(true);
+  };
+
+  const handleReupload = (submission: MySubmission) => {
+    const params = new URLSearchParams({
+      resubmit: submission.id,
+      date: submission.date,
+      type: submission.type,
+    });
+
+    if (submission.workout_type) params.set('workout_type', submission.workout_type);
+    if (submission.duration) params.set('duration', submission.duration.toString());
+    if (submission.distance) params.set('distance', submission.distance.toString());
+    if (submission.steps) params.set('steps', submission.steps.toString());
+    if (submission.holes) params.set('holes', submission.holes.toString());
+    if (submission.notes) params.set('notes', submission.notes);
+    if (submission.proof_url) params.set('proof_url', submission.proof_url);
+
+    router.push(`/leagues/${id}/submit?${params.toString()}`);
+  };
 
   if (loading) {
     return <LeagueDashboardSkeleton />;
@@ -732,25 +802,6 @@ export default function LeagueDashboardPage({
 
   return (
     <div className="@container/main flex flex-1 flex-col gap-4 lg:gap-6">
-      {rejectedCount > 0 && (
-        <div className="px-4 lg:px-6">
-          <Alert
-            variant="destructive"
-            className="border-destructive/50 bg-destructive/10"
-          >
-            <AlertTitle>Rejected workouts need attention</AlertTitle>
-            <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <span>
-                You have {rejectedCount} rejected submission{rejectedCount === 1 ? '' : 's'} in this league.
-                Please review and resubmit.
-              </span>
-              <Button asChild variant="outline" size="sm">
-                <Link href={`/leagues/${id}/my-submissions`}>View my submissions</Link>
-              </Button>
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
       {/* Header */}
       <div className="flex flex-col gap-4 px-4 lg:px-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
@@ -829,7 +880,7 @@ export default function LeagueDashboardPage({
               >
                 <Link href={`/leagues/${id}/submit?type=workout`}>
                   <Dumbbell className="mr-2 size-4" />
-                  Add Workout
+                  Add activity
                 </Link>
               </Button>
               <Button
@@ -955,7 +1006,7 @@ export default function LeagueDashboardPage({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
+                  <div className="rounded-md border border-border/60 bg-blue-100 dark:bg-blue-950 px-3 py-2.5 text-center">
                     <div className="text-xs text-muted-foreground">Total Points</div>
                     <div className="text-base font-semibold text-foreground tabular-nums">
                       {mySummary?.totalPoints.toLocaleString() ?? '—'}
@@ -970,7 +1021,7 @@ export default function LeagueDashboardPage({
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
                     <div className="text-xs text-muted-foreground">Activity Points</div>
                     <div className="text-base font-semibold text-foreground tabular-nums">
@@ -983,20 +1034,22 @@ export default function LeagueDashboardPage({
                       {mySummary?.challengePoints.toLocaleString() ?? '—'}
                     </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="rounded-md border border-border/60 bg-muted/40 px-2.5 py-2.5 text-center">
-                    <div className="text-[11px] text-muted-foreground">Rest Days Used</div>
-                    <div className="text-sm font-semibold text-foreground tabular-nums">
-                      {mySummary?.restUsed.toLocaleString() ?? '—'}
+                  <div
+                    className={`rounded-md border border-border/60 px-3 py-2.5 text-center ${
+                      rejectedCount > 0 ? 'bg-red-100 dark:bg-red-950/40' : 'bg-muted/40'
+                    }`}
+                  >
+                    <div className="text-xs text-muted-foreground">Rejected Workouts</div>
+                    <div className="text-base font-semibold text-foreground tabular-nums">
+                      {rejectedCount.toLocaleString()}
                     </div>
                   </div>
-                  <div className="rounded-md border border-border/60 bg-muted/40 px-2.5 py-2.5 text-center">
-                    <div className="text-[11px] text-muted-foreground">Rest Days Unused</div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-md border border-border/60 bg-blue-100 dark:bg-blue-950 px-3 py-2.5 text-center">
+                    <div className="text-[11px] text-muted-foreground">Rest Days Used</div>
                     <div className="text-sm font-semibold text-foreground tabular-nums">
-                      {mySummary?.restUnused !== null && typeof mySummary?.restUnused === 'number'
-                        ? mySummary.restUnused.toLocaleString()
-                        : '—'}
+                      {mySummary?.restUsed.toLocaleString() ?? '—'}/{mySummary?.restUnused !== null && typeof mySummary?.restUnused === 'number' ? (mySummary.restUsed + mySummary.restUnused).toLocaleString() : '—'}
                     </div>
                   </div>
                   <div className="rounded-md border border-border/60 bg-muted/40 px-2.5 py-2.5 text-center">
@@ -1103,8 +1156,8 @@ export default function LeagueDashboardPage({
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
-                    <div className="text-xs text-muted-foreground">Points</div>
+                  <div className="rounded-md border border-border/60 bg-blue-100 dark:bg-blue-950 px-3 py-2.5 text-center">
+                    <div className="text-xs text-muted-foreground">Total Points</div>
                     <div className="text-base font-semibold text-foreground tabular-nums">
                       {typeof mySummary?.teamPoints === 'number'
                         ? mySummary.teamPoints.toLocaleString()
@@ -1116,6 +1169,22 @@ export default function LeagueDashboardPage({
                     <div className="text-base font-semibold text-foreground tabular-nums">
                       {typeof mySummary?.teamAvgRR === 'number'
                         ? mySummary.teamAvgRR.toFixed(2)
+                        : '—'}
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
+                    <div className="text-xs text-muted-foreground">Activity Points</div>
+                    <div className="text-base font-semibold text-foreground tabular-nums">
+                      {typeof mySummary?.teamActivityPoints === 'number'
+                        ? mySummary.teamActivityPoints.toLocaleString()
+                        : '—'}
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
+                    <div className="text-xs text-muted-foreground">Challenge Points</div>
+                    <div className="text-base font-semibold text-foreground tabular-nums">
+                      {typeof mySummary?.teamChallengePoints === 'number'
+                        ? mySummary.teamChallengePoints.toLocaleString()
                         : '—'}
                     </div>
                   </div>
@@ -1144,55 +1213,52 @@ export default function LeagueDashboardPage({
 
       {/* Date-wise Progress (This Week: Sun–Sat) */}
       <div className="px-4 lg:px-6">
-        {(() => {
-          const currentWeekStart = startOfWeekSunday(new Date());
-          const weekStartLocal = addDays(currentWeekStart, -weekOffset * 7);
+        <Card>
+          {(() => {
+            const leagueStartLocal = league?.start_date ? parseLocalYmd(league.start_date) : null;
+            const anchorDay = leagueStartLocal ? leagueStartLocal.getDay() : 0; // default Sunday if not available
+            const currentWeekStart = startOfWeekAnchored(new Date(), anchorDay);
+            const weekStartLocal = addDays(currentWeekStart, -weekOffset * 7);
 
-          const leagueStartLocal = league?.start_date ? parseLocalYmd(league.start_date) : null;
-          const leagueStartWeek = leagueStartLocal ? startOfWeekSunday(leagueStartLocal) : null;
-          const maxWeekOffset = leagueStartWeek
-            ? Math.max(0, Math.floor((currentWeekStart.getTime() - leagueStartWeek.getTime()) / (7 * MS_PER_DAY)))
-            : Infinity;
+            const leagueStartWeek = leagueStartLocal ? startOfWeekAnchored(leagueStartLocal, anchorDay) : null;
+            const maxWeekOffset = leagueStartWeek
+              ? Math.max(0, Math.floor((currentWeekStart.getTime() - leagueStartWeek.getTime()) / (7 * MS_PER_DAY)))
+              : Infinity;
 
-          const canGoPrev = Number.isFinite(maxWeekOffset) ? weekOffset < maxWeekOffset : true;
-          const canGoNext = weekOffset > 0;
+            const canGoPrev = Number.isFinite(maxWeekOffset) ? weekOffset < maxWeekOffset : true;
+            const canGoNext = weekOffset > 0;
 
-          return (
-            <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-lg font-semibold">This Week (Sun–Sat)</h2>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setWeekOffset((w) => (canGoPrev ? w + 1 : w))}
-                      disabled={!canGoPrev}
-                      aria-label="Previous week"
-                    >
-                      <ChevronLeft className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setWeekOffset((w) => (canGoNext ? Math.max(0, w - 1) : w))}
-                      disabled={!canGoNext}
-                      aria-label="Next week"
-                    >
-                      <ChevronRight className="size-4" />
-                    </Button>
-                  </div>
-                  <Badge variant="secondary" className="text-xs">
+            return (
+              <CardHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b flex items-center justify-between py-3">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-sm px-3 py-1 font-semibold">
                     {formatWeekRange(weekStartLocal)}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">Week view resets every Sunday</p>
-              </div>
-            </div>
-          );
-        })()}
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setWeekOffset((w) => (canGoPrev ? w + 1 : w))}
+                    disabled={!canGoPrev}
+                    aria-label="Previous week"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setWeekOffset((w) => (canGoNext ? Math.max(0, w - 1) : w))}
+                    disabled={!canGoNext}
+                    aria-label="Next week"
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+            );
+          })()}
 
-        <Card>
           <CardContent className="p-0">
             <div className="divide-y">
               {recentDays === null ? (
@@ -1201,7 +1267,7 @@ export default function LeagueDashboardPage({
                 <div className="px-4 py-6 text-sm text-muted-foreground">No recent activity.</div>
               ) : (
                 recentDays.map((row) => (
-                  <div key={row.date} className="flex items-center justify-between px-4 py-3">
+                  <div key={row.date} className="flex items-center justify-between px-4 py-3 gap-3">
                     <div className="flex flex-col">
                       <span className="font-medium">{row.label}</span>
                       {(() => {
@@ -1233,41 +1299,70 @@ export default function LeagueDashboardPage({
                         );
                       })()}
                     </div>
-                    <div className="font-medium tabular-nums">{row.pointsLabel}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="font-medium tabular-nums min-w-[56px] text-right">{row.pointsLabel}</div>
+                      {row.submission ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
+                          onClick={() => openSubmissionDetails(row.submission || null)}
+                          aria-label="View submission details"
+                        >
+                          <Eye className="size-4" />
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
                 ))
               )}
             </div>
           </CardContent>
         </Card>
+      </div>
 
-        {/* Progress Report Card */}
-        {league?.start_date && league?.end_date && league?.status !== 'completed' && (
-          <div className="mt-4">
-            <DynamicReportDialog
-              leagueId={id}
-              leagueStartDate={league.start_date}
-              leagueEndDate={league.end_date}
-              trigger={(
-                <Card className="hover:shadow-md transition-all hover:border-primary/30 cursor-pointer group">
-                  <CardContent className="p-4 flex items-center gap-4">
-                    <div className="size-12 rounded-xl bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center shadow-lg shrink-0">
-                      <ClipboardCheck className="size-6 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold group-hover:text-primary transition-colors">Progress Report</h3>
-                      <p className="text-sm text-muted-foreground">Download your latest report</p>
-                    </div>
-                    <ArrowRight className="size-5 text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all" />
-                  </CardContent>
-                </Card>
-              )}
-            />
-          </div>
-        )}
+      <SubmissionDetailDialog
+        open={detailDialogOpen}
+        onOpenChange={(open) => {
+          setDetailDialogOpen(open);
+          if (!open) setSelectedSubmission(null);
+        }}
+        submission={selectedSubmission}
+        isOwner
+        onReupload={(id) => {
+          const submission = selectedSubmission && selectedSubmission.id === id ? selectedSubmission : null;
+          if (submission) handleReupload(submission);
+        }}
+      />
 
-        {/* Donate Rest Days Button */}
-        <Link href={`/leagues/${id}/rest-day-donations`} className="mt-4 block">
+      {/* Progress Report Card */}
+      {league?.start_date && league?.end_date && league?.status !== 'completed' && (
+        <div className="px-4 lg:px-6">
+          <DynamicReportDialog
+            leagueId={id}
+            leagueStartDate={league.start_date}
+            leagueEndDate={league.end_date}
+            trigger={(
+              <Card className="hover:shadow-md transition-all hover:border-primary/30 cursor-pointer group">
+                <CardContent className="p-4 flex items-center gap-4">
+                  <div className="size-12 rounded-xl bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center shadow-lg shrink-0">
+                    <ClipboardCheck className="size-6 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold group-hover:text-primary transition-colors">Progress Report</h3>
+                    <p className="text-sm text-muted-foreground">Download your latest report</p>
+                  </div>
+                  <ArrowRight className="size-5 text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all" />
+                </CardContent>
+              </Card>
+            )}
+          />
+        </div>
+      )}
+
+      {/* Donate Rest Days Button */}
+      <div className="px-4 lg:px-6">
+        <Link href={`/leagues/${id}/rest-day-donations`} className="block">
           <Card className="hover:shadow-md transition-all hover:border-primary/30 cursor-pointer group">
             <CardContent className="p-4 flex items-center gap-4">
               <div className="size-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shrink-0">
@@ -1281,8 +1376,6 @@ export default function LeagueDashboardPage({
             </CardContent>
           </Card>
         </Link>
-
-
       </div>
 
       {/* Progress Bar (for launched/active leagues) */}

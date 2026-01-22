@@ -449,8 +449,17 @@ async function getRankings(
         .eq('status', 'approved')
         .in('league_member_id', memberIds);
 
+    // Pre-compute team sizes for proportional scaling of team challenges
+    const teamSizes = new Map<string, number>();
+    for (const member of allMembers) {
+        if (member.team_id) {
+            teamSizes.set(member.team_id, (teamSizes.get(member.team_id) || 0) + 1);
+        }
+    }
+    const maxTeamSize = Math.max(...Array.from(teamSizes.values()), 1);
+
     // UPDATED LOGIC: Add ALL challenge points to member totals (Individual, Team, Sub-team)
-    // As per user request: submitter gets points for any approved submission they made
+    // For team challenges, apply proportional scaling: visible = (awarded / I) × V
     for (const sub of (challengeSubs || [])) {
         const challenge = sub.leagueschallenges as any;
 
@@ -459,7 +468,17 @@ async function getRankings(
             const current = userPointsMap.get(member.user_id) || 0;
 
             // Logic matching Leaderboard: use awarded if present, else default to total
-            const points = sub.awarded_points !== null ? sub.awarded_points : (challenge.total_points || 0);
+            let points = sub.awarded_points !== null ? sub.awarded_points : (challenge.total_points || 0);
+
+            // Apply proportional scaling for team challenges
+            if (challenge.challenge_type === 'team' && maxTeamSize > 0) {
+                const totalPoints = Number(challenge.total_points || 0);
+                const memberTeamSize = member.team_id ? (teamSizes.get(member.team_id) || 1) : 1;
+                const internalCap = memberTeamSize > 0 ? totalPoints / memberTeamSize : totalPoints;
+                const visibleCap = totalPoints / maxTeamSize;
+                const proportion = internalCap > 0 ? points / internalCap : 1;
+                points = Math.min(proportion * visibleCap, visibleCap);
+            }
 
             userPointsMap.set(member.user_id, current + points);
         }

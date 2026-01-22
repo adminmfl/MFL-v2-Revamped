@@ -20,7 +20,6 @@ import {
 import { useLeague, LeagueWithRoles } from '@/contexts/league-context';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Card,
   CardAction,
@@ -52,25 +51,6 @@ interface StatCard {
   description: string;
 }
 
-type RejectedLeagueSummary = {
-  league_id: string;
-  league_name: string;
-  rejectedCount: number;
-  latestDate: string | null;
-};
-
-type RejectedSummaryResponse =
-  | {
-    success: true;
-    data: {
-      totalRejected: number;
-      leagues: RejectedLeagueSummary[];
-      cached: boolean;
-      cacheTtlMs: number;
-    };
-  }
-  | { success: false; error: string };
-
 // ============================================================================
 // Main Dashboard Page
 // ============================================================================
@@ -80,11 +60,6 @@ export default function DashboardPage() {
   const { userLeagues, isLoading, setActiveLeague } = useLeague();
 
   const userName = session?.user?.name?.split(' ')[0] || 'User';
-
-  const [rejectedSummary, setRejectedSummary] = React.useState<{
-    totalRejected: number;
-    leagues: RejectedLeagueSummary[];
-  } | null>(null);
 
   // Calculate stats
   const stats: StatCard[] = React.useMemo(() => {
@@ -117,78 +92,6 @@ export default function DashboardPage() {
     ];
   }, [userLeagues]);
 
-  // Fetch rejected submissions summary (cached client-side to avoid unnecessary load)
-  React.useEffect(() => {
-    const userId = (session?.user as any)?.id as string | undefined;
-    if (!userId) {
-      setRejectedSummary(null);
-      return;
-    }
-
-    const CACHE_TTL_MS = 5 * 60 * 1000;
-    const cacheKey = `mfl:rejected-submissions:${userId}`;
-
-    const readCache = ():
-      | { ts: number; value: { totalRejected: number; leagues: RejectedLeagueSummary[] } }
-      | null => {
-      try {
-        const raw = window.localStorage.getItem(cacheKey);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw) as any;
-        if (!parsed || typeof parsed.ts !== 'number' || !parsed.value) return null;
-        return parsed;
-      } catch {
-        return null;
-      }
-    };
-
-    const cached = readCache();
-    const cacheIsFresh = !!(cached && Date.now() - cached.ts < CACHE_TTL_MS);
-
-    // Seed UI from cache for fast paint, but still revalidate so counts drop
-    // right after approvals/resubmits. This avoids stale banners when the
-    // user has already fixed their submissions.
-    if (cacheIsFresh && cached) {
-      setRejectedSummary(cached.value);
-    }
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const url = cacheIsFresh
-          ? '/api/user/rejected-submissions?force=1'
-          : '/api/user/rejected-submissions';
-        const res = await fetch(url, { cache: 'no-store' });
-        const json = (await res.json()) as RejectedSummaryResponse;
-        if (cancelled) return;
-
-        if (!res.ok || !json.success) {
-          // Preserve cached data when available to avoid blinking to zero on
-          // transient errors; only clear when no cache is present.
-          if (!cacheIsFresh) setRejectedSummary(null);
-          return;
-        }
-
-        const value = {
-          totalRejected: Number(json.data.totalRejected || 0),
-          leagues: Array.isArray(json.data.leagues) ? json.data.leagues : [],
-        };
-        setRejectedSummary(value);
-        try {
-          window.localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), value }));
-        } catch {
-          // ignore storage quota / access errors
-        }
-      } catch {
-        if (!cancelled && !cacheIsFresh) setRejectedSummary(null);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [session?.user]);
-
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
       {/* Welcome Header */}
@@ -206,38 +109,6 @@ export default function DashboardPage() {
         <div className="flex gap-2">
         </div>
       </div>
-
-      {rejectedSummary?.totalRejected ? (
-        <div className="px-4 lg:px-6">
-          <Alert
-            variant="destructive"
-            className="border-destructive/40 bg-destructive/10"
-          >
-            <AlertTitle>Rejected submission(s) need attention</AlertTitle>
-            <AlertDescription className="w-full">
-              <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <span>
-                  You have {rejectedSummary.totalRejected} rejected submission{rejectedSummary.totalRejected === 1 ? '' : 's'} across {rejectedSummary.leagues.length} league{rejectedSummary.leagues.length === 1 ? '' : 's'}.
-                </span>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/submissions">Review now</Link>
-                </Button>
-              </div>
-              {rejectedSummary.leagues.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {rejectedSummary.leagues.map((l) => (
-                    <Button key={l.league_id} variant="outline" size="sm" asChild>
-                      <Link href={`/leagues/${l.league_id}/my-submissions`}>
-                        {l.league_name} ({l.rejectedCount})
-                      </Link>
-                    </Button>
-                  ))}
-                </div>
-              )}
-            </AlertDescription>
-          </Alert>
-        </div>
-      ) : null}
 
       {/* Leagues Section */}
       <div className="px-4 lg:px-6">
