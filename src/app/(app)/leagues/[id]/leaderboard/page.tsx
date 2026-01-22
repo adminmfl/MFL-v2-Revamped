@@ -27,7 +27,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -150,17 +156,19 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
   }, [league?.start_date, league?.end_date]);
 
   const handleWeekSelect = (week: number | 'all' | 'custom') => {
-    setSelectedWeek(week);
     if (week === 'all') {
+      setSelectedWeek('all');
       setStartDate(undefined);
       setEndDate(undefined);
       setDateRange(null, null);
       setFilterOpen(false);
     } else if (week === 'custom') {
+      setSelectedWeek(week);
       setFilterOpen(true);
     } else {
       const preset = weekPresets.find(w => w.weekNumber === week);
       if (preset) {
+        setSelectedWeek(week);
         setStartDate(parseISO(preset.startDate));
         setEndDate(parseISO(preset.endDate));
         setDateRange(preset.startDate, preset.endDate);
@@ -170,11 +178,14 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
   };
 
   const handleApplyDateRange = () => {
-    setDateRange(
-      startDate ? format(startDate, 'yyyy-MM-dd') : null,
-      endDate ? format(endDate, 'yyyy-MM-dd') : null
-    );
-    setFilterOpen(false);
+    if (startDate && endDate) {
+      setSelectedWeek('custom');
+      setDateRange(
+        format(startDate, 'yyyy-MM-dd'),
+        format(endDate, 'yyyy-MM-dd')
+      );
+      setFilterOpen(false);
+    }
   };
 
   const handleResetDateRange = () => {
@@ -277,7 +288,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
                         <div className="text-xs font-medium text-muted-foreground px-2 py-1 mt-1">
                           Weeks
                         </div>
-                        {weekPresets.map((week) => (
+                        {[...weekPresets].reverse().map((week) => (
                           <Button
                             key={week.weekNumber}
                             variant={selectedWeek === week.weekNumber ? 'secondary' : 'ghost'}
@@ -350,25 +361,48 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      {/* Tabbed Leaderboards - Teams & Challenges Only */}
+      {/* Leaderboards */}
       <div className="px-4 lg:px-6">
+        
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="teams" className="gap-2">
-              <Trophy className="size-4" />
-              <span>Overall</span>
-            </TabsTrigger>
-            <TabsTrigger value="challenges" className="gap-2">
-              <Flag className="size-4" />
-              <span>Challenges</span>
-            </TabsTrigger>
-          </TabsList>
 
           {/* Teams Leaderboard (Overall) */}
           <TabsContent value="teams" className="mt-0">
             <div className="rounded-lg border p-3 sm:p-4">
               <div className="mb-3">
-                <h2 className="text-base sm:text-lg font-semibold">Overall standings</h2>
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-base sm:text-lg font-semibold">Overall standings</h2>
+                  {(() => (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8 text-xs font-normal">
+                          {activeTab === 'teams' ? (
+                            <>
+                              <Trophy className="size-3.5 mr-1.5" />
+                              <span>Overall</span>
+                            </>
+                          ) : (
+                            <>
+                              <Flag className="size-3.5 mr-1.5" />
+                              <span>Challenges</span>
+                            </>
+                          )}
+                          <ChevronDown className="size-3.5 ml-1.5 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem onClick={() => setActiveTab('teams')} className="gap-2">
+                          <Trophy className="size-4" />
+                          <span>Overall</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setActiveTab('challenges')} className="gap-2">
+                          <Flag className="size-4" />
+                          <span>Challenges</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ))()}
+                </div>
                 <p className="text-xs sm:text-sm text-muted-foreground">This is the overall leaderboard including challange scores</p>
               </div>
               <div className="overflow-hidden">
@@ -379,7 +413,39 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
 
           {/* Challenges Leaderboard */}
           <TabsContent value="challenges" className="mt-0">
-            <ChallengeSpecificLeaderboard leagueId={leagueId} />
+            <ChallengeSpecificLeaderboard
+              leagueId={leagueId}
+              renderViewSwitcher={(() => (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 text-xs font-normal">
+                      {activeTab === 'challenges' ? (
+                        <>
+                          <Flag className="size-3.5 mr-1.5" />
+                          <span>Challenges</span>
+                        </>
+                      ) : (
+                        <>
+                          <Trophy className="size-3.5 mr-1.5" />
+                          <span>Overall</span>
+                        </>
+                      )}
+                      <ChevronDown className="size-3.5 ml-1.5 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuItem onClick={() => setActiveTab('teams')} className="gap-2">
+                      <Trophy className="size-4" />
+                      <span>Overall</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setActiveTab('challenges')} className="gap-2">
+                      <Flag className="size-4" />
+                      <span>Challenges</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ))()}
+            />
           </TabsContent>
         </Tabs>
       </div>

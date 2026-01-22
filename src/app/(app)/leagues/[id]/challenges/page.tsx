@@ -38,6 +38,7 @@ import { useRole } from '@/contexts/role-context';
 import { cn } from '@/lib/utils';
 import { SubTeamManager } from '@/components/challenges/sub-team-manager';
 import { getPointDistributionInfo, validateTeamChallengePoints } from '@/lib/utils/challenge-point-distribution';
+import { isReuploadWindowOpen } from '@/lib/utils/reupload-window';
 
 // Types ---------------------------------------------------------------------
 
@@ -118,6 +119,7 @@ function submissionStatusBadge(status: ChallengeSubmission['status']) {
 
 export default function LeagueChallengesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: leagueId } = use(params);
+  const tzOffsetMinutes = React.useMemo(() => new Date().getTimezoneOffset(), []);
   const { isHost, isGovernor } = useRole();
   const isAdmin = isHost || isGovernor;
 
@@ -185,6 +187,14 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
   const [shareLink, setShareLink] = React.useState('');
   const [shareChallengeName, setShareChallengeName] = React.useState('');
   const [shareMessage, setShareMessage] = React.useState('');
+  const canReuploadSubmission = React.useCallback(
+    (submission: ChallengeSubmission | null) => {
+      if (!submission || submission.status !== 'rejected') return false;
+      const rejectionTime = submission.reviewed_at || submission.created_at;
+      return isReuploadWindowOpen(rejectionTime, tzOffsetMinutes);
+    },
+    [tzOffsetMinutes]
+  );
   // Finish creation dialog state (for draft challenges)
   const [finishOpen, setFinishOpen] = React.useState(false);
   const [finishChallenge, setFinishChallenge] = React.useState<Challenge | null>(null);
@@ -1034,7 +1044,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                       challenge.status === 'closed' ||
                       (challenge.status === 'submission_closed' && challenge.my_submission?.status !== 'rejected') ||
                       (challenge.my_submission && challenge.my_submission.status !== 'rejected') ||
-                      false
+                      (challenge.my_submission?.status === 'rejected' && !canReuploadSubmission(challenge.my_submission))
                     }
                   >
                     {challenge.my_submission?.status === 'rejected' ? 'Resubmit Proof' : 'Submit Proof'}
@@ -1095,6 +1105,10 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                     </Button>
                   )}
                 </div>
+
+                {challenge.my_submission?.status === 'rejected' && !canReuploadSubmission(challenge.my_submission) && (
+                  <p className="text-xs text-muted-foreground">Reupload window closed (next-day 11:59pm local time).</p>
+                )}
 
                 {isAdmin && challenge.status === 'submission_closed' && (challenge.stats?.pending ?? 0) > 0 && (
                   <p className="text-xs text-muted-foreground">Review pending submissions before publishing.</p>

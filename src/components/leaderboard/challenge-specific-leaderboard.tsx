@@ -49,6 +49,7 @@ interface ChallengeScore {
 
 interface ChallengeSpecificLeaderboardProps {
   leagueId: string;
+  renderViewSwitcher?: React.ReactNode;
 }
 
 // ============================================================================
@@ -88,7 +89,7 @@ function RankBadge({ rank }: { rank: number }) {
 // Main Component
 // ============================================================================
 
-export function ChallengeSpecificLeaderboard({ leagueId }: ChallengeSpecificLeaderboardProps) {
+export function ChallengeSpecificLeaderboard({ leagueId, renderViewSwitcher }: ChallengeSpecificLeaderboardProps) {
   const [challenges, setChallenges] = React.useState<Challenge[]>([]);
   const [selectedChallengeId, setSelectedChallengeId] = React.useState<string>('');
   const [scores, setScores] = React.useState<ChallengeScore[]>([]);
@@ -193,10 +194,13 @@ export function ChallengeSpecificLeaderboard({ leagueId }: ChallengeSpecificLead
   return (
     <div className="rounded-lg border p-4">
       <div className="mb-4">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <Trophy className="size-5" />
-          Challenges
-        </h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Trophy className="size-5" />
+            Challenges
+          </h2>
+          {renderViewSwitcher}
+        </div>
         <div className="text-sm text-muted-foreground">
           <p>
             {selectedChallenge

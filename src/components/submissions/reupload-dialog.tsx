@@ -48,6 +48,9 @@ export function ReuploadDialog({
     holes: '',
   });
 
+  const tzOffsetMinutes = React.useMemo(() => new Date().getTimezoneOffset(), []);
+  const timeZone = React.useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
+
   // Reset form when submission changes
   React.useEffect(() => {
     if (submission && open) {
@@ -69,7 +72,10 @@ export function ReuploadDialog({
     setIsLoading(true);
 
     try {
-      const payload: Record<string, any> = {};
+      const payload: Record<string, any> = {
+        tzOffsetMinutes,
+        timeZone,
+      };
 
       // Only include changed fields
       if (formData.proof_url && formData.proof_url !== submission.proof_url) {

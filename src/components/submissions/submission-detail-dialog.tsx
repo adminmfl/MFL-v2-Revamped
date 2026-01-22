@@ -45,6 +45,7 @@ import { cn } from '@/lib/utils';
 import type { MySubmission } from '@/hooks/use-my-submissions';
 import { isExemptionRequest } from '@/hooks/use-my-submissions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { isReuploadWindowOpen } from '@/lib/utils/reupload-window';
 
 // ============================================================================
 // Types
@@ -217,7 +218,13 @@ export function SubmissionDetailDialog({
   const showApprove = isPending || (canOverride && submission.status !== 'approved');
   const showReject = isPending || (canOverride && submission.status !== 'rejected');
   const showActions = (showApprove || showReject) && (onApprove || onReject);
-  const showReupload = isOwner && isRejected && onReupload;
+  const showReupload = isOwner && isRejected && onReupload && canReuploadNow;
+  const tzOffsetMinutes = React.useMemo(() => new Date().getTimezoneOffset(), []);
+  const canReuploadNow = React.useMemo(() => {
+    const rejectionTime = submission.modified_date || submission.created_date;
+    return isReuploadWindowOpen(rejectionTime, tzOffsetMinutes);
+  }, [submission.created_date, submission.modified_date, tzOffsetMinutes]);
+  const windowExpired = isOwner && isRejected && !canReuploadNow;
   const isReupload = Boolean(submission.reupload_of);
 
   const isWorkout = submission.type === 'workout';
@@ -289,6 +296,11 @@ export function SubmissionDetailDialog({
                     <p className="text-sm mb-2">
                       You can resubmit this workout with updated proof or corrections.
                     </p>
+                  </div>
+                )}
+                {windowExpired && (
+                  <div className="mt-3 text-sm">
+                    Reupload window closed (allowed until next-day 11:59pm local time after rejection).
                   </div>
                 )}
               </AlertDescription>

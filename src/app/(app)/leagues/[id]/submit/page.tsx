@@ -7,7 +7,7 @@
 import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { format, parseISO } from 'date-fns';
+import { format, isAfter, isBefore, parseISO, startOfDay, subDays } from 'date-fns';
 import Tesseract from 'tesseract.js';
 import Confetti from 'react-confetti';
 import {
@@ -135,7 +135,7 @@ export default function SubmitActivityPage({
   const [loading, setLoading] = React.useState(false);
   const [submitted, setSubmitted] = React.useState(false);
   const [submittedData, setSubmittedData] = React.useState<any>(null);
-  const [activityDate, setActivityDate] = React.useState<Date>(new Date());
+  const [activityDate, setActivityDate] = React.useState<Date>(startOfDay(new Date()));
   const [formData, setFormData] = React.useState({
     activity_type: '',
     duration: '',
@@ -182,38 +182,48 @@ export default function SubmitActivityPage({
     return false;
   }, [activeLeague]);
 
+  const today = React.useMemo(() => startOfDay(new Date()), []);
+  const yesterday = React.useMemo(() => subDays(today, 1), [today]);
+
   // Determine max allowed activity date (League End Date or Today, whichever is earlier)
   const maxActivityDate = React.useMemo(() => {
-    if (!activeLeague?.end_date) return new Date();
+    const fallback = today;
+    if (!activeLeague?.end_date) return fallback;
 
-    // Parse end date (safely handle various formats if needed, assuming YYYY-MM-DD or ISO)
     try {
       const endString = String(activeLeague.end_date).slice(0, 10);
-      const endDate = parseISO(endString);
-      const today = new Date();
+      const endDate = startOfDay(parseISO(endString));
 
       // If today is BEFORE the end date, use today (can't submit future workouts)
       // If today is AFTER the end date, use end date (can't submit for days after league ended)
-      if (today < endDate) return today;
+      if (isBefore(today, endDate)) return today;
       return endDate;
     } catch (e) {
-      return new Date();
+      return fallback;
     }
-  }, [activeLeague]);
+  }, [activeLeague, today]);
 
-  // Effect to clamp activityDate to maxActivityDate if it exceeds it
-  // This handles the case where "Today" (default) is after the league end date
+  // Clamp minimum to yesterday, but if the league ended before that, allow only up to the end date.
+  const minActivityDate = React.useMemo(() => {
+    if (!maxActivityDate) return yesterday;
+    if (isBefore(maxActivityDate, yesterday)) return maxActivityDate;
+    return yesterday;
+  }, [maxActivityDate, yesterday]);
+
+  // Effect to clamp activityDate into the allowed window (yesterday through maxActivityDate)
   React.useEffect(() => {
-    if (activeLeague?.end_date && maxActivityDate) {
-      const currentYmd = format(activityDate, 'yyyy-MM-dd');
-      const maxYmd = format(maxActivityDate, 'yyyy-MM-dd');
+    if (!maxActivityDate || !minActivityDate) return;
 
-      if (currentYmd > maxYmd) {
-        setActivityDate(maxActivityDate);
-        toast.info(`Date adjusted to League End Date (${maxYmd})`);
-      }
+    const current = startOfDay(activityDate);
+
+    if (isAfter(current, maxActivityDate)) {
+      setActivityDate(maxActivityDate);
+      toast.info(`Date adjusted to latest allowed (${format(maxActivityDate, 'yyyy-MM-dd')})`);
+    } else if (isBefore(current, minActivityDate)) {
+      setActivityDate(minActivityDate);
+      toast.info(`Date adjusted to earliest allowed (${format(minActivityDate, 'yyyy-MM-dd')})`);
     }
-  }, [activeLeague?.end_date, maxActivityDate, activityDate]);
+  }, [maxActivityDate, minActivityDate, activityDate]);
 
   // Rest day stats
   const [restDayStats, setRestDayStats] = React.useState<RestDayStats | null>(null);
@@ -268,7 +278,7 @@ export default function SubmitActivityPage({
       // Set date
       if (dateParam) {
         try {
-          setActivityDate(parseISO(dateParam));
+          setActivityDate(startOfDay(parseISO(dateParam)));
         } catch (e) {
           console.error('Invalid date parameter:', e);
         }
@@ -334,6 +344,21 @@ export default function SubmitActivityPage({
     if (!activitiesData?.activities || !formData.activity_type) return null;
     return activitiesData.activities.find((a: any) => a.value === formData.activity_type) || null;
   }, [activitiesData?.activities, formData.activity_type]);
+
+  const getMinimumRequirement = React.useCallback((measurementType: string) => {
+    switch (measurementType) {
+      case 'duration':
+        return 'Minimum requirement: 45 min';
+      case 'distance':
+        return 'Minimum requirement: 4 km';
+      case 'steps':
+        return 'Minimum requirement: 10000 steps';
+      case 'hole':
+        return 'Minimum requirement: 9 holes';
+      default:
+        return null;
+    }
+  }, []);
 
   // Estimated RR calculation (simplified - actual calculation done on backend)
   const estimatedRR = React.useMemo(() => {
@@ -952,12 +977,12 @@ export default function SubmitActivityPage({
                       break;
                     case 'distance':
                       label = 'Distance';
-                      placeholder = '5.2';
+                      placeholder = '4';
                       unit = 'km';
                       break;
                     case 'steps':
                       label = 'Steps';
-                      placeholder = '5000';
+                      placeholder = '10000';
                       unit = 'steps';
                       break;
                     case 'hole':
@@ -987,6 +1012,15 @@ export default function SubmitActivityPage({
                           {unit}
                         </div>
                       </div>
+                      {(() => {
+                        const req = getMinimumRequirement(type);
+                        if (!req) return null;
+                        return (
+                          <p className="text-xs text-muted-foreground bg-muted/30 px-2 py-1 rounded">
+                            {req}
+                          </p>
+                        );
+                      })()}
                     </div>
                   );
                 };
@@ -1015,6 +1049,7 @@ export default function SubmitActivityPage({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Activity Date</Label>
+                  <p className="text-xs text-muted-foreground">Only today or yesterday can be selected.</p>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -1029,14 +1064,12 @@ export default function SubmitActivityPage({
                       <Calendar
                         mode="single"
                         selected={activityDate}
-                        onSelect={(date) => date && setActivityDate(date)}
+                        onSelect={(date) => date && setActivityDate(startOfDay(date))}
                         disabled={(date) => {
-                          if (date > new Date()) return true;
-                          if (activeLeague?.end_date) {
-                            const endString = String(activeLeague.end_date).slice(0, 10);
-                            const dateYmd = format(date, 'yyyy-MM-dd');
-                            return dateYmd > endString;
-                          }
+                          const day = startOfDay(date);
+
+                          if (isAfter(day, maxActivityDate)) return true;
+                          if (isBefore(day, minActivityDate)) return true;
                           return false;
                         }}
                         initialFocus
