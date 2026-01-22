@@ -81,6 +81,16 @@ function startOfWeekSunday(d: Date) {
   return out;
 }
 
+// Start of week anchored to a specific weekday (0=Sun ... 6=Sat)
+function startOfWeekAnchored(d: Date, anchorDay: number) {
+  const out = new Date(d);
+  out.setHours(0, 0, 0, 0);
+  const day = out.getDay();
+  const diff = (day - anchorDay + 7) % 7; // days since last anchor day
+  out.setDate(out.getDate() - diff);
+  return out;
+}
+
 function addDays(d: Date, days: number) {
   const out = new Date(d);
   out.setDate(out.getDate() + days);
@@ -174,6 +184,8 @@ export default function LeagueDashboardPage({
     teamPoints: number | null;
     teamMissedDays: number | null;
     teamRestUsed: number | null;
+    teamActivityPoints?: number;
+    teamChallengePoints?: number;
   } | null>(null);
 
   // Sync active league if navigated directly
@@ -294,7 +306,7 @@ export default function LeagueDashboardPage({
     fetchLeagueData();
   }, [fetchLeagueData]);
 
-  // Week view (Sunday → Saturday) with navigation and detail dialog
+  // Week view anchored to league start weekday (e.g., Thu→Wed)
   React.useEffect(() => {
     if (!league) return;
 
@@ -306,7 +318,10 @@ export default function LeagueDashboardPage({
         const todayLocal = new Date();
         const todayStr = localYmd(todayLocal);
 
-        const currentWeekStart = startOfWeekSunday(todayLocal);
+        // Anchor the week to the league's start weekday
+        const leagueStartLocal = parseLocalYmd(league.start_date);
+        const anchorDay = leagueStartLocal ? leagueStartLocal.getDay() : 0; // default Sunday
+        const currentWeekStart = startOfWeekAnchored(todayLocal, anchorDay);
         const weekStartLocal = addDays(currentWeekStart, -weekOffset * 7);
         const startDate = localYmd(weekStartLocal);
         const endDate = localYmd(addDays(weekStartLocal, 6));
@@ -558,6 +573,8 @@ export default function LeagueDashboardPage({
         let leaderboardData: any = null;
         let totalPoints = points;
         let challengePoints = 0;
+        let teamActivityPoints = 0;
+        let teamChallengePoints = 0;
 
         try {
           const tzOffsetMinutes = new Date().getTimezoneOffset();
@@ -586,6 +603,25 @@ export default function LeagueDashboardPage({
                     ? mine.points
                     : null;
               teamPoints = typeof p === 'number' && Number.isFinite(p) ? Math.max(0, p) : null;
+
+              // Extract team members' activity and challenge points
+              const individuals: Array<{
+                user_id?: string;
+                points?: number;
+                challenge_points?: number;
+                team_id?: string;
+              }> = leaderboardData?.data?.individuals || leaderboardData?.data?.individualRankings || [];
+
+              if (Array.isArray(individuals)) {
+                individuals.forEach((ind) => {
+                  if (String(ind.team_id) === String(teamId)) {
+                    const actPoints = typeof ind.points === 'number' ? Math.max(0, ind.points) : 0;
+                    const chalPoints = typeof ind.challenge_points === 'number' ? Math.max(0, ind.challenge_points) : 0;
+                    teamActivityPoints += actPoints;
+                    teamChallengePoints += chalPoints;
+                  }
+                });
+              }
             }
 
             // Extract individual stats for user's total points (includes challenge bonuses)
@@ -635,6 +671,8 @@ export default function LeagueDashboardPage({
           teamPoints,
           teamMissedDays,
           teamRestUsed,
+          teamActivityPoints,
+          teamChallengePoints,
         };
         setMySummary(summaryData);
 
@@ -1007,19 +1045,11 @@ export default function LeagueDashboardPage({
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="rounded-md border border-border/60 bg-muted/40 px-2.5 py-2.5 text-center">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
                     <div className="text-[11px] text-muted-foreground">Rest Days Used</div>
                     <div className="text-sm font-semibold text-foreground tabular-nums">
-                      {mySummary?.restUsed.toLocaleString() ?? '—'}
-                    </div>
-                  </div>
-                  <div className="rounded-md border border-border/60 bg-muted/40 px-2.5 py-2.5 text-center">
-                    <div className="text-[11px] text-muted-foreground">Rest Days Unused</div>
-                    <div className="text-sm font-semibold text-foreground tabular-nums">
-                      {mySummary?.restUnused !== null && typeof mySummary?.restUnused === 'number'
-                        ? mySummary.restUnused.toLocaleString()
-                        : '—'}
+                      {mySummary?.restUsed.toLocaleString() ?? '—'}/{mySummary?.restUnused !== null && typeof mySummary?.restUnused === 'number' ? (mySummary.restUsed + mySummary.restUnused).toLocaleString() : '—'}
                     </div>
                   </div>
                   <div className="rounded-md border border-border/60 bg-muted/40 px-2.5 py-2.5 text-center">
@@ -1127,7 +1157,7 @@ export default function LeagueDashboardPage({
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
-                    <div className="text-xs text-muted-foreground">Points</div>
+                    <div className="text-xs text-muted-foreground">Total Points</div>
                     <div className="text-base font-semibold text-foreground tabular-nums">
                       {typeof mySummary?.teamPoints === 'number'
                         ? mySummary.teamPoints.toLocaleString()
@@ -1139,6 +1169,22 @@ export default function LeagueDashboardPage({
                     <div className="text-base font-semibold text-foreground tabular-nums">
                       {typeof mySummary?.teamAvgRR === 'number'
                         ? mySummary.teamAvgRR.toFixed(2)
+                        : '—'}
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
+                    <div className="text-xs text-muted-foreground">Activity Points</div>
+                    <div className="text-base font-semibold text-foreground tabular-nums">
+                      {typeof mySummary?.teamActivityPoints === 'number'
+                        ? mySummary.teamActivityPoints.toLocaleString()
+                        : '—'}
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
+                    <div className="text-xs text-muted-foreground">Challenge Points</div>
+                    <div className="text-base font-semibold text-foreground tabular-nums">
+                      {typeof mySummary?.teamChallengePoints === 'number'
+                        ? mySummary.teamChallengePoints.toLocaleString()
                         : '—'}
                     </div>
                   </div>
@@ -1167,55 +1213,52 @@ export default function LeagueDashboardPage({
 
       {/* Date-wise Progress (This Week: Sun–Sat) */}
       <div className="px-4 lg:px-6">
-        {(() => {
-          const currentWeekStart = startOfWeekSunday(new Date());
-          const weekStartLocal = addDays(currentWeekStart, -weekOffset * 7);
+        <Card>
+          {(() => {
+            const leagueStartLocal = league?.start_date ? parseLocalYmd(league.start_date) : null;
+            const anchorDay = leagueStartLocal ? leagueStartLocal.getDay() : 0; // default Sunday if not available
+            const currentWeekStart = startOfWeekAnchored(new Date(), anchorDay);
+            const weekStartLocal = addDays(currentWeekStart, -weekOffset * 7);
 
-          const leagueStartLocal = league?.start_date ? parseLocalYmd(league.start_date) : null;
-          const leagueStartWeek = leagueStartLocal ? startOfWeekSunday(leagueStartLocal) : null;
-          const maxWeekOffset = leagueStartWeek
-            ? Math.max(0, Math.floor((currentWeekStart.getTime() - leagueStartWeek.getTime()) / (7 * MS_PER_DAY)))
-            : Infinity;
+            const leagueStartWeek = leagueStartLocal ? startOfWeekAnchored(leagueStartLocal, anchorDay) : null;
+            const maxWeekOffset = leagueStartWeek
+              ? Math.max(0, Math.floor((currentWeekStart.getTime() - leagueStartWeek.getTime()) / (7 * MS_PER_DAY)))
+              : Infinity;
 
-          const canGoPrev = Number.isFinite(maxWeekOffset) ? weekOffset < maxWeekOffset : true;
-          const canGoNext = weekOffset > 0;
+            const canGoPrev = Number.isFinite(maxWeekOffset) ? weekOffset < maxWeekOffset : true;
+            const canGoNext = weekOffset > 0;
 
-          return (
-            <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-lg font-semibold">This Week (Sun–Sat)</h2>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setWeekOffset((w) => (canGoPrev ? w + 1 : w))}
-                      disabled={!canGoPrev}
-                      aria-label="Previous week"
-                    >
-                      <ChevronLeft className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setWeekOffset((w) => (canGoNext ? Math.max(0, w - 1) : w))}
-                      disabled={!canGoNext}
-                      aria-label="Next week"
-                    >
-                      <ChevronRight className="size-4" />
-                    </Button>
-                  </div>
-                  <Badge variant="secondary" className="text-xs">
+            return (
+              <CardHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b flex items-center justify-between py-3">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-sm px-3 py-1 font-semibold">
                     {formatWeekRange(weekStartLocal)}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">Week view resets every Sunday</p>
-              </div>
-            </div>
-          );
-        })()}
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setWeekOffset((w) => (canGoPrev ? w + 1 : w))}
+                    disabled={!canGoPrev}
+                    aria-label="Previous week"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setWeekOffset((w) => (canGoNext ? Math.max(0, w - 1) : w))}
+                    disabled={!canGoNext}
+                    aria-label="Next week"
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+            );
+          })()}
 
-        <Card>
           <CardContent className="p-0">
             <div className="divide-y">
               {recentDays === null ? (
