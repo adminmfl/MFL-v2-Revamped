@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
 import { Upload, Plus, CheckCircle2, Clock3, XCircle, Shield, FileText, Trash2, Share2, Copy, InfoIcon } from 'lucide-react';
 import {
@@ -950,8 +951,27 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                   return (
                     <div className="grid grid-cols-2 gap-2">
                       <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
-                        <div className="text-[11px] text-muted-foreground">
+                        <div className="text-[11px] text-muted-foreground flex items-center justify-center gap-1">
                           {isTeamChallenge ? 'Per Member Max' : 'Max Points'}
+                          {isTeamChallenge && (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button
+                                  type="button"
+                                  aria-label="How team caps work"
+                                  className="text-muted-foreground/80 hover:text-foreground transition focus:outline-none"
+                                >
+                                  <InfoIcon className="size-3.5" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent side="top" className="max-w-xs text-xs p-3">
+                                <p className="font-semibold mb-1.5">Why this number?</p>
+                                <p className="text-muted-foreground">
+                                  The per-member cap uses the <strong>largest team</strong> so everyone sees the same number. Your team still shares the full team cap ({challenge.total_points}).
+                                </p>
+                              </PopoverContent>
+                            </Popover>
+                          )}
                         </div>
                         <div className="text-base font-semibold text-primary tabular-nums">
                           {perMemberMax}
