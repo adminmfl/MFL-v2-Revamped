@@ -55,6 +55,7 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { isReuploadWindowOpen } from '@/lib/utils/reupload-window';
 
 import { SubmissionDetailDialog } from './submission-detail-dialog';
 import type { MySubmission, SubmissionStats } from '@/hooks/use-my-submissions';
@@ -215,6 +216,7 @@ export function MySubmissionsTable({
   const [globalFilter, setGlobalFilter] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
   const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 });
+  const tzOffsetMinutes = React.useMemo(() => new Date().getTimezoneOffset(), []);
 
   // Dialog state
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
@@ -237,7 +239,6 @@ export function MySubmissionsTable({
     if (submission.steps) params.set('steps', submission.steps.toString());
     if (submission.holes) params.set('holes', submission.holes.toString());
     if (submission.notes) params.set('notes', submission.notes);
-    if (submission.proof_url) params.set('proof_url', submission.proof_url);
 
     router.push(`/leagues/${leagueId}/submit?${params.toString()}`);
   };
@@ -264,13 +265,20 @@ export function MySubmissionsTable({
     const canResubmit = new Set<string>();
 
     submissions.forEach((sub) => {
-      if (sub.reupload_of === null && sub.status === 'rejected' && !originalsWithReupload.has(sub.id)) {
+      const rejectionTime = sub.modified_date || sub.created_date;
+      const windowOpen = isReuploadWindowOpen(rejectionTime, tzOffsetMinutes);
+      if (
+        sub.reupload_of === null &&
+        sub.status === 'rejected' &&
+        !originalsWithReupload.has(sub.id) &&
+        windowOpen
+      ) {
         canResubmit.add(sub.id);
       }
     });
 
     return canResubmit;
-  }, [submissions, originalsWithReupload]);
+  }, [submissions, originalsWithReupload, tzOffsetMinutes]);
 
   // Note: Only reupload entries (reupload_of != null) should display the
   // "Re-submitted" indicator. Originals should remain unmarked.

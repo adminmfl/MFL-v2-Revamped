@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 import { getSupabaseServiceRole } from '@/lib/supabase/client';
 import { syncSpecialChallengeScores } from '@/lib/services/challenges/special-challenge-score';
+import { validateTeamChallengePoints } from '@/lib/utils/challenge-point-distribution';
 
 type LeagueRole = 'host' | 'governor' | 'captain' | 'player' | null;
 
@@ -122,6 +123,27 @@ export async function POST(
     }
 
     const challenge = leagueChallenge as any;
+    // Preload league team sizes for dual-cap logic on team challenges
+    let leagueTeamSizes: Record<string, number> = {};
+    let leagueMaxTeamSize = 0;
+    {
+      const { data: leagueMembersAll, error: leagueMembersAllError } = await supabase
+        .from('leaguemembers')
+        .select('team_id')
+        .eq('league_id', leagueId);
+
+      if (!leagueMembersAllError && leagueMembersAll) {
+        leagueMembersAll.forEach((m: any) => {
+          const tid = m.team_id as string | null;
+          if (!tid) return;
+          leagueTeamSizes[tid] = (leagueTeamSizes[tid] || 0) + 1;
+          leagueMaxTeamSize = Math.max(leagueMaxTeamSize, leagueTeamSizes[tid]);
+        });
+      }
+      if (leagueMaxTeamSize === 0) {
+        leagueMaxTeamSize = 1; // fallback to avoid division by zero
+      }
+    }
 
     const parseYmd = (ymd?: string | null): Date | null => {
       if (!ymd) return null;
@@ -184,6 +206,25 @@ export async function POST(
         if (maxPoints !== null && pts > maxPoints) {
           return buildError('awardedPoints cannot exceed challenge total points', 400);
         }
+
+        // For team challenges, validate against internal cap (I) and compute visible cap (V)
+        if (challenge?.challenge_type === 'team' && maxPoints !== null) {
+          const memberTeam = (submission as any).leaguemembers?.team_id;
+          const teamSize = memberTeam ? (leagueTeamSizes[memberTeam] || 1) : 1;
+          const internalCap = teamSize > 0 ? maxPoints / teamSize : maxPoints;
+          const validation = validateTeamChallengePoints(
+            pts,
+            maxPoints,
+            teamSize,
+            challenge.challenge_type
+          );
+
+          if (!validation.valid || pts > internalCap) {
+            const reason = validation.reason || `Points exceed per-member limit of ${validation.maxAllowed}`;
+            return buildError(reason, 400);
+          }
+        }
+
         resolvedPoints = pts;
       } else if (challenge?.total_points !== undefined && challenge.total_points !== null) {
         resolvedPoints = Number(challenge.total_points);

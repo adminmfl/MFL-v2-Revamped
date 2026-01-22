@@ -110,25 +110,6 @@ export function getSidebarNavItems(
   const leagueUrl = (path: string) => `/leagues/${leagueId}${path}`;
 
   // ========================================
-  // MAIN Section (All Roles)
-  // ========================================
-  sections.push({
-    title: 'Main',
-    items: [
-      {
-        title: 'Dashboard',
-        url: '/dashboard',
-        icon: LayoutDashboard,
-      },
-      {
-        title: 'Payments',
-        url: '/payments',
-        icon: CreditCard,
-      },
-    ],
-  });
-
-  // ========================================
   // PLAYER Section
   // - Always shown for Captain (captain is always a player per PRD)
   // - Shown for Host/Governor only if isAlsoPlayer is true
@@ -144,11 +125,6 @@ export function getSidebarNavItems(
     sections.push({
       title: 'Player',
       items: [
-        {
-          title: 'My Activities',
-          url: leagueUrl('/my-submissions'),
-          icon: ClipboardCheck,
-        },
         {
           title: 'Submit Activity',
           url: leagueUrl('/submit'),
@@ -168,7 +144,7 @@ export function getSidebarNavItems(
   // ========================================
   const leagueItems: NavItem[] = [
     {
-      title: 'League Dashboard',
+      title: 'My Activities',
       url: leagueUrl(''),
       icon: Trophy,
       viewOnly: role === 'player',
@@ -184,7 +160,7 @@ export function getSidebarNavItems(
         icon: Users,
       },
       {
-        title: 'Activities',
+        title: 'Configure Activities',
         url: leagueUrl('/activities'),
         icon: Activity,
       }
@@ -204,14 +180,14 @@ export function getSidebarNavItems(
   // Common league items for all roles
   leagueItems.push(
     {
-      title: 'Rules',
-      url: leagueUrl('/rules'),
-      icon: BookOpen,
-    },
-    {
       title: 'Leaderboard',
       url: leagueUrl('/leaderboard'),
       icon: BarChart3,
+    },
+    {
+      title: 'Rules',
+      url: leagueUrl('/rules'),
+      icon: BookOpen,
     },
     {
       title: 'Challenges',
@@ -232,10 +208,10 @@ export function getSidebarNavItems(
   // ========================================
   if (role === 'host' || role === 'governor') {
     sections.push({
-      title: 'Oversight',
+      title: 'Host/Governor Actions',
       items: [
         {
-          title: 'All Activities',
+          title: 'Player Activities',
           url: leagueUrl('/submissions'),
           icon: ClipboardCheck,
         },
@@ -279,6 +255,25 @@ export function getSidebarNavItems(
       ],
     });
   }
+
+  // ========================================
+  // MAIN Section (All Roles) - At the end
+  // ========================================
+  sections.push({
+    title: 'Main',
+    items: [
+      {
+        title: 'Dashboard',
+        url: '/dashboard',
+        icon: LayoutDashboard,
+      },
+      {
+        title: 'Payments',
+        url: '/payments',
+        icon: CreditCard,
+      },
+    ],
+  });
 
   return sections;
 }
@@ -326,7 +321,7 @@ export function getMobileTabItems(
   // Base tabs for all roles
   const tabs: NavItem[] = [
     {
-      title: 'League',
+      title: 'My Activity',
       url: leagueUrl(''),
       icon: Trophy,
     },

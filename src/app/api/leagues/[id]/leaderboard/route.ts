@@ -355,6 +355,13 @@ export async function GET(
     const subTeamChallengePoints = new Map<string, number>();
     const subTeamSubmissionCounts = new Map<string, number>();
 
+    // Team size helpers for dual-cap logic (visible vs internal)
+    const teamSizes = new Map<string, number>();
+    teamMembers.forEach((members, teamId) => {
+      teamSizes.set(teamId, members.length);
+    });
+    const maxTeamSize = Array.from(teamSizes.values()).reduce((max, size) => Math.max(max, size), 0);
+
     (leagueSubmissions || []).forEach((sub) => {
       const challenge = (sub.leagueschallenges as any);
       if (!challenge) return;
@@ -385,10 +392,25 @@ export async function GET(
 
 
       // UPDATED LOGIC: All challenge submissions (Individual, Team, Sub-team) contribute to the submitting member's
-      // individual score, in addition to their team/sub-team scores.
+      // individual score, in addition to their team/sub-team scores. For team challenges we use proportional scaling:
+      // visible = (awarded / internalCap) × visibleCap, capped at visibleCap
       const memberKey = sub.league_member_id as string;
+      const memberInfo = memberToUser.get(memberKey);
+      const memberTeamId = memberInfo?.team_id || null;
+      const memberTeamSize = memberTeamId ? Math.max(1, teamSizes.get(memberTeamId) || 1) : 1;
+      
+      let visiblePoints = points;
+      if (challenge.challenge_type === 'team' && maxTeamSize > 0) {
+        const totalPoints = Number(challenge.total_points || 0);
+        const internalCap = memberTeamSize > 0 ? totalPoints / memberTeamSize : totalPoints;
+        const visibleCap = totalPoints / maxTeamSize;
+        // Proportional scaling: effort ratio applied to visible max
+        const proportion = internalCap > 0 ? points / internalCap : 1;
+        visiblePoints = Math.min(proportion * visibleCap, visibleCap);
+      }
+
       const current = memberChallengePoints.get(memberKey) || 0;
-      memberChallengePoints.set(memberKey, current + points);
+      memberChallengePoints.set(memberKey, current + visiblePoints);
 
       // Handle team aggregation based on challenge type
       // All challenges (individual, team, sub_team) contribute to team scores
@@ -396,8 +418,11 @@ export async function GET(
         // Team challenge: use team_id from submission if it belongs to this league
         const teamKey = sub.team_id as string;
         if (validTeamIds.has(teamKey)) {
+          const size = Math.max(1, teamSizes.get(teamKey) || 1);
+          const internalCap = size > 0 ? Number(challenge.total_points || 0) / size : points;
+          const internalContribution = Math.min(points, internalCap);
           const teamCurrent = teamChallengePoints.get(teamKey) || 0;
-          teamChallengePoints.set(teamKey, teamCurrent + points);
+          teamChallengePoints.set(teamKey, teamCurrent + internalContribution);
         }
       } else if (challenge.challenge_type === 'sub_team' && sub.sub_team_id) {
         // Sub-team challenges: points show on sub-team leaderboard AND roll up to team leaderboard.
@@ -413,18 +438,24 @@ export async function GET(
         // we aggregate through the submitter's team membership
         const memberInfo = memberToUser.get(sub.league_member_id as string);
         if (memberInfo?.team_id && validTeamIds.has(memberInfo.team_id)) {
+          const size = Math.max(1, teamSizes.get(memberInfo.team_id) || 1);
+          const internalCap = size > 0 ? Number(challenge.total_points || 0) / size : points;
+          const internalContribution = Math.min(points, internalCap);
           const teamKey = memberInfo.team_id;
           const teamCurrent = teamChallengePoints.get(teamKey) || 0;
-          teamChallengePoints.set(teamKey, teamCurrent + points);
+          teamChallengePoints.set(teamKey, teamCurrent + internalContribution);
         }
       } else if (challenge.challenge_type === 'individual') {
         // Individual challenges: Points count for the individual AND their team
         // Aggregate individual challenge points to team through member's team membership
         const memberInfo = memberToUser.get(sub.league_member_id as string);
         if (memberInfo?.team_id && validTeamIds.has(memberInfo.team_id)) {
+          const size = Math.max(1, teamSizes.get(memberInfo.team_id) || 1);
+          const internalCap = size > 0 ? Number(challenge.total_points || 0) / size : points;
+          const internalContribution = Math.min(points, internalCap);
           const teamKey = memberInfo.team_id;
           const teamCurrent = teamChallengePoints.get(teamKey) || 0;
-          teamChallengePoints.set(teamKey, teamCurrent + points);
+          teamChallengePoints.set(teamKey, teamCurrent + internalContribution);
         }
       }
     });
