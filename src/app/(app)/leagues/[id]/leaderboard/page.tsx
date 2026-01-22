@@ -403,7 +403,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
                     </DropdownMenu>
                   ))()}
                 </div>
-                <p className="text-xs sm:text-sm text-muted-foreground">This is the overall leaderboard including challange scores</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">This is the overall leaderboard including challenge scores</p>
               </div>
               <div className="overflow-hidden">
                 <LeagueTeamsTable teams={teams} showAvgRR={true} />
