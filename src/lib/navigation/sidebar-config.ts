@@ -110,25 +110,6 @@ export function getSidebarNavItems(
   const leagueUrl = (path: string) => `/leagues/${leagueId}${path}`;
 
   // ========================================
-  // MAIN Section (All Roles)
-  // ========================================
-  sections.push({
-    title: 'Main',
-    items: [
-      {
-        title: 'Dashboard',
-        url: '/dashboard',
-        icon: LayoutDashboard,
-      },
-      {
-        title: 'Payments',
-        url: '/payments',
-        icon: CreditCard,
-      },
-    ],
-  });
-
-  // ========================================
   // PLAYER Section
   // - Always shown for Captain (captain is always a player per PRD)
   // - Shown for Host/Governor only if isAlsoPlayer is true
@@ -179,7 +160,7 @@ export function getSidebarNavItems(
         icon: Users,
       },
       {
-        title: 'Activities',
+        title: 'Configure Activities',
         url: leagueUrl('/activities'),
         icon: Activity,
       }
@@ -227,10 +208,10 @@ export function getSidebarNavItems(
   // ========================================
   if (role === 'host' || role === 'governor') {
     sections.push({
-      title: 'Oversight',
+      title: 'Host/Governor Actions',
       items: [
         {
-          title: 'All Activities',
+          title: 'Player Activities',
           url: leagueUrl('/submissions'),
           icon: ClipboardCheck,
         },
@@ -274,6 +255,25 @@ export function getSidebarNavItems(
       ],
     });
   }
+
+  // ========================================
+  // MAIN Section (All Roles) - At the end
+  // ========================================
+  sections.push({
+    title: 'Main',
+    items: [
+      {
+        title: 'Dashboard',
+        url: '/dashboard',
+        icon: LayoutDashboard,
+      },
+      {
+        title: 'Payments',
+        url: '/payments',
+        icon: CreditCard,
+      },
+    ],
+  });
 
   return sections;
 }
