@@ -145,11 +145,6 @@ export function getSidebarNavItems(
       title: 'Player',
       items: [
         {
-          title: 'My Activities',
-          url: leagueUrl('/my-submissions'),
-          icon: ClipboardCheck,
-        },
-        {
           title: 'Submit Activity',
           url: leagueUrl('/submit'),
           icon: Dumbbell,
@@ -168,7 +163,7 @@ export function getSidebarNavItems(
   // ========================================
   const leagueItems: NavItem[] = [
     {
-      title: 'League Dashboard',
+      title: 'My Activities',
       url: leagueUrl(''),
       icon: Trophy,
       viewOnly: role === 'player',
@@ -326,7 +321,7 @@ export function getMobileTabItems(
   // Base tabs for all roles
   const tabs: NavItem[] = [
     {
-      title: 'League',
+      title: 'My Activity',
       url: leagueUrl(''),
       icon: Trophy,
     },

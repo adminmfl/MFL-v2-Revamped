@@ -26,11 +26,13 @@ import {
   RefreshCw,
   Moon,
   Gift,
+  Eye,
 } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
 import { useAuth } from '@/hooks/use-auth';
 import { useRole } from '@/contexts/role-context';
+import { type MySubmission } from '@/hooks/use-my-submissions';
 import { saveLastLeagueId } from '@/lib/last-league-storage';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -51,6 +53,8 @@ import { Progress } from '@/components/ui/progress';
 import { getClientCache, setClientCache, invalidateClientCache } from '@/lib/client-cache';
 import { DownloadReportButton, DownloadCertificateButton } from '@/components/leagues/download-report-button';
 import { DynamicReportDialog } from '@/components/leagues/dynamic-report-dialog';
+import { SubmissionDetailDialog } from '@/components/submissions';
+import { useRouter } from 'next/navigation';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -121,12 +125,14 @@ interface LeagueStats {
   dailyAverage: number;
   maxCapacity: number;
 }
+
 type RecentDayRow = {
   date: string; // YYYY-MM-DD (local)
   label: string;
   subtitle: string;
   status?: string;
   pointsLabel: string;
+  submission?: MySubmission | null;
 };
 
 // ============================================================================
@@ -140,7 +146,8 @@ export default function LeagueDashboardPage({
 }) {
   const { id } = React.use(params);
   const { activeLeague, setActiveLeague, userLeagues } = useLeague();
-  const { activeRole, isHost, isGovernor, isCaptain } = useRole();
+  const { isHost } = useRole();
+  const router = useRouter();
 
   const [league, setLeague] = React.useState<LeagueDetails | null>(null);
   const [stats, setStats] = React.useState<LeagueStats | null>(null);
@@ -149,6 +156,8 @@ export default function LeagueDashboardPage({
   const [rejectedCount, setRejectedCount] = React.useState<number>(0);
   const [recentDays, setRecentDays] = React.useState<RecentDayRow[] | null>(null);
   const [weekOffset, setWeekOffset] = React.useState(0);
+  const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
+  const [selectedSubmission, setSelectedSubmission] = React.useState<MySubmission | null>(null);
   const [mySummaryLoading, setMySummaryLoading] = React.useState(true);
 
 
@@ -286,7 +295,7 @@ export default function LeagueDashboardPage({
     fetchLeagueData();
   }, [fetchLeagueData]);
 
-  // Week view (Sunday → Saturday) with navigation
+  // Week view (Sunday → Saturday) with navigation and detail dialog
   React.useEffect(() => {
     if (!league) return;
 
@@ -311,10 +320,10 @@ export default function LeagueDashboardPage({
         }
 
         const recentData = await recentRes.json();
-        const submissions: any[] =
-          recentData?.success && recentData?.data?.submissions ? (recentData.data.submissions as any[]) : [];
+        const submissions: MySubmission[] =
+          recentData?.success && recentData?.data?.submissions ? (recentData.data.submissions as MySubmission[]) : [];
 
-        const byDate = new Map<string, any>();
+        const byDate = new Map<string, MySubmission>();
         for (const s of submissions) {
           if (!s?.date) continue;
           const existing = byDate.get(s.date);
@@ -343,23 +352,23 @@ export default function LeagueDashboardPage({
 
           const outOfRange = (leagueStart && ymd < leagueStart) || (leagueEnd && ymd > leagueEnd);
           if (outOfRange) {
-            rows.push({ date: ymd, label, subtitle: '—', pointsLabel: '—' });
+            rows.push({ date: ymd, label, subtitle: '—', pointsLabel: '—', submission: null });
             continue;
           }
 
-          const entry = byDate.get(ymd);
+          const entry = byDate.get(ymd) || null;
           if (!entry) {
             if (ymd > todayStr) {
-              rows.push({ date: ymd, label, subtitle: 'Upcoming', pointsLabel: '—' });
+              rows.push({ date: ymd, label, subtitle: 'Upcoming', pointsLabel: '—', submission: null });
               continue;
             }
 
             if (ymd === todayStr) {
-              rows.push({ date: ymd, label, subtitle: 'No submission yet', pointsLabel: '—' });
+              rows.push({ date: ymd, label, subtitle: 'No submission yet', pointsLabel: '—', submission: null });
               continue;
             }
 
-            rows.push({ date: ymd, label, subtitle: 'Missed day', pointsLabel: '0 pt' });
+            rows.push({ date: ymd, label, subtitle: 'Missed day', pointsLabel: '0 pt', submission: null });
             continue;
           }
 
@@ -372,7 +381,7 @@ export default function LeagueDashboardPage({
           const rr = typeof entry.rr_value === 'number' ? entry.rr_value : null;
           const pointsLabel = rr === null ? '0 pt' : `${rr.toFixed(1)} RR`;
 
-          rows.push({ date: ymd, label, subtitle, status: statusLabel, pointsLabel });
+          rows.push({ date: ymd, label, subtitle, status: statusLabel, pointsLabel, submission: entry });
         }
 
         if (!cancelled) setRecentDays(rows);
@@ -644,6 +653,30 @@ export default function LeagueDashboardPage({
     run();
   }, [id, league, user]);
 
+  const openSubmissionDetails = (submission: MySubmission | null) => {
+    if (!submission) return;
+    setSelectedSubmission(submission);
+    setDetailDialogOpen(true);
+  };
+
+  const handleReupload = (submission: MySubmission) => {
+    const params = new URLSearchParams({
+      resubmit: submission.id,
+      date: submission.date,
+      type: submission.type,
+    });
+
+    if (submission.workout_type) params.set('workout_type', submission.workout_type);
+    if (submission.duration) params.set('duration', submission.duration.toString());
+    if (submission.distance) params.set('distance', submission.distance.toString());
+    if (submission.steps) params.set('steps', submission.steps.toString());
+    if (submission.holes) params.set('holes', submission.holes.toString());
+    if (submission.notes) params.set('notes', submission.notes);
+    if (submission.proof_url) params.set('proof_url', submission.proof_url);
+
+    router.push(`/leagues/${id}/submit?${params.toString()}`);
+  };
+
   if (loading) {
     return <LeagueDashboardSkeleton />;
   }
@@ -829,7 +862,7 @@ export default function LeagueDashboardPage({
               >
                 <Link href={`/leagues/${id}/submit?type=workout`}>
                   <Dumbbell className="mr-2 size-4" />
-                  Add Workout
+                  Add activity
                 </Link>
               </Button>
               <Button
@@ -1201,7 +1234,7 @@ export default function LeagueDashboardPage({
                 <div className="px-4 py-6 text-sm text-muted-foreground">No recent activity.</div>
               ) : (
                 recentDays.map((row) => (
-                  <div key={row.date} className="flex items-center justify-between px-4 py-3">
+                  <div key={row.date} className="flex items-center justify-between px-4 py-3 gap-3">
                     <div className="flex flex-col">
                       <span className="font-medium">{row.label}</span>
                       {(() => {
@@ -1233,41 +1266,70 @@ export default function LeagueDashboardPage({
                         );
                       })()}
                     </div>
-                    <div className="font-medium tabular-nums">{row.pointsLabel}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="font-medium tabular-nums min-w-[56px] text-right">{row.pointsLabel}</div>
+                      {row.submission ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
+                          onClick={() => openSubmissionDetails(row.submission || null)}
+                          aria-label="View submission details"
+                        >
+                          <Eye className="size-4" />
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
                 ))
               )}
             </div>
           </CardContent>
         </Card>
+      </div>
 
-        {/* Progress Report Card */}
-        {league?.start_date && league?.end_date && league?.status !== 'completed' && (
-          <div className="mt-4">
-            <DynamicReportDialog
-              leagueId={id}
-              leagueStartDate={league.start_date}
-              leagueEndDate={league.end_date}
-              trigger={(
-                <Card className="hover:shadow-md transition-all hover:border-primary/30 cursor-pointer group">
-                  <CardContent className="p-4 flex items-center gap-4">
-                    <div className="size-12 rounded-xl bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center shadow-lg shrink-0">
-                      <ClipboardCheck className="size-6 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold group-hover:text-primary transition-colors">Progress Report</h3>
-                      <p className="text-sm text-muted-foreground">Download your latest report</p>
-                    </div>
-                    <ArrowRight className="size-5 text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all" />
-                  </CardContent>
-                </Card>
-              )}
-            />
-          </div>
-        )}
+      <SubmissionDetailDialog
+        open={detailDialogOpen}
+        onOpenChange={(open) => {
+          setDetailDialogOpen(open);
+          if (!open) setSelectedSubmission(null);
+        }}
+        submission={selectedSubmission}
+        isOwner
+        onReupload={(id) => {
+          const submission = selectedSubmission && selectedSubmission.id === id ? selectedSubmission : null;
+          if (submission) handleReupload(submission);
+        }}
+      />
 
-        {/* Donate Rest Days Button */}
-        <Link href={`/leagues/${id}/rest-day-donations`} className="mt-4 block">
+      {/* Progress Report Card */}
+      {league?.start_date && league?.end_date && league?.status !== 'completed' && (
+        <div className="px-4 lg:px-6">
+          <DynamicReportDialog
+            leagueId={id}
+            leagueStartDate={league.start_date}
+            leagueEndDate={league.end_date}
+            trigger={(
+              <Card className="hover:shadow-md transition-all hover:border-primary/30 cursor-pointer group">
+                <CardContent className="p-4 flex items-center gap-4">
+                  <div className="size-12 rounded-xl bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center shadow-lg shrink-0">
+                    <ClipboardCheck className="size-6 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold group-hover:text-primary transition-colors">Progress Report</h3>
+                    <p className="text-sm text-muted-foreground">Download your latest report</p>
+                  </div>
+                  <ArrowRight className="size-5 text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all" />
+                </CardContent>
+              </Card>
+            )}
+          />
+        </div>
+      )}
+
+      {/* Donate Rest Days Button */}
+      <div className="px-4 lg:px-6">
+        <Link href={`/leagues/${id}/rest-day-donations`} className="block">
           <Card className="hover:shadow-md transition-all hover:border-primary/30 cursor-pointer group">
             <CardContent className="p-4 flex items-center gap-4">
               <div className="size-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shrink-0">
@@ -1281,8 +1343,6 @@ export default function LeagueDashboardPage({
             </CardContent>
           </Card>
         </Link>
-
-
       </div>
 
       {/* Progress Bar (for launched/active leagues) */}
