@@ -37,7 +37,6 @@ import { saveLastLeagueId } from '@/lib/last-league-storage';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { InviteDialog } from '@/components/league/invite-dialog';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Card,
   CardAction,
@@ -765,25 +764,6 @@ export default function LeagueDashboardPage({
 
   return (
     <div className="@container/main flex flex-1 flex-col gap-4 lg:gap-6">
-      {rejectedCount > 0 && (
-        <div className="px-4 lg:px-6">
-          <Alert
-            variant="destructive"
-            className="border-destructive/50 bg-destructive/10"
-          >
-            <AlertTitle>Rejected workouts need attention</AlertTitle>
-            <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <span>
-                You have {rejectedCount} rejected submission{rejectedCount === 1 ? '' : 's'} in this league.
-                Please review and resubmit.
-              </span>
-              <Button asChild variant="outline" size="sm">
-                <Link href={`/leagues/${id}/my-submissions`}>View my submissions</Link>
-              </Button>
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
       {/* Header */}
       <div className="flex flex-col gap-4 px-4 lg:px-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
@@ -1003,7 +983,7 @@ export default function LeagueDashboardPage({
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
                     <div className="text-xs text-muted-foreground">Activity Points</div>
                     <div className="text-base font-semibold text-foreground tabular-nums">
@@ -1014,6 +994,16 @@ export default function LeagueDashboardPage({
                     <div className="text-xs text-muted-foreground">Challenge Points</div>
                     <div className="text-base font-semibold text-foreground tabular-nums">
                       {mySummary?.challengePoints.toLocaleString() ?? '—'}
+                    </div>
+                  </div>
+                  <div
+                    className={`rounded-md border border-border/60 px-3 py-2.5 text-center ${
+                      rejectedCount > 0 ? 'bg-red-100' : 'bg-muted/40'
+                    }`}
+                  >
+                    <div className="text-xs text-muted-foreground">Rejected Workouts</div>
+                    <div className="text-base font-semibold text-foreground tabular-nums">
+                      {rejectedCount.toLocaleString()}
                     </div>
                   </div>
                 </div>
