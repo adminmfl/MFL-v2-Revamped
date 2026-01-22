@@ -266,7 +266,6 @@ export default function SubmitActivityPage({
       const stepsParam = searchParams.get('steps');
       const holesParam = searchParams.get('holes');
       const notesParam = searchParams.get('notes');
-      const proofUrlParam = searchParams.get('proof_url');
 
       // Set submission type
       if (typeParam === 'rest') {
@@ -293,11 +292,6 @@ export default function SubmitActivityPage({
         holes: holesParam || '',
         notes: notesParam || '',
       });
-
-      // Set proof URL as image preview (if it's a URL)
-      if (proofUrlParam) {
-        setImagePreview(proofUrlParam);
-      }
 
       toast.info('Resubmitting rejected workout. Update as needed.');
     }

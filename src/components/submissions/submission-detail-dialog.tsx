@@ -218,12 +218,12 @@ export function SubmissionDetailDialog({
   const showApprove = isPending || (canOverride && submission.status !== 'approved');
   const showReject = isPending || (canOverride && submission.status !== 'rejected');
   const showActions = (showApprove || showReject) && (onApprove || onReject);
-  const showReupload = isOwner && isRejected && onReupload && canReuploadNow;
   const tzOffsetMinutes = React.useMemo(() => new Date().getTimezoneOffset(), []);
   const canReuploadNow = React.useMemo(() => {
     const rejectionTime = submission.modified_date || submission.created_date;
     return isReuploadWindowOpen(rejectionTime, tzOffsetMinutes);
   }, [submission.created_date, submission.modified_date, tzOffsetMinutes]);
+  const showReupload = isOwner && isRejected && onReupload && canReuploadNow;
   const windowExpired = isOwner && isRejected && !canReuploadNow;
   const isReupload = Boolean(submission.reupload_of);
 
@@ -280,26 +280,30 @@ export function SubmissionDetailDialog({
 
         <div className="space-y-4">
           {/* Rejection Alert for Owner */}
-          {isOwner && isRejected && submission.rejection_reason && (
+          {isOwner && isRejected && (
             <Alert className="border-red-200 bg-red-50 dark:bg-red-950/20">
               <AlertCircle className="size-4 text-red-600" />
               <AlertTitle className="text-red-800 dark:text-red-400">
                 Submission Rejected
               </AlertTitle>
               <AlertDescription className="text-red-700 dark:text-red-300">
-                <div className="mt-1">
-                  <span className="font-medium">Reason: </span>
-                  {submission.rejection_reason}
-                </div>
                 {showReupload && (
-                  <div className="mt-3">
-                    <p className="text-sm mb-2">
+                  <div className="mt-1 flex items-center gap-2">
+                    <p className="text-sm flex-1">
                       You can resubmit this workout with updated proof or corrections.
                     </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200 whitespace-nowrap"
+                      onClick={() => onReupload?.(submission.id)}
+                    >
+                      Resubmit
+                    </Button>
                   </div>
                 )}
                 {windowExpired && (
-                  <div className="mt-3 text-sm">
+                  <div className="mt-1 text-sm">
                     Reupload window closed (allowed until next-day 11:59pm local time after rejection).
                   </div>
                 )}

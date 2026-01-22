@@ -239,7 +239,6 @@ export function MySubmissionsTable({
     if (submission.steps) params.set('steps', submission.steps.toString());
     if (submission.holes) params.set('holes', submission.holes.toString());
     if (submission.notes) params.set('notes', submission.notes);
-    if (submission.proof_url) params.set('proof_url', submission.proof_url);
 
     router.push(`/leagues/${leagueId}/submit?${params.toString()}`);
   };
