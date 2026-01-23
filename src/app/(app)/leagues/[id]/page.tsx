@@ -759,7 +759,8 @@ export default function LeagueDashboardPage({
 
   const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
     draft: { variant: 'secondary', label: 'Draft' },
-    launched: { variant: 'outline', label: 'Launched' },
+    scheduled: { variant: 'outline', label: 'Scheduled' },
+    payment_pending: { variant: 'outline', label: 'Payment Pending' },
     active: { variant: 'default', label: 'Active' },
     completed: { variant: 'secondary', label: 'Completed' },
   };
@@ -1035,9 +1036,8 @@ export default function LeagueDashboardPage({
                     </div>
                   </div>
                   <div
-                    className={`rounded-md border border-border/60 px-3 py-2.5 text-center ${
-                      rejectedCount > 0 ? 'bg-red-100 dark:bg-red-950/40' : 'bg-muted/40'
-                    }`}
+                    className={`rounded-md border border-border/60 px-3 py-2.5 text-center ${rejectedCount > 0 ? 'bg-red-100 dark:bg-red-950/40' : 'bg-muted/40'
+                      }`}
                   >
                     <div className="text-xs text-muted-foreground">Rejected Workouts</div>
                     <div className="text-base font-semibold text-foreground tabular-nums">
