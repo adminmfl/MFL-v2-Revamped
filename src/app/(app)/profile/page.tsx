@@ -512,7 +512,7 @@ export default function ProfilePage() {
               <div className="space-y-2">
                 <Label htmlFor="name" className="flex items-center gap-2">
                   <User className="size-4 text-muted-foreground" />
-                  Full Name
+                  Username
                 </Label>
                 <Input
                   id="name"
@@ -520,7 +520,7 @@ export default function ProfilePage() {
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, name: e.target.value }))
                   }
-                  placeholder="Enter your full name"
+                  placeholder="Enter your username"
                 />
               </div>
 
