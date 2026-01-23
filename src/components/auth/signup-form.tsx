@@ -379,6 +379,32 @@ export function SignupForm({
           </p>
         </div>
 
+        {/* Google Sign Up */}
+        <Field>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleGoogleSignUp}
+            disabled={isFormDisabled}
+            className="w-full"
+          >
+            {isGoogleLoading ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Connecting...
+              </>
+            ) : (
+              <>
+                <GoogleIcon className="size-4" />
+                Sign up with Google
+              </>
+            )}
+          </Button>
+        </Field>
+
+        {/* Divider */}
+        <FieldSeparator>Or continue with email</FieldSeparator>
+
         {/* Email Field */}
         <Field>
           <FieldLabel htmlFor="signup-email">Email</FieldLabel>
@@ -537,32 +563,6 @@ export function SignupForm({
               </>
             ) : (
               "Continue"
-            )}
-          </Button>
-        </Field>
-
-        {/* Divider */}
-        <FieldSeparator>Or continue with</FieldSeparator>
-
-        {/* Google Sign Up */}
-        <Field>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleGoogleSignUp}
-            disabled={isFormDisabled}
-            className="w-full"
-          >
-            {isGoogleLoading ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Connecting...
-              </>
-            ) : (
-              <>
-                <GoogleIcon className="size-4" />
-                Sign up with Google
-              </>
             )}
           </Button>
 
