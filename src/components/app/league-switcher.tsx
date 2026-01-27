@@ -191,22 +191,6 @@ export function LeagueSwitcher({ trigger, onOpenChange }: LeagueSwitcherProps) {
               </DropdownMenuItem>
             ))
           )}
-
-          <DropdownMenuSeparator className="my-1" />
-
-          <DropdownMenuItem asChild className="gap-2 px-2 py-1.5 cursor-pointer text-sm">
-            <Link href="/leagues/join">
-              <Search className="size-3.5" />
-              <span>Join a League</span>
-            </Link>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem asChild className="gap-2 px-2 py-1.5 cursor-pointer text-sm">
-            <Link href="/leagues/create">
-              <Plus className="size-3.5" />
-              <span>Create New League</span>
-            </Link>
-          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     );
