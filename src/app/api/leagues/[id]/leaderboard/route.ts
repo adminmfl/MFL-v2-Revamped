@@ -479,6 +479,7 @@ export async function GET(
           const teamCurrent = teamChallengePoints.get(teamKey) || 0;
           teamChallengePoints.set(teamKey, teamCurrent + internalContribution);
         }
+      }
     });
 
     // =========================================================================

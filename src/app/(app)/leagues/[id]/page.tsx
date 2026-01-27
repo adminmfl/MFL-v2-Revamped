@@ -615,7 +615,7 @@ export default function LeagueDashboardPage({
             if (user && Array.isArray(individuals) && individuals.length > 0) {
               const mine = individuals.find((it) => String(it.user_id) === String(user.id));
               if (mine && typeof mine.points === 'number' && Number.isFinite(mine.points)) {
-                // Prioritize official challenge points from leaderboard (2-day delayed)
+                // Prioritize official challenge points from leaderboard
                 if (typeof mine.challenge_points === 'number' && Number.isFinite(mine.challenge_points)) {
                   challengePoints = mine.challenge_points;
                 } else {
@@ -627,7 +627,7 @@ export default function LeagueDashboardPage({
 
                 // Recalculate totalPoints using FRESH local workout points + leaderboard challenge points.
                 // This ensures the "Total Points" on the dashboard updates immediately for new workouts
-                // instead of showing the 2-day delayed leaderboard total.
+                // instead of showing the leaderboard total which might include invalid entries.
                 totalPoints = points + challengePoints;
 
                 // Overwrite Avg RR with leaderboard official value if available (to ensure parity)
