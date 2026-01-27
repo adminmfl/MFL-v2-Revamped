@@ -77,17 +77,26 @@ export async function POST(req: Request) {
     const password_hash = await bcrypt.hash(password, 10);
 
     // Use service to create user
-    const user = await createUserService({
-      user_id: crypto.randomUUID(),
-      email,
-      username,
-      password_hash,
-      date_of_birth: dateOfBirth,
-      gender,
-    });
-
-    if (!user) {
-      console.error('Failed to create user via service');
+    let user;
+    try {
+      user = await createUserService({
+        user_id: crypto.randomUUID(),
+        email,
+        username,
+        password_hash,
+        date_of_birth: dateOfBirth,
+        gender,
+      });
+    } catch (createError: any) {
+      console.error('Failed to create user via service:', createError.message);
+      
+      if (createError.message === 'USERNAME_EXISTS') {
+        return NextResponse.json({ error: 'This username is already taken. Please choose a different username.' }, { status: 400 });
+      }
+      if (createError.message === 'EMAIL_EXISTS') {
+        return NextResponse.json({ error: 'An account with this email already exists.' }, { status: 400 });
+      }
+      
       return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
     }
 
