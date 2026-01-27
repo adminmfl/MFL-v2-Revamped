@@ -12,6 +12,7 @@ import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { IconDownload, IconLoader2, IconCertificate, IconFileDescription } from '@tabler/icons-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 // ============================================================================
 // Download Helper
@@ -172,7 +173,10 @@ export function DownloadCertificateButton({
             size={size}
             onClick={handleDownload}
             disabled={isLoading}
-            className={className}
+            className={cn(
+                'bg-primary text-primary-foreground hover:bg-primary/90 border-primary',
+                className
+            )}
         >
             {isLoading ? (
                 <>

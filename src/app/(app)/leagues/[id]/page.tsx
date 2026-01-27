@@ -802,14 +802,25 @@ export default function LeagueDashboardPage({
               )}
             </Avatar>
           </div>
-          <div>
-            <div className="flex items-center gap-3 mb-1">
+          <div className="w-full">
+            <div className="flex items-center gap-3 mb-1 w-full">
               <h1 className="text-2xl font-bold tracking-tight">
                 {league.league_name}
               </h1>
               <Badge variant={statusConfig[league.status]?.variant || 'secondary'}>
                 {statusConfig[league.status]?.label || league.status}
               </Badge>
+              {isHost && (
+                <div className="ml-auto">
+                  <InviteDialog
+                    leagueId={league.league_id}
+                    leagueName={league.league_name}
+                    inviteCode={league.invite_code}
+                    memberCount={stats?.memberCount}
+                    maxCapacity={stats?.maxCapacity || league.league_capacity}
+                  />
+                </div>
+              )}
             </div>
             <p className="text-muted-foreground">
               {league.description || 'No description provided'}
@@ -817,24 +828,7 @@ export default function LeagueDashboardPage({
           </div>
         </div>
 
-        <div className="flex gap-2 flex-wrap">
-          {isHost && (
-            <InviteDialog
-              leagueId={league.league_id}
-              leagueName={league.league_name}
-              inviteCode={league.invite_code}
-              memberCount={stats?.memberCount}
-              maxCapacity={stats?.maxCapacity || league.league_capacity}
-            />
-          )}
-          {isHost && (
-            <Button asChild size="sm">
-              <Link href={`/leagues/${id}/settings`}>
-                <Settings className="mr-2 size-4" />
-                Settings
-              </Link>
-            </Button>
-          )}
+        <div className="flex gap-2 flex-wrap sm:ml-auto sm:justify-end">
           {user && (
             <>
               <DownloadReportButton
