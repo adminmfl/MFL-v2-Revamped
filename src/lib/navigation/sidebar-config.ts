@@ -15,8 +15,6 @@ import {
   CreditCard,
   Activity,
   UserCheck,
-  Eye,
-  Gift,
   HeartHandshake,
   LucideIcon,
   BookOpen,
@@ -55,19 +53,24 @@ export interface SidebarConfig {
 
 const baseNavItems: NavItem[] = [
   {
-    title: 'Dashboard',
+    title: 'Home',
     url: '/dashboard',
     icon: LayoutDashboard,
-  },
-  {
-    title: 'My Leagues',
-    url: '/leagues',
-    icon: Trophy,
   },
   {
     title: 'Payments',
     url: '/payments',
     icon: CreditCard,
+  },
+  {
+    title: 'Join a League',
+    url: '/leagues/join',
+    icon: Search,
+  },
+  {
+    title: 'Create a League',
+    url: '/leagues/create',
+    icon: Plus,
   },
 ];
 
@@ -97,63 +100,68 @@ export function getSidebarNavItems(
   if (!leagueId || !role) {
     return [
       {
-        title: 'Navigation',
+        title: 'MyFitnessLeague',
         items: baseNavItems,
       },
     ];
   }
 
-  const { isAlsoPlayer = false } = options || {};
   const sections: NavSection[] = [];
 
   // Helper to build league URLs
   const leagueUrl = (path: string) => `/leagues/${leagueId}${path}`;
 
   // ========================================
-  // PLAYER Section
-  // - Always shown for Captain (captain is always a player per PRD)
-  // - Shown for Host/Governor only if isAlsoPlayer is true
-  // - Always shown for Player role
+  // PLAYER-FIRST PRIMARY Section
+  // Flattened list without player/league headers
   // ========================================
-  const showPlayerSection =
-    role === 'player' ||
-    role === 'captain' ||
-    role === 'host' ||
-    role === 'governor';
-
-  if (showPlayerSection) {
-    sections.push({
-      title: 'Player',
-      items: [
-        {
-          title: 'Submit Activity',
-          url: leagueUrl('/submit'),
-          icon: Dumbbell,
-        },
-        {
-          title: 'My Team',
-          url: leagueUrl('/my-team-view'),
-          icon: Eye,
-        },
-      ],
-    });
-  }
-
-  // ========================================
-  // LEAGUE Section (Role-specific items)
-  // ========================================
-  const leagueItems: NavItem[] = [
+  const primaryItems: NavItem[] = [
+    {
+      title: 'Submit Activity',
+      url: leagueUrl('/submit'),
+      icon: Dumbbell,
+    },
     {
       title: 'My Activities',
       url: leagueUrl(''),
       icon: Trophy,
       viewOnly: role === 'player',
     },
+    {
+      title: 'My Challenges',
+      url: leagueUrl('/challenges'),
+      icon: Flag,
+      viewOnly: role === 'governor' || role === 'player',
+    },
+    {
+      title: 'My Team',
+      url: leagueUrl('/my-team-view'),
+      icon: Users,
+    },
+    {
+      title: 'Leaderboard',
+      url: leagueUrl('/leaderboard'),
+      icon: BarChart3,
+    },
+    {
+      title: 'Rules',
+      url: leagueUrl('/rules'),
+      icon: BookOpen,
+    },
   ];
 
-  // Team Management - Host & Governor only
+  sections.push({
+    title: '',
+    items: primaryItems,
+  });
+
+  // ========================================
+  // Host/Governor extras (keep scoped to admin section below)
+  // ========================================
+  const leagueAdminItems: NavItem[] = [];
+
   if (role === 'host' || role === 'governor') {
-    leagueItems.push(
+    leagueAdminItems.push(
       {
         title: 'Team Management',
         url: leagueUrl('/team'),
@@ -167,65 +175,41 @@ export function getSidebarNavItems(
     );
   }
 
-  // League Settings - Host only
   if (role === 'host') {
-    leagueItems.push({
+    leagueAdminItems.push({
       title: 'League Settings',
       url: leagueUrl('/settings'),
       icon: Settings,
     });
   }
 
-  // Common league items for all roles
-  // Common league items for all roles
-  leagueItems.push(
-    {
-      title: 'Leaderboard',
-      url: leagueUrl('/leaderboard'),
-      icon: BarChart3,
-    },
-    {
-      title: 'Rules',
-      url: leagueUrl('/rules'),
-      icon: BookOpen,
-    },
-    {
-      title: 'Challenges',
-      url: leagueUrl('/challenges'),
-      icon: Flag,
-      viewOnly: role === 'governor' || role === 'player',
-    }
-  );
-
-  sections.push({
-    title: 'League',
-    items: leagueItems,
-  });
-
   // ========================================
   // OVERSIGHT Section (Host & Governor)
   // For validating submissions across all teams
   // ========================================
   if (role === 'host' || role === 'governor') {
+    const oversightItems: NavItem[] = [
+      {
+        title: 'Player Activities',
+        url: leagueUrl('/submissions'),
+        icon: ClipboardCheck,
+      },
+      {
+        title: 'Manual Workout Entry',
+        url: leagueUrl('/manual-entry'),
+        icon: UserCheck,
+      },
+      {
+        title: 'Approve Donations',
+        url: leagueUrl('/rest-day-donations'),
+        icon: HeartHandshake,
+      },
+    ];
+
+    // Include league admin items here to keep all host/governor tools together
     sections.push({
       title: 'Host/Governor Actions',
-      items: [
-        {
-          title: 'Player Activities',
-          url: leagueUrl('/submissions'),
-          icon: ClipboardCheck,
-        },
-        {
-          title: 'Manual Workout Entry',
-          url: leagueUrl('/manual-entry'),
-          icon: UserCheck,
-        },
-        {
-          title: 'Approve Donations',
-          url: leagueUrl('/rest-day-donations'),
-          icon: HeartHandshake,
-        },
-      ],
+      items: [...leagueAdminItems, ...oversightItems],
     });
   }
 
@@ -235,7 +219,7 @@ export function getSidebarNavItems(
   // ========================================
   if (role === 'captain') {
     sections.push({
-      title: 'My Team',
+      title: 'Captain Actions',
       items: [
         {
           title: 'Team Overview',
@@ -260,19 +244,8 @@ export function getSidebarNavItems(
   // MAIN Section (All Roles) - At the end
   // ========================================
   sections.push({
-    title: 'Main',
-    items: [
-      {
-        title: 'Dashboard',
-        url: '/dashboard',
-        icon: LayoutDashboard,
-      },
-      {
-        title: 'Payments',
-        url: '/payments',
-        icon: CreditCard,
-      },
-    ],
+    title: 'MyFitnessLeague',
+    items: baseNavItems,
   });
 
   return sections;
@@ -315,7 +288,6 @@ export function getMobileTabItems(
     ];
   }
 
-  const { isAlsoPlayer = false } = options || {};
   const leagueUrl = (path: string) => `/leagues/${leagueId}${path}`;
 
   // Base tabs for all roles
