@@ -67,6 +67,7 @@ type ChallengeSubmission = {
   reviewed_by: string | null;
   awarded_points: number | null;
   created_at: string;
+  team_id?: string | null;
 };
 
 type SubmissionRow = ChallengeSubmission & {
@@ -171,7 +172,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
   const [teams, setTeams] = React.useState<Array<{ team_id: string; team_name: string }>>([]);
   const [teamMemberCounts, setTeamMemberCounts] = React.useState<Record<string, number>>({});
   const [subTeams, setSubTeams] = React.useState<Array<{ subteam_id: string; name: string }>>([]);
-  
+
   // Team/Sub-team level score setting (for team & sub_team challenges)
   const [teamScores, setTeamScores] = React.useState<Record<string, number | ''>>({});
   const [subTeamScores, setSubTeamScores] = React.useState<Record<string, number | ''>>({});
@@ -182,7 +183,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
     if (!sizes.length) return 1;
     return Math.max(...sizes, 1);
   }, [teamMemberCounts]);
-  
+
   const [shareOpen, setShareOpen] = React.useState(false);
   const [shareLink, setShareLink] = React.useState('');
   const [shareChallengeName, setShareChallengeName] = React.useState('');
@@ -259,6 +260,9 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [challengeToDelete, setChallengeToDelete] = React.useState<Challenge | null>(null);
   const [deleting, setDeleting] = React.useState(false);
+  // Close dialog state
+  const [closeConfirmOpen, setCloseConfirmOpen] = React.useState(false);
+  const [challengeToClose, setChallengeToClose] = React.useState<Challenge | null>(null);
   const [publishingId, setPublishingId] = React.useState<string | null>(null);
   const fetchChallenges = React.useCallback(async () => {
     setLoading(true);
@@ -281,10 +285,12 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
 
   React.useEffect(() => {
     fetchChallenges();
-    if (isAdmin) {
-      fetchTeams();
-    }
-  }, [fetchChallenges, isAdmin]);
+  }, [fetchChallenges]);
+
+  // Fetch teams for everyone so we can calculate maxTeamSize for scaling
+  React.useEffect(() => {
+    fetchTeams();
+  }, [leagueId]);
 
   // Fallback: ensure pricing is loaded when finish dialog opens
   React.useEffect(() => {
@@ -623,12 +629,17 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
 
   const [closingId, setClosingId] = React.useState<string | null>(null);
 
-  const handleCloseChallenge = async (challenge: Challenge) => {
-    if (!confirm('Are you sure you want to finalize and close this challenge? This action cannot be undone.')) return;
+  const handleOpenCloseConfirm = (challenge: Challenge) => {
+    setChallengeToClose(challenge);
+    setCloseConfirmOpen(true);
+  };
 
-    setClosingId(challenge.id);
+  const handleCloseChallenge = async () => {
+    if (!challengeToClose) return;
+
+    setClosingId(challengeToClose.id);
     try {
-      const res = await fetch(`/api/leagues/${leagueId}/challenges/${challenge.id}/close`, {
+      const res = await fetch(`/api/leagues/${leagueId}/challenges/${challengeToClose.id}/close`, {
         method: 'POST',
       });
       const json = await res.json();
@@ -636,6 +647,8 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
         throw new Error(json.error || 'Failed to close challenge');
       }
       toast.success('Challenge closed successfully');
+      setCloseConfirmOpen(false);
+      setChallengeToClose(null);
       fetchChallenges();
     } catch (err: any) {
       toast.error(err?.message || 'Failed to close challenge');
@@ -993,7 +1006,22 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                       <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
                         <div className="text-[11px] text-muted-foreground">Your Points</div>
                         <div className="text-base font-semibold text-primary tabular-nums">
-                          {challenge.my_submission?.awarded_points ? challenge.my_submission.awarded_points : '—'}
+                          {(() => {
+                            if (!challenge.my_submission?.awarded_points) return '—';
+
+                            // For team challenges, scale the points for display
+                            // visible = awarded * (myTeamSize / maxTeamSize)
+                            if (isTeamChallenge && challenge.my_submission.team_id) {
+                              const myTeamSize = teamMemberCounts[challenge.my_submission.team_id] || 0;
+                              if (myTeamSize > 0 && maxTeamSize > 0) {
+                                const scaleFactor = myTeamSize / maxTeamSize;
+                                const scaled = challenge.my_submission.awarded_points * scaleFactor;
+                                return Math.round(scaled);
+                              }
+                            }
+
+                            return challenge.my_submission.awarded_points;
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -1097,7 +1125,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => handleCloseChallenge(challenge)}
+                      onClick={() => handleOpenCloseConfirm(challenge)}
                       disabled={closingId === challenge.id}
                       className="ml-2"
                     >
@@ -1453,7 +1481,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                   const teamName = s.leaguemembers?.teams?.team_name;
                   const teamId = s.leaguemembers?.teams?.team_id;
                   const teamSize = teamId ? (teamMemberCounts[teamId] || 0) : 0;
-                  
+
                   // Calculate validation for this submission
                   const currentPoints = reviewAwardedPoints[s.id] !== '' ? reviewAwardedPoints[s.id] : s.awarded_points;
                   const validation = validateTeamChallengePoints(
@@ -1533,7 +1561,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                             <Button
                               size="sm"
                               disabled={
-                                validatingId === s.id || 
+                                validatingId === s.id ||
                                 (typeof currentPoints === 'number' && !validation.valid)
                               }
                               onClick={() => handleValidate(s.id, 'approved', reviewAwardedPoints[s.id] === '' ? undefined : (reviewAwardedPoints[s.id] as number))}
@@ -1700,6 +1728,38 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Close Challenge Confirmation Dialog */}
+      <AlertDialog
+        open={closeConfirmOpen}
+        onOpenChange={(open) => {
+          setCloseConfirmOpen(open);
+          if (!open) {
+            setChallengeToClose(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Finalize & Close Challenge</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to finalize and close {challengeToClose ? `"${challengeToClose.name}"` : 'this challenge'}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={closingId === challengeToClose?.id}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCloseChallenge}
+              disabled={closingId === challengeToClose?.id}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {closingId === challengeToClose?.id ? 'Closing...' : 'Finalize & Close'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Challenge Confirmation Dialog */}
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>

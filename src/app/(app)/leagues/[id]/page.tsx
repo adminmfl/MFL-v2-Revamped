@@ -590,7 +590,7 @@ export default function LeagueDashboardPage({
 
             // Extract team stats if teamId exists
             if (teamId) {
-              const teams: Array<{ team_id: string; avg_rr: number; points?: number; total_points?: number }> =
+              const teams: Array<{ team_id: string; avg_rr: number; points?: number; total_points?: number; challenge_bonus?: number }> =
                 leaderboardData?.data?.teams || leaderboardData?.data?.teamRankings || [];
               const mine = teams.find((t) => String(t.team_id) === String(teamId));
               const v = mine && typeof mine.avg_rr === 'number' ? mine.avg_rr : null;
@@ -604,24 +604,9 @@ export default function LeagueDashboardPage({
                     : null;
               teamPoints = typeof p === 'number' && Number.isFinite(p) ? Math.max(0, p) : null;
 
-              // Extract team members' activity and challenge points
-              const individuals: Array<{
-                user_id?: string;
-                points?: number;
-                challenge_points?: number;
-                team_id?: string;
-              }> = leaderboardData?.data?.individuals || leaderboardData?.data?.individualRankings || [];
-
-              if (Array.isArray(individuals)) {
-                individuals.forEach((ind) => {
-                  if (String(ind.team_id) === String(teamId)) {
-                    const actPoints = typeof ind.points === 'number' ? Math.max(0, ind.points) : 0;
-                    const chalPoints = typeof ind.challenge_points === 'number' ? Math.max(0, ind.challenge_points) : 0;
-                    teamActivityPoints += actPoints;
-                    teamChallengePoints += chalPoints;
-                  }
-                });
-              }
+              // Use team's base points (before challenge bonus) for activity points
+              teamActivityPoints = mine && typeof mine.points === 'number' ? Math.max(0, mine.points) : 0;
+              teamChallengePoints = mine && typeof mine.challenge_bonus === 'number' ? Math.max(0, mine.challenge_bonus) : 0;
             }
 
             // Extract individual stats for user's total points (includes challenge bonuses)
@@ -630,7 +615,7 @@ export default function LeagueDashboardPage({
             if (user && Array.isArray(individuals) && individuals.length > 0) {
               const mine = individuals.find((it) => String(it.user_id) === String(user.id));
               if (mine && typeof mine.points === 'number' && Number.isFinite(mine.points)) {
-                // Prioritize official challenge points from leaderboard (2-day delayed)
+                // Prioritize official challenge points from leaderboard
                 if (typeof mine.challenge_points === 'number' && Number.isFinite(mine.challenge_points)) {
                   challengePoints = mine.challenge_points;
                 } else {
@@ -642,7 +627,7 @@ export default function LeagueDashboardPage({
 
                 // Recalculate totalPoints using FRESH local workout points + leaderboard challenge points.
                 // This ensures the "Total Points" on the dashboard updates immediately for new workouts
-                // instead of showing the 2-day delayed leaderboard total.
+                // instead of showing the leaderboard total which might include invalid entries.
                 totalPoints = points + challengePoints;
 
                 // Overwrite Avg RR with leaderboard official value if available (to ensure parity)
@@ -759,7 +744,8 @@ export default function LeagueDashboardPage({
 
   const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
     draft: { variant: 'secondary', label: 'Draft' },
-    launched: { variant: 'outline', label: 'Launched' },
+    scheduled: { variant: 'outline', label: 'Scheduled' },
+    payment_pending: { variant: 'outline', label: 'Payment Pending' },
     active: { variant: 'default', label: 'Active' },
     completed: { variant: 'secondary', label: 'Completed' },
   };
@@ -803,52 +789,28 @@ export default function LeagueDashboardPage({
   return (
     <div className="@container/main flex flex-1 flex-col gap-4 lg:gap-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 px-4 lg:px-6 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-4">
-          <div className="size-14 rounded-xl p-1 flex items-center justify-center shrink-0 shadow-lg bg-background border border-border/60">
-            <Avatar className="size-full rounded-lg bg-background/80">
-              {league.logo_url ? (
-                <AvatarImage src={league.logo_url} alt={`${league.league_name} logo`} />
-              ) : (
-                <AvatarFallback className="rounded-lg bg-primary/20 text-primary-foreground font-semibold uppercase">
-                  {league.league_name?.slice(0, 2) || 'LG'}
-                </AvatarFallback>
-              )}
-            </Avatar>
+      <div className="flex flex-col gap-1 px-4 lg:px-6 sm:flex-row sm:items-start sm:justify-between">
+        <div className="w-full">
+          <div className="flex items-center gap-3 mb-1 w-full">
+            <h1 className="text-2xl font-bold tracking-tight">
+              Welcome back, {user?.name || 'User'}!
+            </h1>
+            {isHost && (
+              <div className="ml-auto">
+                <InviteDialog
+                  leagueId={league.league_id}
+                  leagueName={league.league_name}
+                  inviteCode={league.invite_code}
+                  memberCount={stats?.memberCount}
+                  maxCapacity={stats?.maxCapacity || league.league_capacity}
+                />
+              </div>
+            )}
           </div>
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-2xl font-bold tracking-tight">
-                {league.league_name}
-              </h1>
-              <Badge variant={statusConfig[league.status]?.variant || 'secondary'}>
-                {statusConfig[league.status]?.label || league.status}
-              </Badge>
-            </div>
-            <p className="text-muted-foreground">
-              {league.description || 'No description provided'}
-            </p>
-          </div>
+          <p className="text-muted-foreground">One workout closer to your best self !</p>
         </div>
 
-        <div className="flex gap-2 flex-wrap">
-          {isHost && (
-            <InviteDialog
-              leagueId={league.league_id}
-              leagueName={league.league_name}
-              inviteCode={league.invite_code}
-              memberCount={stats?.memberCount}
-              maxCapacity={stats?.maxCapacity || league.league_capacity}
-            />
-          )}
-          {isHost && (
-            <Button asChild size="sm">
-              <Link href={`/leagues/${id}/settings`}>
-                <Settings className="mr-2 size-4" />
-                Settings
-              </Link>
-            </Button>
-          )}
+        <div className="flex gap-2 flex-wrap sm:ml-auto sm:justify-end">
           {user && (
             <>
               <DownloadReportButton
@@ -1035,9 +997,8 @@ export default function LeagueDashboardPage({
                     </div>
                   </div>
                   <div
-                    className={`rounded-md border border-border/60 px-3 py-2.5 text-center ${
-                      rejectedCount > 0 ? 'bg-red-100 dark:bg-red-950/40' : 'bg-muted/40'
-                    }`}
+                    className={`rounded-md border border-border/60 px-3 py-2.5 text-center ${rejectedCount > 0 ? 'bg-red-100 dark:bg-red-950/40' : 'bg-muted/40'
+                      }`}
                   >
                     <div className="text-xs text-muted-foreground">Rejected Workouts</div>
                     <div className="text-base font-semibold text-foreground tabular-nums">

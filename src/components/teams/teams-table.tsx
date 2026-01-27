@@ -400,11 +400,9 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
               </AvatarFallback>
             )}
           </Avatar>
-          <div>
+          <div className="flex flex-col leading-tight">
             <div className="font-medium">{row.original.team_name}</div>
-            <div className="text-sm text-muted-foreground">
-              {row.original.member_count} members
-            </div>
+            {/* Removed redundant member count line (already shown in Members column) */}
           </div>
         </div>
       ),
@@ -633,13 +631,16 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border">
-        <Table>
+      <div className="rounded-lg border overflow-x-hidden">
+        <Table className="w-full table-auto">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead
+                    key={header.id}
+                    className={`whitespace-nowrap px-3 py-2 text-xs font-semibold text-muted-foreground ${header.id === "actions" ? "text-right pr-2 pl-1 w-10" : ""}`}
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(header.column.columnDef.header, header.getContext())}
@@ -653,7 +654,10 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell
+                      key={cell.id}
+                      className={`whitespace-nowrap px-3 py-2 align-middle text-sm ${cell.column.id === "actions" ? "text-right pr-2 pl-1" : ""}`}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}

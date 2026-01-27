@@ -11,6 +11,7 @@ declare module "next-auth" {
       id: string;
       name: string;
       email: string;
+      phone?: string;
       platform_role: 'admin' | 'user';
       needsProfileCompletion: boolean;
     };
@@ -69,8 +70,27 @@ const authConfig = {
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
+        token.phone = user.phone;
         token.platform_role = user.platform_role || 'user';
         token.needsProfileCompletion = user.needsProfileCompletion || false;
+      }
+
+      // Sync with DB on every check to ensure token is fresh
+      if (!user && token.id) {
+        const supabase = getSupabaseServiceRole();
+        const { data: dbUser } = await supabase
+          .from("users")
+          .select("username, email, phone, platform_role, password_hash")
+          .eq("user_id", token.id)
+          .single();
+
+        if (dbUser) {
+          token.name = dbUser.username;
+          token.email = dbUser.email;
+          token.phone = dbUser.phone;
+          token.platform_role = dbUser.platform_role || 'user';
+          token.needsProfileCompletion = !(dbUser as any).password_hash;
+        }
       }
 
       return token;
@@ -80,6 +100,7 @@ const authConfig = {
         id: String(token.id || ""),
         name: String(token.name || ""),
         email: String(token.email || ""),
+        phone: String(token.phone || ""),
         platform_role: token.platform_role || 'user',
         needsProfileCompletion: token.needsProfileCompletion || false,
       };

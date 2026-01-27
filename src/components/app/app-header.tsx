@@ -3,11 +3,12 @@
 import * as React from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, Shield } from 'lucide-react';
+import { Home, Shield, ChevronDown } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
 import { useRole } from '@/contexts/role-context';
 import { RoleSwitcher } from './role-switcher';
+import { LeagueSwitcher } from './league-switcher';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -98,7 +99,7 @@ function getBreadcrumbs(
 
   // Don't add Home breadcrumb if we're already on main-dashboard
   if (pathname !== '/dashboard') {
-    breadcrumbs.push({ label: 'Home', href: '/dashboard' });
+    breadcrumbs.push({ label: 'MFL Dashboard', href: '/dashboard' });
   }
 
   if (segments[0] === 'main-dashboard') {
@@ -152,6 +153,7 @@ export function AppHeader() {
   const { data: session } = useSession();
   const { activeLeague } = useLeague();
   const { activeRole } = useRole();
+  const [isLeagueSwitcherOpen, setIsLeagueSwitcherOpen] = React.useState(false);
 
   const pageTitle = getPageTitle(pathname);
   const breadcrumbs = getBreadcrumbs(pathname, activeLeague?.name);
@@ -195,27 +197,36 @@ export function AppHeader() {
         {/* Right Side Actions */}
         <div className="ml-auto flex items-center gap-2">
           {activeLeague && (
-            <Button variant="ghost" size="sm" asChild className="flex gap-2 px-2 sm:px-4 h-auto py-1">
-              <Link href={`/leagues/${activeLeague.league_id}`}>
-                <Avatar className="size-8 sm:size-9 rounded-md">
-                  {activeLeague.logo_url ? (
-                    <AvatarImage src={activeLeague.logo_url} alt={activeLeague.name} />
-                  ) : (
-                    <AvatarFallback className="rounded-md bg-primary/10 text-primary font-semibold text-xs sm:text-sm">
-                      {activeLeague.name.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  )}
-                </Avatar>
-                <div className="flex flex-col items-start leading-none gap-1">
-                  <span className="text-sm font-bold truncate max-w-[120px] sm:max-w-[140px]">{activeLeague.name}</span>
-                  {activeRole && (
-                    <span className={`text-[11px] font-medium uppercase tracking-wide ${roleTextColors[activeRole] || 'text-gray-500'}`}>
-                      {activeRole}
-                    </span>
-                  )}
-                </div>
-              </Link>
-            </Button>
+            <LeagueSwitcher
+              trigger={
+                <Button variant="ghost" size="sm" className="flex gap-2 px-2 sm:px-4 h-auto py-1">
+                  <Avatar className="size-8 sm:size-9 rounded-md">
+                    {activeLeague.logo_url ? (
+                      <AvatarImage src={activeLeague.logo_url} alt={activeLeague.name} />
+                    ) : (
+                      <AvatarFallback className="rounded-md bg-primary/10 text-primary font-semibold text-xs sm:text-sm">
+                        {activeLeague.name.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div className="flex flex-col items-start leading-none gap-1">
+                    <span className="text-sm font-bold truncate max-w-[120px] sm:max-w-[140px]">{activeLeague.name}</span>
+                    {activeRole && (
+                      <span className={`text-[11px] font-medium uppercase tracking-wide ${roleTextColors[activeRole] || 'text-gray-500'}`}>
+                        {activeRole}
+                      </span>
+                    )}
+                  </div>
+                  <ChevronDown 
+                    className="size-4 ml-1 transition-transform duration-200" 
+                    style={{
+                      transform: isLeagueSwitcherOpen ? 'rotate(180deg)' : 'rotate(0deg)'
+                    }}
+                  />
+                </Button>
+              }
+              onOpenChange={setIsLeagueSwitcherOpen}
+            />
           )}
 
           {/* Theme Toggle */}

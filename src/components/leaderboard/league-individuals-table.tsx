@@ -127,11 +127,21 @@ export function LeagueIndividualsTable({
     {
       accessorKey: 'points',
       header: 'Points',
-      cell: ({ row }) => (
-        <div className="text-base font-bold text-primary tabular-nums">
-          {row.original.points}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const total = row.original.points;
+        const challenge = row.original.challenge_points || 0;
+        const activity = total - challenge;
+        return (
+          <div>
+            <div className="text-base font-bold text-primary tabular-nums">
+              {total}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              ACT({activity}) CHA({challenge})
+            </div>
+          </div>
+        );
+      },
     },
     ...(showAvgRR
       ? [

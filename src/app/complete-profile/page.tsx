@@ -383,19 +383,15 @@ export default function CompleteProfilePage() {
                 <Label htmlFor="dateOfBirth">
                   Date of Birth <span className="text-destructive">*</span>
                 </Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                  <Input
-                    id="dateOfBirth"
-                    type="date"
-                    value={formData.dateOfBirth}
-                    onChange={(e) => updateField('dateOfBirth', e.target.value)}
-                    className="pl-10"
-                    max={new Date().toISOString().split('T')[0]}
-                    required
-                    disabled={isLoading}
-                  />
-                </div>
+                <Input
+                  id="dateOfBirth"
+                  type="date"
+                  value={formData.dateOfBirth}
+                  onChange={(e) => updateField('dateOfBirth', e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
+                  required
+                  disabled={isLoading}
+                />
               </div>
 
               {/* Gender */}

@@ -34,6 +34,7 @@ export interface IndividualRanking {
   team_id: string | null;
   team_name: string | null;
   points: number;
+  challenge_points?: number;
   avg_rr: number;
   submission_count: number;
 }

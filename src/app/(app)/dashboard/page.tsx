@@ -308,22 +308,6 @@ function LeaguesEmptyState() {
           your own to start your fitness journey with friends!
         </EmptyDescription>
       </EmptyHeader>
-      <EmptyContent>
-        <div className="flex gap-2">
-          <Button asChild>
-            <Link href="/leagues/join">
-              <Search className="mr-2 size-4" />
-              Join a League
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href="/leagues/create">
-              <Plus className="mr-2 size-4" />
-              Create League
-            </Link>
-          </Button>
-        </div>
-      </EmptyContent>
     </Empty>
   );
 }

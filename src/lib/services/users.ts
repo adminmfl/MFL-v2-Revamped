@@ -160,23 +160,27 @@ export async function createUser(userData: {
   phone?: string;
   date_of_birth?: string;
   gender?: string;
-}): Promise<User | null> {
-  try {
-    const { data, error } = await getSupabaseServiceRole()
-      .from('users')
-      .insert([userData])
-      .select()
-      .single();
+}): Promise<User> {
+  const { data, error } = await getSupabaseServiceRole()
+    .from('users')
+    .insert([userData])
+    .select()
+    .single();
 
-    if (error) {
-      console.error('Error creating user:', error);
-      return null;
+  if (error) {
+    console.error('Error creating user:', error);
+    // Check for duplicate username constraint violation
+    if (error.code === '23505' && error.message.includes('users_username_key')) {
+      throw new Error('USERNAME_EXISTS');
     }
-    return data as User;
-  } catch (err) {
-    console.error('Error creating user:', err);
-    return null;
+    // Check for duplicate email constraint violation
+    if (error.code === '23505' && error.message.includes('users_email_key')) {
+      throw new Error('EMAIL_EXISTS');
+    }
+    throw new Error('DATABASE_ERROR');
   }
+  
+  return data as User;
 }
 
 /**

@@ -174,9 +174,8 @@ export function InviteDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button variant="outline" size="sm">
-            <Share2 className="mr-2 size-4" />
-            Invite
+          <Button variant="ghost" size="icon" className="h-9 w-9">
+            <Share2 className="size-4" />
           </Button>
         )}
       </DialogTrigger>

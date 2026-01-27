@@ -110,7 +110,7 @@ export async function GET(
         created_at,
         reviewed_at,
         reviewed_by,
-        leaguemembers(user_id, team_id, teams(team_name), users!leaguemembers_user_id_fkey(user_id, username, email))
+        leaguemembers(user_id, team_id, teams(team_id, team_name), users!leaguemembers_user_id_fkey(user_id, username, email))
       `
       )
       .eq('league_challenge_id', challengeId);
