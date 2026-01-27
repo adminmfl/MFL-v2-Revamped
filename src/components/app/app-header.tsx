@@ -98,7 +98,7 @@ function getBreadcrumbs(
 
   // Don't add Home breadcrumb if we're already on main-dashboard
   if (pathname !== '/dashboard') {
-    breadcrumbs.push({ label: 'Home', href: '/dashboard' });
+    breadcrumbs.push({ label: 'MFL Dashboard', href: '/dashboard' });
   }
 
   if (segments[0] === 'main-dashboard') {

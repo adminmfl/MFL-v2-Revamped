@@ -53,7 +53,7 @@ export interface SidebarConfig {
 
 const baseNavItems: NavItem[] = [
   {
-    title: 'Home',
+    title: 'MFL Dashboard',
     url: '/dashboard',
     icon: LayoutDashboard,
   },
@@ -266,7 +266,7 @@ export function getMobileTabItems(
   if (!leagueId || !role) {
     return [
       {
-        title: 'Home',
+        title: 'MFL Dashboard',
         url: '/dashboard',
         icon: LayoutDashboard,
       },
