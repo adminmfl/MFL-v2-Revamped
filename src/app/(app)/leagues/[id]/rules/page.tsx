@@ -477,10 +477,10 @@ export default function RulesPage({
 
             {/* Document Viewer */}
             {rulesData?.rules_doc_url && (
-              <div className="space-y-3">
+              <div className="space-y-3 mt-6">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold">Rules Document</h2>
-                  <Button variant="outline" size="sm" asChild>
+                  <Button variant="outline" size="sm" asChild className="px-4">
                     <a
                       href={rulesData.rules_doc_url}
                       download
