@@ -297,12 +297,29 @@ export function getMobileTabItems(
       url: leagueUrl(''),
       icon: Trophy,
     },
-    {
-      title: 'Leaderboard',
-      url: leagueUrl('/leaderboard'),
-      icon: BarChart3,
-    },
   ];
+
+  // Player-first tabs
+  if (role === 'player') {
+    tabs.push(
+      {
+        title: 'My Team',
+        url: leagueUrl('/my-team-view'),
+        icon: Users,
+      },
+      {
+        title: 'My Challenges',
+        url: leagueUrl('/challenges'),
+        icon: Flag,
+      }
+    );
+  }
+
+  tabs.push({
+    title: 'Leaderboard',
+    url: leagueUrl('/leaderboard'),
+    icon: BarChart3,
+  });
 
   // Role-specific tabs
   if (role === 'host' || role === 'governor') {
@@ -321,6 +338,11 @@ export function getMobileTabItems(
       title: 'My Team',
       url: leagueUrl('/my-team'),
       icon: Users,
+    });
+    tabs.push({
+      title: 'My Challenges',
+      url: leagueUrl('/challenges'),
+      icon: Flag,
     });
     tabs.push({
       title: 'Validate',
