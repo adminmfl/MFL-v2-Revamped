@@ -789,7 +789,7 @@ export default function LeagueDashboardPage({
   return (
     <div className="@container/main flex flex-1 flex-col gap-4 lg:gap-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 px-4 lg:px-6 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-1 px-4 lg:px-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="w-full">
           <div className="flex items-center gap-3 mb-1 w-full">
             <h1 className="text-2xl font-bold tracking-tight">
@@ -807,6 +807,7 @@ export default function LeagueDashboardPage({
               </div>
             )}
           </div>
+          <p className="text-muted-foreground">One workout closer to your best self !</p>
         </div>
 
         <div className="flex gap-2 flex-wrap sm:ml-auto sm:justify-end">
