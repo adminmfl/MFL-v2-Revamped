@@ -79,6 +79,7 @@ export interface IndividualRanking {
   team_id: string | null;
   team_name: string | null;
   points: number;
+  challenge_points?: number;
   avg_rr: number;
   submission_count: number;
 }
@@ -432,6 +433,7 @@ export async function GET(
 
       // Handle team aggregation based on challenge type
       // All challenges (individual, team, sub_team) contribute to team scores
+      // Challenge points are added immediately without 2-day delay
       if (challenge.challenge_type === 'team' && sub.team_id) {
         // Team challenge: use team_id from submission if it belongs to this league
         const teamKey = sub.team_id as string;
@@ -440,20 +442,14 @@ export async function GET(
           const internalCap = size > 0 ? Number(challenge.total_points || 0) / size : points;
           const internalContribution = Math.min(points, internalCap);
           const teamCurrent = teamChallengePoints.get(teamKey) || 0;
-          // Apply Delay Logic for Team Points
-          if (!pendingWindowDates.includes(submissionDate)) {
-            teamChallengePoints.set(teamKey, teamCurrent + internalContribution);
-          }
+          teamChallengePoints.set(teamKey, teamCurrent + internalContribution);
         }
       } else if (challenge.challenge_type === 'sub_team' && sub.sub_team_id) {
         // Sub-team challenges: points show on sub-team leaderboard AND roll up to team leaderboard.
+        // Challenge points are added immediately without 2-day delay
         const subTeamKey = sub.sub_team_id as string;
-        // Sub-Team points also likely need delay if rolling up to team?
-        // Assuming yes.
-        if (!pendingWindowDates.includes(submissionDate)) {
-          const subTeamCurrent = subTeamChallengePoints.get(subTeamKey) || 0;
-          subTeamChallengePoints.set(subTeamKey, subTeamCurrent + points);
-        }
+        const subTeamCurrent = subTeamChallengePoints.get(subTeamKey) || 0;
+        subTeamChallengePoints.set(subTeamKey, subTeamCurrent + points);
         const subTeamCount = subTeamSubmissionCounts.get(subTeamKey) || 0;
         subTeamSubmissionCounts.set(subTeamKey, subTeamCount + 1);
 
@@ -468,12 +464,11 @@ export async function GET(
           const internalContribution = Math.min(points, internalCap);
           const teamKey = memberInfo.team_id;
           const teamCurrent = teamChallengePoints.get(teamKey) || 0;
-          if (!pendingWindowDates.includes(submissionDate)) {
-            teamChallengePoints.set(teamKey, teamCurrent + internalContribution);
-          }
+          teamChallengePoints.set(teamKey, teamCurrent + internalContribution);
         }
       } else if (challenge.challenge_type === 'individual') {
         // Individual challenges: Points count for the individual AND their team
+        // Challenge points are added immediately without 2-day delay
         // Aggregate individual challenge points to team through member's team membership
         const memberInfo = memberToUser.get(sub.league_member_id as string);
         if (memberInfo?.team_id && validTeamIds.has(memberInfo.team_id)) {
@@ -482,11 +477,8 @@ export async function GET(
           const internalContribution = Math.min(points, internalCap);
           const teamKey = memberInfo.team_id;
           const teamCurrent = teamChallengePoints.get(teamKey) || 0;
-          if (!pendingWindowDates.includes(submissionDate)) {
-            teamChallengePoints.set(teamKey, teamCurrent + internalContribution);
-          }
+          teamChallengePoints.set(teamKey, teamCurrent + internalContribution);
         }
-      }
     });
 
     // =========================================================================
@@ -812,6 +804,7 @@ export async function GET(
         team_id: is.team_id,
         team_name: is.team_name,
         points: is.points,
+        challenge_points: is.challenge_points,
         avg_rr: is.rr_count > 0 ? Number((is.total_rr / is.rr_count).toFixed(2)) : 0,
         submission_count: is.submission_count,
       }))

@@ -590,7 +590,7 @@ export default function LeagueDashboardPage({
 
             // Extract team stats if teamId exists
             if (teamId) {
-              const teams: Array<{ team_id: string; avg_rr: number; points?: number; total_points?: number }> =
+              const teams: Array<{ team_id: string; avg_rr: number; points?: number; total_points?: number; challenge_bonus?: number }> =
                 leaderboardData?.data?.teams || leaderboardData?.data?.teamRankings || [];
               const mine = teams.find((t) => String(t.team_id) === String(teamId));
               const v = mine && typeof mine.avg_rr === 'number' ? mine.avg_rr : null;
@@ -604,24 +604,9 @@ export default function LeagueDashboardPage({
                     : null;
               teamPoints = typeof p === 'number' && Number.isFinite(p) ? Math.max(0, p) : null;
 
-              // Extract team members' activity and challenge points
-              const individuals: Array<{
-                user_id?: string;
-                points?: number;
-                challenge_points?: number;
-                team_id?: string;
-              }> = leaderboardData?.data?.individuals || leaderboardData?.data?.individualRankings || [];
-
-              if (Array.isArray(individuals)) {
-                individuals.forEach((ind) => {
-                  if (String(ind.team_id) === String(teamId)) {
-                    const actPoints = typeof ind.points === 'number' ? Math.max(0, ind.points) : 0;
-                    const chalPoints = typeof ind.challenge_points === 'number' ? Math.max(0, ind.challenge_points) : 0;
-                    teamActivityPoints += actPoints;
-                    teamChallengePoints += chalPoints;
-                  }
-                });
-              }
+              // Use team's base points (before challenge bonus) for activity points
+              teamActivityPoints = mine && typeof mine.points === 'number' ? Math.max(0, mine.points) : 0;
+              teamChallengePoints = mine && typeof mine.challenge_bonus === 'number' ? Math.max(0, mine.challenge_bonus) : 0;
             }
 
             // Extract individual stats for user's total points (includes challenge bonuses)
