@@ -259,6 +259,9 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [challengeToDelete, setChallengeToDelete] = React.useState<Challenge | null>(null);
   const [deleting, setDeleting] = React.useState(false);
+  // Close dialog state
+  const [closeConfirmOpen, setCloseConfirmOpen] = React.useState(false);
+  const [challengeToClose, setChallengeToClose] = React.useState<Challenge | null>(null);
   const [publishingId, setPublishingId] = React.useState<string | null>(null);
   const fetchChallenges = React.useCallback(async () => {
     setLoading(true);
@@ -623,12 +626,17 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
 
   const [closingId, setClosingId] = React.useState<string | null>(null);
 
-  const handleCloseChallenge = async (challenge: Challenge) => {
-    if (!confirm('Are you sure you want to finalize and close this challenge? This action cannot be undone.')) return;
+  const handleOpenCloseConfirm = (challenge: Challenge) => {
+    setChallengeToClose(challenge);
+    setCloseConfirmOpen(true);
+  };
 
-    setClosingId(challenge.id);
+  const handleCloseChallenge = async () => {
+    if (!challengeToClose) return;
+
+    setClosingId(challengeToClose.id);
     try {
-      const res = await fetch(`/api/leagues/${leagueId}/challenges/${challenge.id}/close`, {
+      const res = await fetch(`/api/leagues/${leagueId}/challenges/${challengeToClose.id}/close`, {
         method: 'POST',
       });
       const json = await res.json();
@@ -636,6 +644,8 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
         throw new Error(json.error || 'Failed to close challenge');
       }
       toast.success('Challenge closed successfully');
+      setCloseConfirmOpen(false);
+      setChallengeToClose(null);
       fetchChallenges();
     } catch (err: any) {
       toast.error(err?.message || 'Failed to close challenge');
@@ -1097,7 +1107,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => handleCloseChallenge(challenge)}
+                      onClick={() => handleOpenCloseConfirm(challenge)}
                       disabled={closingId === challenge.id}
                       className="ml-2"
                     >
@@ -1700,6 +1710,38 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Close Challenge Confirmation Dialog */}
+      <AlertDialog
+        open={closeConfirmOpen}
+        onOpenChange={(open) => {
+          setCloseConfirmOpen(open);
+          if (!open) {
+            setChallengeToClose(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Finalize & Close Challenge</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to finalize and close {challengeToClose ? `"${challengeToClose.name}"` : 'this challenge'}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={closingId === challengeToClose?.id}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCloseChallenge}
+              disabled={closingId === challengeToClose?.id}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {closingId === challengeToClose?.id ? 'Closing...' : 'Finalize & Close'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Challenge Confirmation Dialog */}
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
