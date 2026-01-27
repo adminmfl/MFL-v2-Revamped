@@ -98,11 +98,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
             )}
           </Link>
         </div>
-        {!isCollapsed && (
-          <div className="mt-2">
-            <LeagueSwitcher />
-          </div>
-        )}
+        {!isCollapsed && null}
       </SidebarHeader>
 
       {/* Content - Dynamic Navigation */}
