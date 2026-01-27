@@ -67,6 +67,7 @@ type ChallengeSubmission = {
   reviewed_by: string | null;
   awarded_points: number | null;
   created_at: string;
+  team_id?: string | null;
 };
 
 type SubmissionRow = ChallengeSubmission & {
@@ -171,7 +172,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
   const [teams, setTeams] = React.useState<Array<{ team_id: string; team_name: string }>>([]);
   const [teamMemberCounts, setTeamMemberCounts] = React.useState<Record<string, number>>({});
   const [subTeams, setSubTeams] = React.useState<Array<{ subteam_id: string; name: string }>>([]);
-  
+
   // Team/Sub-team level score setting (for team & sub_team challenges)
   const [teamScores, setTeamScores] = React.useState<Record<string, number | ''>>({});
   const [subTeamScores, setSubTeamScores] = React.useState<Record<string, number | ''>>({});
@@ -182,7 +183,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
     if (!sizes.length) return 1;
     return Math.max(...sizes, 1);
   }, [teamMemberCounts]);
-  
+
   const [shareOpen, setShareOpen] = React.useState(false);
   const [shareLink, setShareLink] = React.useState('');
   const [shareChallengeName, setShareChallengeName] = React.useState('');
@@ -281,10 +282,12 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
 
   React.useEffect(() => {
     fetchChallenges();
-    if (isAdmin) {
-      fetchTeams();
-    }
-  }, [fetchChallenges, isAdmin]);
+  }, [fetchChallenges]);
+
+  // Fetch teams for everyone so we can calculate maxTeamSize for scaling
+  React.useEffect(() => {
+    fetchTeams();
+  }, [leagueId]);
 
   // Fallback: ensure pricing is loaded when finish dialog opens
   React.useEffect(() => {
@@ -993,7 +996,22 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                       <div className="rounded-md bg-primary/10 dark:bg-primary/20 px-3 py-2 text-center">
                         <div className="text-[11px] text-muted-foreground">Your Points</div>
                         <div className="text-base font-semibold text-primary tabular-nums">
-                          {challenge.my_submission?.awarded_points ? challenge.my_submission.awarded_points : '—'}
+                          {(() => {
+                            if (!challenge.my_submission?.awarded_points) return '—';
+
+                            // For team challenges, scale the points for display
+                            // visible = awarded * (myTeamSize / maxTeamSize)
+                            if (isTeamChallenge && challenge.my_submission.team_id) {
+                              const myTeamSize = teamMemberCounts[challenge.my_submission.team_id] || 0;
+                              if (myTeamSize > 0 && maxTeamSize > 0) {
+                                const scaleFactor = myTeamSize / maxTeamSize;
+                                const scaled = challenge.my_submission.awarded_points * scaleFactor;
+                                return Math.round(scaled);
+                              }
+                            }
+
+                            return challenge.my_submission.awarded_points;
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -1453,7 +1471,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                   const teamName = s.leaguemembers?.teams?.team_name;
                   const teamId = s.leaguemembers?.teams?.team_id;
                   const teamSize = teamId ? (teamMemberCounts[teamId] || 0) : 0;
-                  
+
                   // Calculate validation for this submission
                   const currentPoints = reviewAwardedPoints[s.id] !== '' ? reviewAwardedPoints[s.id] : s.awarded_points;
                   const validation = validateTeamChallengePoints(
@@ -1533,7 +1551,7 @@ export default function LeagueChallengesPage({ params }: { params: Promise<{ id:
                             <Button
                               size="sm"
                               disabled={
-                                validatingId === s.id || 
+                                validatingId === s.id ||
                                 (typeof currentPoints === 'number' && !validation.valid)
                               }
                               onClick={() => handleValidate(s.id, 'approved', reviewAwardedPoints[s.id] === '' ? undefined : (reviewAwardedPoints[s.id] as number))}

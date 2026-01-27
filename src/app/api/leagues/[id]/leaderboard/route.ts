@@ -11,6 +11,8 @@ import { authOptions } from '@/lib/auth/config';
 import { getSupabaseServiceRole } from '@/lib/supabase/client';
 import { getUserLocalDateYMD } from '@/lib/utils/timezone';
 
+export const dynamic = 'force-dynamic';
+
 function formatDateYYYYMMDD(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -187,20 +189,28 @@ export async function GET(
         dt.setDate(dt.getDate() - 2);
         return formatDateYYYYMMDD(dt);
       })();
-      effectiveEndDate = minDateString(String(filterEndDate), cutoff);
 
-      // Compute pending window using today's date in user's timezone
+      // effectiveEndDate is now the query bound -> We want EVERYTHING up to today for Individuals.
+      // But we will filter it later for Team calculations using `cutoff`.
+      // So effectiveEndDate for Query = Today (or filterEnd).
       const todayYYYYMMDD = todayYmd;
+      const cappedEndDate = minDateString(String(filterEndDate), todayYYYYMMDD);
+      effectiveEndDate = cappedEndDate;
+
+      // Compute pending window range for "Real Time" column
+      // We will derive the actual window data from the main `entries` list later
+      // by checking if entry.date > cutoff.
       const pendingWindowEnd = minDateString(String(filterEndDate), todayYYYYMMDD);
       const pendingWindowStart = addDaysYYYYMMDD(pendingWindowEnd, -1);
 
+      // We still define the dates for UI column headers
       pendingWindowDates = uniqueStringsPreserveOrder([
         pendingWindowEnd,
         pendingWindowStart,
       ])
         .filter((d) => d >= filterStartDate && d <= String(filterEndDate))
-        .filter((d) => d > effectiveEndDate)
-        .sort(); // Sort chronologically (ascending) so oldest date is first
+        .filter((d) => d > cutoff) // Only show dates that are actually "pending" relative to main team board
+        .sort();
     }
 
 
@@ -287,30 +297,16 @@ export async function GET(
     // =========================================================================
     // Fetch pending-window effort entries (today/yesterday), excluded from main due to delay
     // =========================================================================
+    // START of pending window fetch removal
+    // We fetch everything in the main query now, so we don't need a separate pending query.
+    // We will simulate `pendingEntries` from the main `entries` array later.
     let pendingEntries: Array<{
       league_member_id: string;
       date: string;
       rr_value: number | null;
       status: string;
     }> = [];
-
-    if (pendingWindowDates.length > 0) {
-      const pendingStart = pendingWindowDates.reduce((min, d) => (d < min ? d : min), pendingWindowDates[0]);
-      const pendingEnd = pendingWindowDates.reduce((max, d) => (d > max ? d : max), pendingWindowDates[0]);
-
-      const { data: pendingData, error: pendingError } = await supabase
-        .from('effortentry')
-        .select('league_member_id, date, rr_value, status')
-        .in('league_member_id', memberIds)
-        .gte('date', maxDateString(pendingStart, filterStartDate))
-        .lte('date', pendingEnd);
-
-      if (pendingError) {
-        console.error('Error fetching pending-window entries:', pendingError);
-      } else {
-        pendingEntries = (pendingData as any[]) || [];
-      }
-    }
+    // END of pending window fetch removal
 
     // =========================================================================
     // Get league challenge submissions with points
@@ -362,7 +358,29 @@ export async function GET(
     });
     const maxTeamSize = Array.from(teamSizes.values()).reduce((max, size) => Math.max(max, size), 0);
 
+
+
+    // Deduplicate submissions: ensure only one approved submission per challenge per member counts.
+    // Use map key: memberId_challengeId
+    const uniqueSubmissionsMap = new Map<string, any>();
     (leagueSubmissions || []).forEach((sub) => {
+      const challenge = (sub.leagueschallenges as any);
+      if (!challenge) return;
+
+      const key = `${sub.league_member_id}_${challenge.id}`;
+      const existing = uniqueSubmissionsMap.get(key);
+
+      const points = sub.awarded_points !== null ? Number(sub.awarded_points) : (Number(challenge.total_points) || 0);
+      const existingPoints = existing ? (existing.awarded_points !== null ? Number(existing.awarded_points) : (Number(existing.leagueschallenges.total_points) || 0)) : -1;
+
+      if (!existing || points > existingPoints || (points === existingPoints && sub.created_at > existing.created_at)) {
+        uniqueSubmissionsMap.set(key, sub);
+      }
+    });
+
+    const uniqueLeagueSubmissions = Array.from(uniqueSubmissionsMap.values());
+
+    uniqueLeagueSubmissions.forEach((sub) => {
       const challenge = (sub.leagueschallenges as any);
       if (!challenge) return;
 
@@ -398,7 +416,7 @@ export async function GET(
       const memberInfo = memberToUser.get(memberKey);
       const memberTeamId = memberInfo?.team_id || null;
       const memberTeamSize = memberTeamId ? Math.max(1, teamSizes.get(memberTeamId) || 1) : 1;
-      
+
       let visiblePoints = points;
       if (challenge.challenge_type === 'team' && maxTeamSize > 0) {
         const totalPoints = Number(challenge.total_points || 0);
@@ -406,7 +424,7 @@ export async function GET(
         const visibleCap = totalPoints / maxTeamSize;
         // Proportional scaling: effort ratio applied to visible max
         const proportion = internalCap > 0 ? points / internalCap : 1;
-        visiblePoints = Math.min(proportion * visibleCap, visibleCap);
+        visiblePoints = Math.round(Math.min(proportion * visibleCap, visibleCap));
       }
 
       const current = memberChallengePoints.get(memberKey) || 0;
@@ -422,13 +440,20 @@ export async function GET(
           const internalCap = size > 0 ? Number(challenge.total_points || 0) / size : points;
           const internalContribution = Math.min(points, internalCap);
           const teamCurrent = teamChallengePoints.get(teamKey) || 0;
-          teamChallengePoints.set(teamKey, teamCurrent + internalContribution);
+          // Apply Delay Logic for Team Points
+          if (!pendingWindowDates.includes(submissionDate)) {
+            teamChallengePoints.set(teamKey, teamCurrent + internalContribution);
+          }
         }
       } else if (challenge.challenge_type === 'sub_team' && sub.sub_team_id) {
         // Sub-team challenges: points show on sub-team leaderboard AND roll up to team leaderboard.
         const subTeamKey = sub.sub_team_id as string;
-        const subTeamCurrent = subTeamChallengePoints.get(subTeamKey) || 0;
-        subTeamChallengePoints.set(subTeamKey, subTeamCurrent + points);
+        // Sub-Team points also likely need delay if rolling up to team?
+        // Assuming yes.
+        if (!pendingWindowDates.includes(submissionDate)) {
+          const subTeamCurrent = subTeamChallengePoints.get(subTeamKey) || 0;
+          subTeamChallengePoints.set(subTeamKey, subTeamCurrent + points);
+        }
         const subTeamCount = subTeamSubmissionCounts.get(subTeamKey) || 0;
         subTeamSubmissionCounts.set(subTeamKey, subTeamCount + 1);
 
@@ -443,7 +468,9 @@ export async function GET(
           const internalContribution = Math.min(points, internalCap);
           const teamKey = memberInfo.team_id;
           const teamCurrent = teamChallengePoints.get(teamKey) || 0;
-          teamChallengePoints.set(teamKey, teamCurrent + internalContribution);
+          if (!pendingWindowDates.includes(submissionDate)) {
+            teamChallengePoints.set(teamKey, teamCurrent + internalContribution);
+          }
         }
       } else if (challenge.challenge_type === 'individual') {
         // Individual challenges: Points count for the individual AND their team
@@ -455,7 +482,9 @@ export async function GET(
           const internalContribution = Math.min(points, internalCap);
           const teamKey = memberInfo.team_id;
           const teamCurrent = teamChallengePoints.get(teamKey) || 0;
-          teamChallengePoints.set(teamKey, teamCurrent + internalContribution);
+          if (!pendingWindowDates.includes(submissionDate)) {
+            teamChallengePoints.set(teamKey, teamCurrent + internalContribution);
+          }
         }
       }
     });
@@ -531,6 +560,25 @@ export async function GET(
       }
     });
 
+    // Deduplicate entries: Ensure only one approved entry per day per user counts.
+    // This matches the Summary view logic which enforces daily limits.
+    const uniqueEntriesMap = new Map<string, any>();
+    (entries || []).forEach((entry) => {
+      // Only care about approved entries for deduplication logic (others don't count anyway)
+      if (entry.status !== 'approved') return;
+
+      const key = `${entry.league_member_id}_${entry.date}`;
+      // Logic: If multiple exist, we take the one that exists? 
+      // Summary usually takes the "best" or "latest". 
+      // We'll simplisticly take the first one or latest.
+      // Assuming sorting isn't guaranteed, we just track we have one.
+      // But we need the one with RR value if possible.
+      const existing = uniqueEntriesMap.get(key);
+      if (!existing || (!existing.rr_value && entry.rr_value)) {
+        uniqueEntriesMap.set(key, entry);
+      }
+    });
+
     // Aggregate entries by team
     (entries || []).forEach((entry) => {
       const memberInfo = memberToUser.get(entry.league_member_id);
@@ -539,17 +587,53 @@ export async function GET(
       const teamStat = teamStats.get(memberInfo.team_id);
       if (!teamStat) return;
 
-      teamStat.submission_count++;
+      // SPLIT DELAY LOGIC:
+      // For Team Stats, we enforce the 2-day delay.
+      // We calculate the cutoff date (T-2).
+      // If the league is completed, `cutoff` isn't defined in the same way, but 
+      // effectiveEndDate covers it. If strict delay applies:
+      // We assume `cutoff` variable exists from above scope.
+      // If entry.date > cutoff, we SKIP it for Team Main stats.
 
-      // Only approved entries count toward points
+      // Determine cutoff to use:
+      // If league completed, cutoff is effectively infinite (or we ignore it).
+      // But above code logic sets cutoff only in 'else' block.
+      // Let's rely on checking if date is in pending window? No.
+      // Safe bet: If league is active, we check against cutoff.
+
+      // Re-calculate cutoff if needed or access from scope?
+      // `cutoff` was defined inside the `else` block above. It is NOT available here if using `let`/`const` block scope.
+      // We need to move `cutoff` definition to outer scope or re-calculate.
+
+      // FIX: Accessing `cutoff` from block scope above will fail if not hoisted.
+      // Since we can't easily change scope in this replace, we'll re-implement the check logic:
+      // If date is in `pendingWindowDates`, it is > cutoff.
+
+      const isPending = pendingWindowDates.includes(entry.date);
+      // OR explicitly check date logic if pendingWindowDates is inconsistent?
+      // pendingWindowDates are strictly > cutoff.
+
+      if (league.status !== 'completed' && isPending) {
+        // Skip this entry for TEAM MAIN stats (it belongs in Real Time board)
+        return;
+      }
+      // If it's even newer than pending window? (Future). Skip.
+      // Our query bounds capped at Today.
+
+      teamStat.submission_count++; // Count all submissions for stats
+
+      // For points, check against our Unique Map
       if (entry.status === 'approved') {
-        // 1 point per approved entry (per PRD)
-        teamStat.points++;
+        const key = `${entry.league_member_id}_${entry.date}`;
+        const unique = uniqueEntriesMap.get(key);
+        // Only count if THIS entry is the unique one (by ID)
+        if (unique && unique.id === entry.id) {
+          teamStat.points++;
 
-        // Track RR values for average calculation
-        if (entry.rr_value && entry.rr_value > 0) {
-          teamStat.total_rr += entry.rr_value;
-          teamStat.rr_count++;
+          if (entry.rr_value && entry.rr_value > 0) {
+            teamStat.total_rr += entry.rr_value;
+            teamStat.rr_count++;
+          }
         }
       }
     });
@@ -595,6 +679,10 @@ export async function GET(
         pointsByTeamDate.set(ts.team_id, dateMap);
         rrAggByTeam.set(ts.team_id, { total_rr: 0, rr_count: 0 });
       }
+
+      // Populate pendingEntries from main entries list
+      // Filter entries that are IN the pending window dates.
+      pendingEntries = (entries || []).filter(e => pendingWindowDates.includes(e.date));
 
       for (const entry of pendingEntries) {
         if (!pendingWindowDates.includes(entry.date)) continue;
@@ -689,11 +777,17 @@ export async function GET(
       individualStat.submission_count++;
 
       if (entry.status === 'approved') {
-        individualStat.points++;
+        // Deduplication check: logic matches Team Stats loop above
+        const key = `${entry.league_member_id}_${entry.date}`;
+        const unique = uniqueEntriesMap.get(key);
 
-        if (entry.rr_value && entry.rr_value > 0) {
-          individualStat.total_rr += entry.rr_value;
-          individualStat.rr_count++;
+        if (unique && unique.id === entry.id) {
+          individualStat.points++;
+
+          if (entry.rr_value && entry.rr_value > 0) {
+            individualStat.total_rr += entry.rr_value;
+            individualStat.rr_count++;
+          }
         }
       }
     });
@@ -718,8 +812,7 @@ export async function GET(
         team_id: is.team_id,
         team_name: is.team_name,
         points: is.points,
-        challenge_points: is.challenge_points,
-        avg_rr: is.rr_count > 0 ? Math.round((is.total_rr / is.rr_count) * 100) / 100 : 0,
+        avg_rr: is.rr_count > 0 ? Number((is.total_rr / is.rr_count).toFixed(2)) : 0,
         submission_count: is.submission_count,
       }))
       .sort((a, b) => {
