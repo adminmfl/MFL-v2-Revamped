@@ -185,6 +185,18 @@ export default function SubmitActivityPage({
   const today = React.useMemo(() => startOfDay(new Date()), []);
   const yesterday = React.useMemo(() => subDays(today, 1), [today]);
 
+  // League start date (local)
+  const leagueStartLocal = React.useMemo(() => {
+    if (!activeLeague?.start_date) return null;
+    try {
+      const startString = String(activeLeague.start_date).slice(0, 10);
+      const dt = startOfDay(parseISO(startString));
+      return isNaN(dt.getTime()) ? null : dt;
+    } catch {
+      return null;
+    }
+  }, [activeLeague]);
+
   // Determine max allowed activity date (League End Date or Today, whichever is earlier)
   const maxActivityDate = React.useMemo(() => {
     const fallback = today;
@@ -542,6 +554,13 @@ export default function SubmitActivityPage({
   };
 
   const handleSubmissionFlow = async (overwrite: boolean) => {
+    if (leagueStartLocal && isBefore(startOfDay(new Date()), leagueStartLocal)) {
+      toast.error(
+        `Failed to submit, League starts from ${format(leagueStartLocal, 'MMM d, yyyy')}, Please try again after league is active`
+      );
+      return;
+    }
+
     if (!formData.activity_type) {
       toast.error('Please select an activity type');
       return;
@@ -730,6 +749,14 @@ export default function SubmitActivityPage({
   // Submit rest day
   const handleRestDaySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (leagueStartLocal && isBefore(startOfDay(new Date()), leagueStartLocal)) {
+      toast.error(
+        `Failed to submit, League starts from ${format(leagueStartLocal, 'MMM d, yyyy')}, Please try again after league is active`
+      );
+      return;
+    }
+
     setLoading(true);
 
     try {

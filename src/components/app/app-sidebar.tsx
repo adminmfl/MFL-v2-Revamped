@@ -98,22 +98,22 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
             )}
           </Link>
         </div>
-        {!isCollapsed && (
-          <div className="mt-2">
-            <LeagueSwitcher />
-          </div>
-        )}
+        {!isCollapsed && null}
       </SidebarHeader>
 
       {/* Content - Dynamic Navigation */}
       <SidebarContent>
-        {navSections.map((section) => (
-          <NavSectionGroup
-            key={section.title}
-            section={section}
-            pathname={pathname}
-            leagueId={activeLeague?.league_id || null}
-          />
+        {navSections.map((section, idx) => (
+          <React.Fragment key={`${section.title || 'primary'}-${idx}`}>
+            {section.title === 'MyFitnessLeague' && (
+              <div className="mx-2 my-1 border-t-2 border-dashed border-border" />
+            )}
+            <NavSectionGroup
+              section={section}
+              pathname={pathname}
+              leagueId={activeLeague?.league_id || null}
+            />
+          </React.Fragment>
         ))}
       </SidebarContent>
 
@@ -212,7 +212,11 @@ function NavSectionGroup({
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>{section.title}</SidebarGroupLabel>
+      {section.title ? (
+        <SidebarGroupLabel className={section.title === 'MyFitnessLeague' ? 'text-base font-semibold mb-2' : ''}>
+          {section.title}
+        </SidebarGroupLabel>
+      ) : null}
       <SidebarMenu>
         {section.items.map((item) => {
           const isLeagueRoot = leagueId ? item.url === `/leagues/${leagueId}` : false;

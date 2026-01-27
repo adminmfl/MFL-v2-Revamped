@@ -88,7 +88,7 @@ export function deriveLeagueStatus(
         // Active if within start and cutoff
         derivedStatus = 'active';
       } else if (now.getTime() < startDt.getTime()) {
-        if (derivedStatus === 'scheduled' || derivedStatus === 'payment_pending') derivedStatus = 'launched';
+        // Keep scheduled/payment_pending as-is (don't convert to launched)
       }
     } else if (endDt) {
       // Legacy check or missing start date?
@@ -100,7 +100,7 @@ export function deriveLeagueStatus(
     }
   }
 
-  if (!['draft', 'launched', 'active', 'completed', 'scheduled', 'payment_pending'].includes(derivedStatus)) {
+  if (!['draft', 'scheduled', 'payment_pending', 'active', 'completed'].includes(derivedStatus)) {
     // Basic normalization
     if (derivedStatus === 'ended') derivedStatus = 'completed';
   }

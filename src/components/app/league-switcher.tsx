@@ -34,12 +34,49 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 // LeagueSwitcher Component
 // ============================================================================
 
-export function LeagueSwitcher() {
+interface LeagueSwitcherProps {
+  trigger?: React.ReactNode;
+  onOpenChange?: (open: boolean) => void;
+}
+
+export function LeagueSwitcher({ trigger, onOpenChange }: LeagueSwitcherProps) {
   const { activeLeague, userLeagues, setActiveLeague, isLoading } = useLeague();
   const { activeRole, availableRoles, setActiveRole } = useRole();
   const { isMobile } = useSidebar();
   const router = useRouter();
   const pathname = usePathname();
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    onOpenChange?.(open);
+  };
+
+  const defaultTrigger = (
+    <SidebarMenuButton
+      size="lg"
+      className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+    >
+      <Avatar className="size-8 rounded-lg">
+        {activeLeague?.logo_url ? (
+          <AvatarImage src={activeLeague.logo_url} alt={activeLeague.name} />
+        ) : (
+          <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-semibold">
+            {activeLeague?.name?.slice(0, 2).toUpperCase() || 'LG'}
+          </AvatarFallback>
+        )}
+      </Avatar>
+      <div className="grid flex-1 text-left text-sm leading-tight">
+        <span className="truncate font-semibold">
+          {activeLeague?.name || 'Select League'}
+        </span>
+        <span className="truncate text-xs text-muted-foreground">
+          {activeRole ? `Viewing as ${capitalize(activeRole)}` : 'No league selected'}
+        </span>
+      </div>
+      <ChevronsUpDown className="ml-auto size-4" />
+    </SidebarMenuButton>
+  );
 
   if (isLoading) {
     return (
@@ -67,34 +104,105 @@ export function LeagueSwitcher() {
     router.refresh();
   };
 
+  // When custom trigger is provided, use a simpler wrapper (for header usage)
+  if (trigger) {
+    return (
+      <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
+        <DropdownMenuTrigger asChild>
+          {trigger}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          className="w-72 rounded-lg"
+          align="end"
+          side="bottom"
+          sideOffset={4}
+        >
+          {/* Current Role Section */}
+          {activeLeague && availableRoles.length > 1 && (
+            <>
+              <DropdownMenuLabel className="text-xs text-muted-foreground px-2 py-1.5">
+                Switch Role
+              </DropdownMenuLabel>
+              {availableRoles.map((role) => {
+                const display = getRoleDisplay(role);
+                const Icon = display.icon;
+                const isActive = role === activeRole;
+
+                return (
+                  <DropdownMenuItem
+                    key={role}
+                    onClick={() => setActiveRole(role)}
+                    className="gap-2 px-2 py-1.5 cursor-pointer text-sm"
+                  >
+                    <div className={`flex size-5 items-center justify-center rounded-sm ${display.color}`}>
+                      <Icon className="size-3" />
+                    </div>
+                    <span className="flex-1">{display.label}</span>
+                    {isActive && <Check className="size-3 text-primary" />}
+                  </DropdownMenuItem>
+                );
+              })}
+              <DropdownMenuSeparator className="my-1" />
+            </>
+          )}
+
+          {/* Leagues Section */}
+          <DropdownMenuLabel className="text-xs text-muted-foreground px-2 py-1.5">
+            My Leagues
+          </DropdownMenuLabel>
+
+          {userLeagues.length === 0 ? (
+            <DropdownMenuItem disabled className="text-muted-foreground text-sm py-1.5">
+              No leagues yet
+            </DropdownMenuItem>
+          ) : (
+            userLeagues.map((league) => (
+              <DropdownMenuItem
+                key={league.league_id}
+                onClick={() => handleLeagueSelect(league)}
+                className="gap-2 px-2 py-1.5 cursor-pointer"
+              >
+                <Avatar className="size-6 rounded-md">
+                  {league.logo_url ? (
+                    <AvatarImage src={league.logo_url} alt={league.name} />
+                  ) : (
+                    <AvatarFallback className="rounded-md text-[10px] bg-primary/10 text-primary font-semibold">
+                      {league.name?.slice(0, 2).toUpperCase() || 'LG'}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="truncate font-medium text-sm">{league.name}</div>
+                  <div className="flex items-center gap-0.5 mt-0.5">
+                    {league.roles.map((role) => (
+                      <Badge
+                        key={role}
+                        variant="outline"
+                        className="text-[8px] px-0.5 py-0 h-3"
+                      >
+                        {capitalize(role)}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                {activeLeague?.league_id === league.league_id && (
+                  <Check className="size-3 text-primary" />
+                )}
+              </DropdownMenuItem>
+            ))
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
+
+  // Default sidebar usage
   return (
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <Avatar className="size-8 rounded-lg">
-                {activeLeague?.logo_url ? (
-                  <AvatarImage src={activeLeague.logo_url} alt={activeLeague.name} />
-                ) : (
-                  <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-semibold">
-                    {activeLeague?.name?.slice(0, 2).toUpperCase() || 'LG'}
-                  </AvatarFallback>
-                )}
-              </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">
-                  {activeLeague?.name || 'Select League'}
-                </span>
-                <span className="truncate text-xs text-muted-foreground">
-                  {activeRole ? `Viewing as ${capitalize(activeRole)}` : 'No league selected'}
-                </span>
-              </div>
-              <ChevronsUpDown className="ml-auto size-4" />
-            </SidebarMenuButton>
+            {defaultTrigger}
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-[--radix-dropdown-menu-trigger-width] min-w-64 rounded-lg"

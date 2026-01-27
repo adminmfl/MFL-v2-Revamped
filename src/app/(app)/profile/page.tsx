@@ -89,15 +89,37 @@ export default function ProfilePage() {
       setFormData({
         name: user.name || '',
         email: user.email || '',
-        phone: '',
+        phone: (user as any).phone || '',
       });
     }
   }, [user]);
 
   const handleSave = async () => {
     setSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setSaving(false);
+    try {
+      const res = await fetch('/api/user/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          phone: formData.phone,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update profile');
+      }
+
+      toast.success('Profile updated successfully');
+      window.location.reload();
+    } catch (error: any) {
+      console.error('Error saving profile:', error);
+      toast.error(error.message || 'Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getInitials = (name?: string | null) => {
@@ -490,7 +512,7 @@ export default function ProfilePage() {
               <div className="space-y-2">
                 <Label htmlFor="name" className="flex items-center gap-2">
                   <User className="size-4 text-muted-foreground" />
-                  Full Name
+                  Username
                 </Label>
                 <Input
                   id="name"
@@ -498,7 +520,7 @@ export default function ProfilePage() {
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, name: e.target.value }))
                   }
-                  placeholder="Enter your full name"
+                  placeholder="Enter your username"
                 />
               </div>
 

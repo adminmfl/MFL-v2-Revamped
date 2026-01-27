@@ -227,7 +227,15 @@ export async function POST(
 
         resolvedPoints = pts;
       } else if (challenge?.total_points !== undefined && challenge.total_points !== null) {
-        resolvedPoints = Number(challenge.total_points);
+        // For team challenges, default to internal per-member cap instead of full team cap
+        if (challenge?.challenge_type === 'team') {
+          const memberTeam = (submission as any).leaguemembers?.team_id;
+          const teamSize = memberTeam ? (leagueTeamSizes[memberTeam] || 1) : 1;
+          const internalCap = teamSize > 0 ? Number(challenge.total_points) / teamSize : Number(challenge.total_points);
+          resolvedPoints = Math.round(internalCap * 100) / 100; // Round to 2 decimal places
+        } else {
+          resolvedPoints = Number(challenge.total_points);
+        }
       }
 
       // Validate the resolved points is a finite number
