@@ -110,7 +110,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         {navSections.map((section, idx) => (
           <React.Fragment key={`${section.title || 'primary'}-${idx}`}>
             {section.title === 'MyFitnessLeague' && (
-              <div className="mx-2 my-2 border-t-2 border-dashed border-border" />
+              <div className="mx-2 my-1 border-t-2 border-dashed border-border" />
             )}
             <NavSectionGroup
               section={section}
@@ -217,7 +217,7 @@ function NavSectionGroup({
   return (
     <SidebarGroup>
       {section.title ? (
-        <SidebarGroupLabel className={section.title === 'MyFitnessLeague' ? 'text-base font-semibold' : ''}>
+        <SidebarGroupLabel className={section.title === 'MyFitnessLeague' ? 'text-base font-semibold mb-2' : ''}>
           {section.title}
         </SidebarGroupLabel>
       ) : null}
