@@ -790,41 +790,22 @@ export default function LeagueDashboardPage({
     <div className="@container/main flex flex-1 flex-col gap-4 lg:gap-6">
       {/* Header */}
       <div className="flex flex-col gap-4 px-4 lg:px-6 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-4">
-          <div className="size-14 rounded-xl p-1 flex items-center justify-center shrink-0 shadow-lg bg-background border border-border/60">
-            <Avatar className="size-full rounded-lg bg-background/80">
-              {league.logo_url ? (
-                <AvatarImage src={league.logo_url} alt={`${league.league_name} logo`} />
-              ) : (
-                <AvatarFallback className="rounded-lg bg-primary/20 text-primary-foreground font-semibold uppercase">
-                  {league.league_name?.slice(0, 2) || 'LG'}
-                </AvatarFallback>
-              )}
-            </Avatar>
-          </div>
-          <div className="w-full">
-            <div className="flex items-center gap-3 mb-1 w-full">
-              <h1 className="text-2xl font-bold tracking-tight">
-                {league.league_name}
-              </h1>
-              <Badge variant={statusConfig[league.status]?.variant || 'secondary'}>
-                {statusConfig[league.status]?.label || league.status}
-              </Badge>
-              {isHost && (
-                <div className="ml-auto">
-                  <InviteDialog
-                    leagueId={league.league_id}
-                    leagueName={league.league_name}
-                    inviteCode={league.invite_code}
-                    memberCount={stats?.memberCount}
-                    maxCapacity={stats?.maxCapacity || league.league_capacity}
-                  />
-                </div>
-              )}
-            </div>
-            <p className="text-muted-foreground">
-              {league.description || 'No description provided'}
-            </p>
+        <div className="w-full">
+          <div className="flex items-center gap-3 mb-1 w-full">
+            <h1 className="text-2xl font-bold tracking-tight">
+              Welcome back, {user?.name || 'User'}!
+            </h1>
+            {isHost && (
+              <div className="ml-auto">
+                <InviteDialog
+                  leagueId={league.league_id}
+                  leagueName={league.league_name}
+                  inviteCode={league.invite_code}
+                  memberCount={stats?.memberCount}
+                  maxCapacity={stats?.maxCapacity || league.league_capacity}
+                />
+              </div>
+            )}
           </div>
         </div>
 
