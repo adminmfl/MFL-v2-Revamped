@@ -199,8 +199,8 @@ export default function LeagueActivitiesPage({
     }
 
     const parsed = Number(raw);
-    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 7) {
-      toast.error('Frequency must be between 0 and 7 (or empty for unlimited)');
+    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 7) {
+      toast.error('Frequency must be between 1 and 7');
       setFrequencyDrafts((prev) => ({
         ...prev,
         [activityId]: typeof current === 'number' ? String(current) : '',
@@ -241,7 +241,7 @@ export default function LeagueActivitiesPage({
       }
     } else {
       const parsed = Number(trimmed);
-      if (Number.isFinite(parsed) && parsed >= 0 && parsed <= 7) {
+      if (Number.isFinite(parsed) && parsed >= 1 && parsed <= 7) {
         const numVal = Math.floor(parsed);
         if (current !== numVal) {
           setPendingChanges((prev) => {
@@ -543,10 +543,10 @@ export default function LeagueActivitiesPage({
       {/* Unsaved Changes Alert */}
       {hasChanges && (
         <div className="px-4 lg:px-6">
-          <Alert className="border-amber-200 bg-amber-50">
-            <AlertCircle className="size-4 text-amber-600" />
-            <AlertTitle className="text-amber-900">Unsaved Changes</AlertTitle>
-            <AlertDescription className="text-amber-800">
+          <Alert className="border-amber-200 bg-amber-50 dark:border-primary/20 dark:bg-primary/10">
+            <AlertCircle className="size-4 text-amber-600 dark:text-primary" />
+            <AlertTitle className="text-amber-900 dark:text-primary">Unsaved Changes</AlertTitle>
+            <AlertDescription className="text-amber-800 dark:text-primary/80">
               You have {pendingChanges.size} pending change{pendingChanges.size !== 1 ? 's' : ''}. Click "Confirm" to save or "Discard" to cancel.
             </AlertDescription>
           </Alert>
@@ -602,7 +602,7 @@ export default function LeagueActivitiesPage({
                       key={activity.activity_id}
                       className={cn(
                         'flex items-start gap-3 p-4 rounded-lg border transition-all cursor-pointer',
-                        hasPendingChange && 'ring-2 ring-amber-400 bg-amber-50/50',
+                        hasPendingChange && 'ring-2 ring-amber-400 bg-amber-50/50 dark:ring-primary/60 dark:bg-primary/10',
                         !hasPendingChange && isEnabled && 'border-primary bg-primary/5 ring-1 ring-primary',
                         !hasPendingChange && !isEnabled && 'border-border bg-card hover:border-primary/50',
                         isProcessing && 'opacity-50 pointer-events-none'
@@ -634,7 +634,7 @@ export default function LeagueActivitiesPage({
                             </Badge>
                           )}
                           {hasPendingChange && (
-                            <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                            <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 dark:bg-primary/10 dark:text-primary dark:border-primary/20">
                               Pending
                             </Badge>
                           )}

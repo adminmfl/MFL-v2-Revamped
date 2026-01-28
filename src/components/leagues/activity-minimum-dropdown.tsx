@@ -5,6 +5,13 @@ import { ChevronDown, Plus, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -32,10 +39,10 @@ function getDefaultValues(measurementType: string): { min: number; max: number }
 
 interface AgeOverride {
   id: string;
-  ageMin: number;
-  ageMax: number;
-  minValue: number;
-  maxValue: number;
+  ageMin: number | null;
+  ageMax: number | null;
+  minValue: number | null;
+  maxValue: number | null;
 }
 
 interface ActivityMinimumProps {
@@ -69,7 +76,6 @@ export function ActivityMinimumDropdown({
   initialConfig,
   onMinimumChange,
   onFrequencyChange,
-  onFrequencyBlur,
 }: ActivityMinimumProps) {
   const unit = getUnitLabel(measurementType);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -120,10 +126,10 @@ export function ActivityMinimumDropdown({
       const key = `tier${idx}`;
       overrides[key] = {
         ageRange: {
-          min: override.ageMin,
-          max: override.ageMax,
+            min: override.ageMin ?? 0,
+            max: override.ageMax ?? 0,
         },
-        minValue: override.minValue,
+          minValue: override.minValue ?? 0,
       };
     });
     return overrides;
@@ -136,8 +142,8 @@ export function ActivityMinimumDropdown({
         id: `override-${Date.now()}`,
         ageMin: 0,
         ageMax: 18,
-        minValue: baseMin || 50,
-        maxValue: (baseMin || 50) * 2,
+        minValue: baseMin ?? 50,
+        maxValue: (baseMin ?? 50) * 2,
       },
     ]);
   }
@@ -153,6 +159,10 @@ export function ActivityMinimumDropdown({
   }
 
   async function handleSave() {
+    if (ageOverrides.some((override) => override.ageMin === null || override.ageMax === null || override.minValue === null)) {
+      toast.error('Please fill all age override fields before saving.');
+      return;
+    }
     if (onMinimumChange) {
       onMinimumChange({
         activity_id: activityId,
@@ -180,27 +190,34 @@ export function ActivityMinimumDropdown({
       </Button>
 
       {isExpanded && (
-        <div className="mt-3 space-y-3 p-3 bg-slate-50 rounded-lg border">
+        <div className="mt-3 space-y-3 p-3 bg-muted/30 rounded-lg border border-border/60">
           {/* Weekly Frequency */}
           {supportsFrequency && (
             <div className="space-y-2 pb-3 border-b">
               <h4 className="text-xs font-semibold">Weekly Frequency</h4>
               <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  min={0}
-                  max={7}
-                  step={1}
-                  value={frequencyDraft}
-                  placeholder="Unlimited"
-                  onChange={(e) => {
-                    setFrequencyDraft(e.target.value);
-                    onFrequencyChange?.(activityId, e.target.value);
+                <Select
+                  value={frequencyDraft || undefined}
+                  onValueChange={(value) => {
+                    setFrequencyDraft(value);
+                    onFrequencyChange?.(activityId, value);
                   }}
-                  onBlur={() => onFrequencyBlur?.(activityId)}
-                  className="h-7 w-20 text-xs"
-                />
-                <span className="text-xs text-slate-600">submissions per week</span>
+                >
+                  <SelectTrigger className="h-7 w-24 text-xs">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 7 }, (_, idx) => {
+                      const value = String(idx + 1);
+                      return (
+                        <SelectItem key={value} value={value}>
+                          {value}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <span className="text-xs text-muted-foreground">submissions per week</span>
               </div>
             </div>
           )}
@@ -208,8 +225,8 @@ export function ActivityMinimumDropdown({
           {/* Base Tier */}
           <div className="space-y-2">
             <h4 className="text-xs font-semibold">Activity Minimums</h4>
-            <h5 className="text-xs font-medium text-slate-700">Base Tier (All Ages)</h5>
-            <p className="text-xs text-slate-600">
+            <h5 className="text-xs font-medium text-foreground/80">Base Tier (All Ages)</h5>
+            <p className="text-xs text-muted-foreground">
               Set minimum only. Maximum auto-calculated as minimum × 2 (RR: 1.0-2.0)
             </p>
             <div className="space-y-1">
@@ -217,16 +234,16 @@ export function ActivityMinimumDropdown({
               <Input
                 type="number"
                 min="0"
-                step="0.1"
+                        step="1"
                 value={baseMin ?? ''}
                 onChange={(e) =>
-                  setBaseMin(e.target.value ? parseFloat(e.target.value) : null)
+                          setBaseMin(e.target.value ? parseInt(e.target.value, 10) : null)
                 }
                 placeholder={`${getDefaultValues(measurementType).min} (default)`}
                 className="h-7 text-xs"
               />
               {baseMin !== null && (
-                <p className="text-xs text-slate-500 mt-1 font-medium">
+                <p className="text-xs text-muted-foreground mt-1 font-medium">
                   Maximum: {baseMin * 2} {unit}
                 </p>
               )}
@@ -248,12 +265,12 @@ export function ActivityMinimumDropdown({
               </Button>
             </div>
 
-            <p className="text-xs text-slate-600 bg-blue-50 p-2 rounded border border-blue-200">
+            <p className="text-xs text-muted-foreground bg-muted/30 p-2 rounded border border-border/60">
               Set different minimum requirements for specific age groups. For example: "Ages 0-20 need 30-60 minutes" and "Ages 60+ need 20-40 minutes". Everything in between uses the base tier.
             </p>
 
             {ageOverrides.length === 0 ? (
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 No overrides. Base tier applies to all ages.
               </p>
             ) : (
@@ -261,31 +278,33 @@ export function ActivityMinimumDropdown({
                 {ageOverrides.map((override, idx) => (
                   <div
                     key={override.id}
-                    className="flex flex-col gap-2 text-xs bg-white p-2 rounded border"
+                    className="flex flex-col gap-2 text-xs bg-muted/20 p-2 rounded border border-border/60"
                   >
                     <div className="flex items-center gap-1 flex-wrap">
-                      <span className="font-semibold text-slate-600 whitespace-nowrap">Ages</span>
+                      <span className="font-semibold text-muted-foreground whitespace-nowrap">Ages</span>
                       <Input
                         type="number"
                         min="0"
                         max="120"
-                        value={override.ageMin}
+                        step="1"
+                        value={override.ageMin ?? ''}
                         onChange={(e) =>
                           updateOverride(override.id, {
-                            ageMin: e.target.value === '' ? 0 : parseInt(e.target.value),
+                            ageMin: e.target.value === '' ? null : parseInt(e.target.value, 10),
                           })
                         }
                         className="h-6 w-10 text-xs p-1"
                       />
-                      <span className="text-slate-400">to</span>
+                      <span className="text-muted-foreground">to</span>
                       <Input
                         type="number"
                         min="0"
                         max="120"
-                        value={override.ageMax}
+                        step="1"
+                        value={override.ageMax ?? ''}
                         onChange={(e) =>
                           updateOverride(override.id, {
-                            ageMax: e.target.value === '' ? 0 : parseInt(e.target.value),
+                            ageMax: e.target.value === '' ? null : parseInt(e.target.value, 10),
                           })
                         }
                         className="h-6 w-10 text-xs p-1"
@@ -293,15 +312,15 @@ export function ActivityMinimumDropdown({
                     </div>
                     
                     <div className="flex items-center gap-1 flex-wrap">
-                      <span className="font-semibold text-slate-600 whitespace-nowrap">Minimum {unit}:</span>
+                      <span className="font-semibold text-muted-foreground whitespace-nowrap">Minimum {unit}:</span>
                       <Input
                         type="number"
                         min="0"
-                        step="0.1"
-                        value={override.minValue}
+                        step="1"
+                        value={override.minValue ?? ''}
                         onChange={(e) =>
                           updateOverride(override.id, {
-                            minValue: e.target.value === '' ? 0 : parseFloat(e.target.value),
+                            minValue: e.target.value === '' ? null : parseInt(e.target.value, 10),
                           })
                         }
                         className="h-6 w-10 text-xs p-1"
