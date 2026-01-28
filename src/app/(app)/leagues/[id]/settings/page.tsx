@@ -404,6 +404,7 @@ export default function LeagueSettingsPage({
                     }
                     placeholder="Enter league name"
                     disabled={!canEditStructure}
+                    className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
                   />
                 </div>
                 <div className="space-y-2">
@@ -419,6 +420,7 @@ export default function LeagueSettingsPage({
                     }
                     rows={4}
                     placeholder="Describe your league goals and rules..."
+                    className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -431,6 +433,7 @@ export default function LeagueSettingsPage({
                         setFormData((prev) => ({ ...prev, start_date: e.target.value }))
                       }
                       disabled={!canEditStructure}
+                      className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
                     />
                   </div>
                   <div className="space-y-2">
@@ -442,6 +445,7 @@ export default function LeagueSettingsPage({
                         setFormData((prev) => ({ ...prev, end_date: e.target.value }))
                       }
                       disabled={!canEditStructure}
+                      className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
                     />
                   </div>
                 </div>
@@ -569,6 +573,7 @@ export default function LeagueSettingsPage({
                         setFormData((prev) => ({ ...prev, rest_days: e.target.value }))
                       }
                       placeholder="e.g. 18"
+                      className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
                     />
                   </div>
                 </div>
@@ -598,7 +603,7 @@ export default function LeagueSettingsPage({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex items-center justify-between p-4 rounded-lg border">
+                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/60">
                   <div className="space-y-1">
                     <Label className="flex items-center gap-2">Auto Rest Day</Label>
                     <p className="text-sm text-muted-foreground">
@@ -628,7 +633,7 @@ export default function LeagueSettingsPage({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex items-center justify-between p-4 rounded-lg border">
+                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/60">
                   <div className="space-y-1">
                     <Label className="flex items-center gap-2">Normalize Points by Team Size</Label>
                     <p className="text-sm text-muted-foreground">
@@ -655,7 +660,7 @@ export default function LeagueSettingsPage({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-lg border">
+                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/60">
                   <div className="space-y-0.5">
                     <Label className="flex items-center gap-2">
                       <Globe className="size-4 text-muted-foreground" />
@@ -674,7 +679,7 @@ export default function LeagueSettingsPage({
                     disabled={!canEditStructure}
                   />
                 </div>
-                <div className="flex items-center justify-between p-4 rounded-lg border">
+                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/60">
                   <div className="space-y-0.5">
                     <Label className="flex items-center gap-2">
                       <Lock className="size-4 text-muted-foreground" />
