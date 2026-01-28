@@ -21,6 +21,7 @@ import {
 
 import { useRole } from '@/contexts/role-context';
 import { useLeague } from '@/contexts/league-context';
+import { useLeagueActivities } from '@/hooks/use-league-activities';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -68,6 +69,9 @@ export default function LeagueSettingsPage({
   const router = useRouter();
   const { isHost } = useRole();
   const { activeLeague, refetch } = useLeague();
+  const { data: activitiesData, isLoading: activitiesLoading } = useLeagueActivities(id, {
+    includeAll: true,
+  });
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -776,6 +780,70 @@ export default function LeagueSettingsPage({
 
           {/* Right Column - Summary Sidebar */}
           <div className="space-y-6">
+            {/* Teams Summary Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Users className="size-4 text-primary" />
+                  Teams Summary
+                </CardTitle>
+                <CardDescription>Configured team settings</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Teams</span>
+                  <span className="font-medium tabular-nums">{formData.num_teams}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Rest Days</span>
+                  <span className="font-medium tabular-nums">{formData.rest_days}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Auto Rest Day</span>
+                  <span className="font-medium">{formData.auto_rest_day_enabled ? 'On' : 'Off'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Point Normalization</span>
+                  <span className="font-medium">{formData.normalize_points_by_team_size ? 'On' : 'Off'}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Activities Summary Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Activity className="size-4 text-primary" />
+                  Activities Summary
+                </CardTitle>
+                <CardDescription>Enabled activity configuration</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Enabled</span>
+                  <span className="font-medium tabular-nums">
+                    {activitiesLoading ? '—' : activitiesData?.activities.length ?? 0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Available</span>
+                  <span className="font-medium tabular-nums">
+                    {activitiesLoading ? '—' : activitiesData?.allActivities?.length ?? activitiesData?.activities.length ?? 0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Weekly Limits</span>
+                  <span className="font-medium">
+                    {activitiesLoading
+                      ? '—'
+                      : activitiesData?.supportsFrequency === false
+                        ? 'Off'
+                        : 'On'}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Summary Card */}
             <Card className="sticky top-6">
               <CardHeader>
