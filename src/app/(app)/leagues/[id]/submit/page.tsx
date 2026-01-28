@@ -13,7 +13,6 @@ import Confetti from 'react-confetti';
 import {
   Dumbbell,
   Upload,
-  Calendar as CalendarIcon,
   Loader2,
   CheckCircle2,
   ArrowRight,
@@ -44,12 +43,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -206,6 +199,18 @@ export default function SubmitActivityPage({
 
   const today = React.useMemo(() => startOfDay(new Date()), []);
   const yesterday = React.useMemo(() => subDays(today, 1), [today]);
+  const activityDateKey = React.useMemo(
+    () => format(activityDate, 'yyyy-MM-dd'),
+    [activityDate]
+  );
+  const isTodaySelected = React.useMemo(
+    () => activityDateKey === format(today, 'yyyy-MM-dd'),
+    [activityDateKey, today]
+  );
+  const isYesterdaySelected = React.useMemo(
+    () => activityDateKey === format(yesterday, 'yyyy-MM-dd'),
+    [activityDateKey, yesterday]
+  );
 
   // League start date (local)
   const leagueStartLocal = React.useMemo(() => {
@@ -1199,32 +1204,20 @@ export default function SubmitActivityPage({
                 <div className="space-y-2">
                   <Label>Activity Date</Label>
                   <p className="text-xs text-muted-foreground">Only today or yesterday can be selected.</p>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                      >
-                        <CalendarIcon className="mr-2 size-4" />
-                        {format(activityDate, 'MMM d, yyyy')}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={activityDate}
-                        onSelect={(date) => date && setActivityDate(startOfDay(date))}
-                        disabled={(date) => {
-                          const day = startOfDay(date);
-
-                          if (isAfter(day, maxActivityDate)) return true;
-                          if (isBefore(day, minActivityDate)) return true;
-                          return false;
-                        }}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <Select
+                    value={isTodaySelected ? 'today' : 'yesterday'}
+                    onValueChange={(value) =>
+                      setActivityDate(value === 'today' ? today : yesterday)
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="today">Today ({format(today, 'MMM d, yyyy')})</SelectItem>
+                      <SelectItem value="yesterday">Yesterday ({format(yesterday, 'MMM d, yyyy')})</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -1397,34 +1390,20 @@ export default function SubmitActivityPage({
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Rest Day Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                      >
-                        <CalendarIcon className="mr-2 size-4" />
-                        {format(activityDate, 'MMM d, yyyy')}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={activityDate}
-                        onSelect={(date) => date && setActivityDate(date)}
-                        disabled={(date) => {
-                          if (date > new Date()) return true;
-                          if (activeLeague?.end_date) {
-                            const endString = String(activeLeague.end_date).slice(0, 10);
-                            const dateYmd = format(date, 'yyyy-MM-dd');
-                            return dateYmd > endString;
-                          }
-                          return false;
-                        }}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <Select
+                    value={isTodaySelected ? 'today' : 'yesterday'}
+                    onValueChange={(value) =>
+                      setActivityDate(value === 'today' ? today : yesterday)
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="today">Today ({format(today, 'MMM d, yyyy')})</SelectItem>
+                      <SelectItem value="yesterday">Yesterday ({format(yesterday, 'MMM d, yyyy')})</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">

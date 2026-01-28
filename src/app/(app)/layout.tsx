@@ -1,8 +1,8 @@
 'use client';
 
+import React, { useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 
 import { LeagueProvider } from '@/contexts/league-context';
 import { RoleProvider } from '@/contexts/role-context';
@@ -10,6 +10,9 @@ import { AppSidebar } from '@/components/app/app-sidebar';
 import { AppHeader } from '@/components/app/app-header';
 import { MobileBottomTabs } from '@/components/app/mobile-bottom-tabs';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 
 
@@ -35,6 +38,25 @@ export default function AppLayout({
 }) {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
+
+  const backHref = React.useMemo(() => {
+    if (!pathname || pathname === '/dashboard') return '/dashboard';
+
+    const leagueMatch = pathname.match(/^\/leagues\/([^/]+)(?:\/(.*))?$/);
+    if (leagueMatch) {
+      const leagueId = leagueMatch[1];
+      const subPath = leagueMatch[2];
+      if (subPath) {
+        return `/leagues/${leagueId}`;
+      }
+      return '/dashboard';
+    }
+
+    const segments = pathname.split('/').filter(Boolean);
+    if (segments.length <= 1) return '/dashboard';
+    return `/${segments.slice(0, -1).join('/')}`;
+  }, [pathname]);
 
   // Redirect unauthenticated users to login
   useEffect(() => {
@@ -83,7 +105,17 @@ export default function AppLayout({
 
             {/* Page Content */}
             <main className="flex-1 overflow-auto pb-20 md:pb-0">
-              <div className="p-4 lg:p-6">{children}</div>
+              <div className="p-4 lg:p-6">
+                {pathname !== '/dashboard' && (
+                  <Button asChild variant="outline" size="sm" className="mb-4 gap-2">
+                    <Link href={backHref}>
+                      <ArrowLeft className="size-4" />
+                      Back
+                    </Link>
+                  </Button>
+                )}
+                {children}
+              </div>
             </main>
           </SidebarInset>
 

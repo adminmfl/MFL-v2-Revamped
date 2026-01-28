@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, Shield, ChevronDown, ArrowLeft } from 'lucide-react';
+import { Home, Shield, ChevronDown } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
 import { useRole } from '@/contexts/role-context';
@@ -150,7 +150,6 @@ const roleTextColors: Record<string, string> = {
 
 export function AppHeader() {
   const pathname = usePathname();
-  const router = useRouter();
   const { data: session } = useSession();
   const { activeLeague } = useLeague();
   const { activeRole } = useRole();
@@ -165,17 +164,8 @@ export function AppHeader() {
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-background transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
-        {/* Sidebar Toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="-ml-1"
-            onClick={() => router.back()}
-            aria-label="Go back"
-          >
-            <ArrowLeft className="size-4" />
-          </Button>
-          <SidebarTrigger />
+          {/* Sidebar Toggle */}
+          <SidebarTrigger className="-ml-1" />
         <Separator
           orientation="vertical"
           className="mx-2 data-[orientation=vertical]:h-4"
