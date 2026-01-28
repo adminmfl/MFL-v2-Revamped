@@ -1238,7 +1238,7 @@ export default function SubmitActivityPage({
                     <img
                       src={imagePreview}
                       alt="Selected workout"
-                      className="w-full h-32 object-contain rounded-lg border bg-muted"
+                      className="w-full h-20 object-contain rounded-lg border bg-muted"
                     />
                     <Button
                       type="button"
@@ -1253,14 +1253,14 @@ export default function SubmitActivityPage({
                 ) : (
                   <div
                     onClick={handleUploadClick}
-                    className="border-2 border-dashed rounded-lg p-4 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                    className="border-2 border-dashed rounded-lg p-2 text-center hover:border-primary/50 transition-colors cursor-pointer"
                   >
                     {uploadingImage || ocrProcessing ? (
-                      <Loader2 className="size-6 mx-auto text-primary animate-spin" />
+                      <Loader2 className="size-5 mx-auto text-primary animate-spin" />
                     ) : (
                       <>
-                        <ImageIcon className="size-6 mx-auto text-muted-foreground mb-1" />
-                        <p className="text-sm text-muted-foreground">Click to upload image</p>
+                        <ImageIcon className="size-4 mx-auto text-muted-foreground mb-1" />
+                        <p className="text-[11px] text-muted-foreground">Click to upload image</p>
                       </>
                     )}
                   </div>
