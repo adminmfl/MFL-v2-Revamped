@@ -264,6 +264,10 @@ CREATE TABLE IF NOT EXISTS public.leagueactivities (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   league_id uuid NOT NULL REFERENCES public.leagues(league_id) ON DELETE CASCADE,
   activity_id uuid NOT NULL REFERENCES public.activities(activity_id) ON DELETE CASCADE,
+  min_value numeric CHECK (min_value IS NULL OR min_value > 0),
+  age_group_overrides jsonb DEFAULT '{}'::jsonb,
+  modified_by uuid REFERENCES public.users(user_id) ON DELETE SET NULL,
+  modified_date timestamptz DEFAULT CURRENT_TIMESTAMP,
   created_at timestamptz DEFAULT CURRENT_TIMESTAMP,
   created_by uuid REFERENCES public.users(user_id) ON DELETE SET NULL,
   CONSTRAINT unique_league_activity UNIQUE (league_id, activity_id)
@@ -271,8 +275,11 @@ CREATE TABLE IF NOT EXISTS public.leagueactivities (
 
 CREATE INDEX IF NOT EXISTS idx_leagueactivities_league ON public.leagueactivities(league_id);
 CREATE INDEX IF NOT EXISTS idx_leagueactivities_activity ON public.leagueactivities(activity_id);
+CREATE INDEX IF NOT EXISTS idx_leagueactivities_age_overrides ON public.leagueactivities USING gin(age_group_overrides);
 
 COMMENT ON TABLE public.leagueactivities IS 'Defines which activities are allowed in each league';
+COMMENT ON COLUMN public.leagueactivities.min_value IS 'Base minimum requirement (applies to all ages unless overridden by age_group_overrides)';
+COMMENT ON COLUMN public.leagueactivities.age_group_overrides IS 'JSONB structure for age-based overrides: {tier0: {ageRange: {min, max}, minValue}, tier1: {...}}';
 
 -- =====================================================================================
 
