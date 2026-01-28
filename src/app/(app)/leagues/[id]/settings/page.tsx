@@ -729,53 +729,6 @@ export default function LeagueSettingsPage({
               </CardContent>
             </Card>
 
-            {/* Danger Zone Card */}
-            <Card className="border-destructive/50">
-              <CardHeader>
-                <CardTitle className="text-lg text-destructive flex items-center gap-2">
-                  <AlertTriangle className="size-5" />
-                  Danger Zone
-                </CardTitle>
-                <CardDescription>
-                  Irreversible actions. Proceed with caution.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" className="w-full sm:w-auto">
-                      <Trash2 className="mr-2 size-4" />
-                      Delete League
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        Are you absolutely sure?
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. This will permanently
-                        delete the league and remove all associated data
-                        including teams, members, and submissions.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleDelete}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        {deleting ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          'Delete League'
-                        )}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Right Column - Summary Sidebar */}
@@ -841,6 +794,54 @@ export default function LeagueSettingsPage({
                         : 'On'}
                   </span>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Danger Zone Card */}
+            <Card className="border-destructive/50">
+              <CardHeader>
+                <CardTitle className="text-lg text-destructive flex items-center gap-2">
+                  <AlertTriangle className="size-5" />
+                  Danger Zone
+                </CardTitle>
+                <CardDescription>
+                  Irreversible actions. Proceed with caution.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="w-full sm:w-auto">
+                      <Trash2 className="mr-2 size-4" />
+                      Delete League
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Are you absolutely sure?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently
+                        delete the league and remove all associated data
+                        including teams, members, and submissions.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDelete}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {deleting ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          'Delete League'
+                        )}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </CardContent>
             </Card>
 
