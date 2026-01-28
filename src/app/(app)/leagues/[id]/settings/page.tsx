@@ -1,6 +1,7 @@
 'use client';
 
 import React, { use, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Settings,
@@ -15,6 +16,7 @@ import {
   Info,
   Shield,
   Calendar,
+  Activity,
 } from 'lucide-react';
 
 import { useRole } from '@/contexts/role-context';
@@ -448,6 +450,28 @@ export default function LeagueSettingsPage({
                       className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
                     />
                   </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  <Button
+                    asChild
+                    size="sm"
+                    className="gap-2 border border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 dark:border-primary/30 dark:bg-primary/15 dark:text-primary-foreground/90"
+                  >
+                    <Link href={`/leagues/${id}/team`}>
+                      <Users className="size-4" />
+                      Team Management
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    size="sm"
+                    className="gap-2 border border-accent/30 bg-accent/10 text-accent hover:bg-accent/20 dark:border-accent/40 dark:bg-accent/15 dark:text-accent-foreground"
+                  >
+                    <Link href={`/leagues/${id}/activities`}>
+                      <Activity className="size-4" />
+                      Configure Activities
+                    </Link>
+                  </Button>
                 </div>
               </CardContent>
             </Card>

@@ -155,21 +155,6 @@ export function getSidebarNavItems(
   // ========================================
   const leagueAdminItems: NavItem[] = [];
 
-  if (role === 'host' || role === 'governor') {
-    leagueAdminItems.push(
-      {
-        title: 'Team Management',
-        url: leagueUrl('/team'),
-        icon: Users,
-      },
-      {
-        title: 'Configure Activities',
-        url: leagueUrl('/activities'),
-        icon: Activity,
-      }
-    );
-  }
-
   if (role === 'host') {
     leagueAdminItems.push({
       title: 'League Settings',
