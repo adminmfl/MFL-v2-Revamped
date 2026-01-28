@@ -199,7 +199,11 @@ export function AppHeader() {
           {activeLeague && (
             <LeagueSwitcher
               trigger={
-                <Button variant="ghost" size="sm" className="flex gap-2 px-2 sm:px-4 h-auto py-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex gap-2 px-2 sm:px-4 h-auto py-1 border border-transparent bg-transparent shadow-none hover:bg-muted/40"
+                >
                   <Avatar className="size-8 sm:size-9 rounded-md">
                     {activeLeague.logo_url ? (
                       <AvatarImage src={activeLeague.logo_url} alt={activeLeague.name} />

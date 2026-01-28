@@ -117,11 +117,6 @@ export function getSidebarNavItems(
   // ========================================
   const primaryItems: NavItem[] = [
     {
-      title: 'Submit Activity',
-      url: leagueUrl('/submit'),
-      icon: Dumbbell,
-    },
-    {
       title: 'My Activities',
       url: leagueUrl(''),
       icon: Trophy,
