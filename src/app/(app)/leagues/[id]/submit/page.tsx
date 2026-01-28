@@ -936,7 +936,20 @@ export default function SubmitActivityPage({
         </div>
       </div>
 
-      <Tabs value={submissionType} onValueChange={(v) => setSubmissionType(v as 'workout' | 'rest')} className="w-full">
+      {/* Team Assignment Required Check */}
+      {activeLeague && !activeLeague.team_id && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 flex gap-3">
+          <AlertCircle className="size-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="font-semibold text-amber-900 mb-1">Waiting for Team Assignment</h3>
+            <p className="text-sm text-amber-800">
+              Your league host hasn't assigned you to a team yet. Please wait for them to allocate you to a team before you submit activities.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <Tabs value={submissionType} onValueChange={(v) => setSubmissionType(v as 'workout' | 'rest')} className="w-full" disabled={activeLeague && !activeLeague.team_id}>
         {/* Workout Tab Content */}
         <TabsContent value="workout" className="mt-3">
           <form onSubmit={handleSubmit} className="space-y-6">

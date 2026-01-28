@@ -82,6 +82,12 @@ export default function LeagueActivitiesPage({
   const [selectedCategory, setSelectedCategory] = React.useState<string>('all');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [frequencyDrafts, setFrequencyDrafts] = React.useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = React.useState(false);
+  
+  // Track pending changes before saving
+  const [pendingChanges, setPendingChanges] = React.useState<Map<string, { enabled?: boolean; frequency?: number | null }>>(new Map());
+  
+  const hasChanges = pendingChanges.size > 0;
 
   const enabledActivityIds = React.useMemo(() => {
     return new Set(data?.activities.map((a) => a.activity_id) || []);
@@ -146,45 +152,29 @@ export default function LeagueActivitiesPage({
     });
   }, [filteredActivities, enabledActivityIds]);
 
-  const handleToggle = async (activityId: string, enable: boolean) => {
-    setToggleLoading(activityId);
-    try {
-      let success = false;
-      if (enable) {
-        success = await addActivities([activityId]);
-        if (success) {
-          toast.success('Activity enabled');
-        }
-      } else {
-        success = await removeActivity(activityId);
-        if (success) {
-          toast.success('Activity disabled');
-        }
-      }
-      if (!success) {
-        toast.error('Failed to update activity');
-      }
-    } catch (err) {
-      toast.error('An error occurred');
-    } finally {
-      setToggleLoading(null);
-    }
+  const handleToggle = (activityId: string, enable: boolean) => {
+    // Store change locally instead of saving immediately
+    setPendingChanges((prev) => {
+      const next = new Map(prev);
+      const change = next.get(activityId) || {};
+      next.set(activityId, { ...change, enabled: enable });
+      return next;
+    });
   };
 
-  const handleFrequencyBlur = async (activityId: string) => {
+  const handleFrequencyBlur = (activityId: string) => {
     const raw = (frequencyDrafts[activityId] ?? '').trim();
     const current = enabledActivityMap.get(activityId)?.frequency ?? null;
 
     if (raw === '') {
       if (current === null) return;
-      const success = await updateFrequency(activityId, null);
-      if (!success) {
-        toast.error('Failed to update frequency');
-        setFrequencyDrafts((prev) => ({
-          ...prev,
-          [activityId]: typeof current === 'number' ? String(current) : '',
-        }));
-      }
+      // Store frequency change
+      setPendingChanges((prev) => {
+        const next = new Map(prev);
+        const change = next.get(activityId) || {};
+        next.set(activityId, { ...change, frequency: null });
+        return next;
+      });
       return;
     }
 
@@ -201,13 +191,101 @@ export default function LeagueActivitiesPage({
     const next = Math.floor(parsed);
     if (current === next) return;
 
-    const success = await updateFrequency(activityId, next);
-    if (!success) {
-      toast.error('Failed to update frequency');
-      setFrequencyDrafts((prev) => ({
-        ...prev,
-        [activityId]: typeof current === 'number' ? String(current) : '',
-      }));
+    // Store frequency change
+    setPendingChanges((prev) => {
+      const nextMap = new Map(prev);
+      const change = nextMap.get(activityId) || {};
+      nextMap.set(activityId, { ...change, frequency: next });
+      return nextMap;
+    });
+  };
+
+  const handleFrequencyChange = (activityId: string, value: string) => {
+    setFrequencyDrafts((prev) => ({
+      ...prev,
+      [activityId]: value,
+    }));
+    
+    // Mark as pending immediately when user starts typing
+    const trimmed = value.trim();
+    const current = enabledActivityMap.get(activityId)?.frequency ?? null;
+    
+    if (trimmed === '') {
+      if (current !== null) {
+        setPendingChanges((prev) => {
+          const next = new Map(prev);
+          const change = next.get(activityId) || {};
+          next.set(activityId, { ...change, frequency: null });
+          return next;
+        });
+      }
+    } else {
+      const parsed = Number(trimmed);
+      if (Number.isFinite(parsed) && parsed >= 0 && parsed <= 7) {
+        const numVal = Math.floor(parsed);
+        if (current !== numVal) {
+          setPendingChanges((prev) => {
+            const next = new Map(prev);
+            const change = next.get(activityId) || {};
+            next.set(activityId, { ...change, frequency: numVal });
+            return next;
+          });
+        }
+      }
+    }
+  };
+
+  const handleSaveChanges = async () => {
+    if (!hasChanges) return;
+
+    setIsSaving(true);
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const [activityId, change] of pendingChanges) {
+        try {
+          if (change.enabled !== undefined) {
+            const success = change.enabled 
+              ? await addActivities([activityId])
+              : await removeActivity(activityId);
+            if (success) successCount++;
+            else errorCount++;
+          }
+
+          if (change.frequency !== undefined) {
+            const success = await updateFrequency(activityId, change.frequency);
+            if (success) successCount++;
+            else errorCount++;
+          }
+        } catch (err) {
+          errorCount++;
+        }
+      }
+
+      if (errorCount === 0) {
+        toast.success(`All ${successCount} changes saved successfully`);
+        setPendingChanges(new Map());
+      } else if (successCount > 0) {
+        toast.error(`Saved ${successCount} changes, but ${errorCount} failed`);
+      } else {
+        toast.error('Failed to save changes');
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDiscardChanges = () => {
+    setPendingChanges(new Map());
+    // Reset frequency drafts to current values
+    if (data?.activities) {
+      const next: Record<string, string> = {};
+      for (const activity of data.activities) {
+        next[activity.activity_id] =
+          typeof activity.frequency === 'number' ? String(activity.frequency) : '';
+      }
+      setFrequencyDrafts(next);
     }
   };
 
@@ -334,7 +412,7 @@ export default function LeagueActivitiesPage({
     <div className="flex flex-col gap-6 py-4 md:py-6">
       {/* Header */}
       <div className="flex flex-col gap-4 px-4 lg:px-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col gap-4">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
               <Dumbbell className="size-6 text-primary" />
@@ -344,8 +422,8 @@ export default function LeagueActivitiesPage({
               Enable or disable activities for your league
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
-            <div className="relative w-full sm:w-52">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full">
+            <div className="relative flex-1 min-w-52">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search activities"
@@ -373,16 +451,50 @@ export default function LeagueActivitiesPage({
                 </SelectContent>
               </Select>
             )}
-            <Badge variant="outline">
-              {data?.activities.length || 0} Active
-            </Badge>
-            <Button variant="outline" size="sm" onClick={refetch}>
-              <RefreshCw className="mr-2 size-4" />
-              Refresh
-            </Button>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">
+                {data?.activities.length || 0} Active
+              </Badge>
+              <Button variant="ghost" size="icon" onClick={refetch} disabled={isSaving} title="Refresh activities">
+                <RefreshCw className="size-4" />
+              </Button>
+            </div>
+            {hasChanges && (
+              <div className="flex items-center gap-2 sm:ml-auto">
+                <Button onClick={handleSaveChanges} disabled={isSaving} size="sm">
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="size-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="size-4 mr-2" />
+                      Confirm
+                    </>
+                  )}
+                </Button>
+                <Button variant="outline" onClick={handleDiscardChanges} disabled={isSaving} size="sm">
+                  Discard
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Unsaved Changes Alert */}
+      {hasChanges && (
+        <div className="px-4 lg:px-6">
+          <Alert className="border-amber-200 bg-amber-50">
+            <AlertCircle className="size-4 text-amber-600" />
+            <AlertTitle className="text-amber-900">Unsaved Changes</AlertTitle>
+            <AlertDescription className="text-amber-800">
+              You have {pendingChanges.size} pending change{pendingChanges.size !== 1 ? 's' : ''}. Click "Confirm" to save or "Discard" to cancel.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
 
       {/* Content */}
       <div className="px-4 lg:px-6 space-y-6">
@@ -426,15 +538,16 @@ export default function LeagueActivitiesPage({
                 {sortedActivities.map((activity) => {
                   const isEnabled = enabledActivityIds.has(activity.activity_id);
                   const isProcessing = toggleLoading === activity.activity_id;
+                  const hasPendingChange = pendingChanges.has(activity.activity_id);
 
                   return (
                     <div
                       key={activity.activity_id}
                       className={cn(
                         'flex items-start gap-3 p-4 rounded-lg border transition-all cursor-pointer',
-                        isEnabled
-                          ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                          : 'border-border bg-card hover:border-primary/50',
+                        hasPendingChange && 'ring-2 ring-amber-400 bg-amber-50/50',
+                        !hasPendingChange && isEnabled && 'border-primary bg-primary/5 ring-1 ring-primary',
+                        !hasPendingChange && !isEnabled && 'border-border bg-card hover:border-primary/50',
                         isProcessing && 'opacity-50 pointer-events-none'
                       )}
                       onClick={() =>
@@ -463,6 +576,11 @@ export default function LeagueActivitiesPage({
                               {activity.category.display_name}
                             </Badge>
                           )}
+                          {hasPendingChange && (
+                            <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                              Pending
+                            </Badge>
+                          )}
                         </div>
                         {activity.description && (
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
@@ -482,12 +600,7 @@ export default function LeagueActivitiesPage({
                               step={1}
                               value={frequencyDrafts[activity.activity_id] ?? ''}
                               placeholder="Unlimited"
-                              onChange={(e) =>
-                                setFrequencyDrafts((prev) => ({
-                                  ...prev,
-                                  [activity.activity_id]: e.target.value,
-                                }))
-                              }
+                              onChange={(e) => handleFrequencyChange(activity.activity_id, e.target.value)}
                               onBlur={() => handleFrequencyBlur(activity.activity_id)}
                               className="h-7 w-28 text-xs"
                               disabled={isProcessing}

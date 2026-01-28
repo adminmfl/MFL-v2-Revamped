@@ -177,6 +177,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // CRITICAL: User must be assigned to a team to submit activities
+    // This prevents host-only users (with team_id = NULL) from submitting
+    if (!membership.team_id) {
+      return NextResponse.json(
+        { error: "You must be assigned to a team to submit activities. Contact the league host." },
+        { status: 403 }
+      );
+    }
+
     // Enforce per-week activity frequency (if configured)
     if (type === 'workout' && workout_type && !reupload_of) {
       const { data: leagueActivity, error: leagueActivityError } = await supabase
