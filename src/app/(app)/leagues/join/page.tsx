@@ -9,7 +9,6 @@ import {
   Users,
   ArrowRight,
   Loader2,
-  ArrowLeft,
   Ticket,
   Globe,
   Sparkles,
