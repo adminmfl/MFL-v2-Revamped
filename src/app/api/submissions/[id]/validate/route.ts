@@ -128,20 +128,12 @@ export async function POST(
       );
     }
 
-    // Hierarchy enforcement:
-    // - Host/Governor can override any decision.
-    // - Captain can only grade pending submissions (cannot overwrite host/governor or anyone).
-    if (!canOverride && isCaptainOfTeam) {
-      if (submission.status !== 'pending') {
-        return NextResponse.json(
-          { error: 'This submission has already been graded. Captains can only grade pending submissions; hosts/governors can override.' },
-          { status: 403 }
-        );
-      }
-    }
+    // Captains can override their team's submissions (including their own)
+    // Hosts/Governors can override any submission
+    // Note: Removed the restriction that prevented captains from overriding already graded submissions
 
-    // Prevent validating own submission (unless host/governor override)
-    if (!canOverride && leagueMember.user_id === userId) {
+    // Prevent validating own submission (unless host/governor/captain override)
+    if (!canOverride && !isCaptainOfTeam && leagueMember.user_id === userId) {
       return NextResponse.json(
         { error: 'You cannot validate your own submission' },
         { status: 403 }
