@@ -245,11 +245,10 @@ export function ViewTeamMembersDialog({
                 {filteredMembers.map((member) => (
                   <div
                     key={member.league_member_id}
-                    className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                      member.is_captain
+                    className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${member.is_captain
                         ? "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
                         : "bg-card hover:bg-muted/50"
-                    }`}
+                      }`}
                   >
                     <div className="relative">
                       <Avatar className="size-10">
@@ -268,6 +267,7 @@ export function ViewTeamMembersDialog({
                         </div>
                       )}
                     </div>
+                    <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">
                         {member.username}
                         {member.is_captain && (
@@ -291,141 +291,141 @@ export function ViewTeamMembersDialog({
                               role === "governor"
                                 ? "bg-blue-500/10 text-blue-600 border-blue-200"
                                 : role === "host"
-                                ? "bg-purple-500/10 text-purple-600 border-purple-200"
-                                : ""
+                                  ? "bg-purple-500/10 text-purple-600 border-purple-200"
+                                  : ""
                             }
                           >
                             {role}
                           </Badge>
                         ))}
                     </div>
-                    { isHost && (
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleMoveMember(member)}
-                        disabled={isProcessing}
-                        className="h-8 w-8 p-0"
-                        title="Move to another team"
-                      >
-                        <ArrowRight className="size-4 text-blue-600" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveMember(member)}
-                        disabled={isProcessing}
-                        className="h-8 w-8 p-0"
-                        title="Remove from league"
-                      >
-                        <Trash2 className="size-4 text-red-600" />
-                      </Button>
+                    {isHost && (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleMoveMember(member)}
+                          disabled={isProcessing}
+                          className="h-8 w-8 p-0"
+                          title="Move to another team"
+                        >
+                          <ArrowRight className="size-4 text-blue-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveMember(member)}
+                          disabled={isProcessing}
+                          className="h-8 w-8 p-0"
+                          title="Remove from league"
+                        >
+                          <Trash2 className="size-4 text-red-600" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </div>
+
+        {/* Move Member Dialog */}
+        <AlertDialog open={!!memberToMove} onOpenChange={(open) => !open && setMemberToMove(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Move Member to Another Team</AlertDialogTitle>
+              <AlertDialogDescription>
+                Select the team where you want to move {memberToMove?.username}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="space-y-3">
+              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex gap-2">
+                <AlertCircle className="size-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  Member will be removed from their current team and added to the selected team.
+                </p>
+              </div>
+
+              <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose destination team..." />
+                </SelectTrigger>
+                <SelectContent side="top" sideOffset={8} className="z-50">
+                  {allTeams.length > 0 ? (
+                    allTeams
+                      .filter((t) => t.team_id !== teamId)
+                      .map((team) => (
+                        <SelectItem key={team.team_id} value={team.team_id}>
+                          {team.team_name}
+                        </SelectItem>
+                      ))
+                  ) : (
+                    <div className="p-2 text-sm text-muted-foreground">
+                      No other teams available
                     </div>
                   )}
-              </div>
-            ))}
-        </div>
-            )}
-      </ScrollArea>
-    </div>
+                </SelectContent>
+              </Select>
+            </div>
 
-        {/* Move Member Dialog */ }
-  <AlertDialog open={!!memberToMove} onOpenChange={(open) => !open && setMemberToMove(null)}>
-    <AlertDialogContent>
-      <AlertDialogHeader>
-        <AlertDialogTitle>Move Member to Another Team</AlertDialogTitle>
-        <AlertDialogDescription>
-          Select the team where you want to move {memberToMove?.username}
-        </AlertDialogDescription>
-      </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmMove}
+                disabled={!selectedTeamId || isProcessing}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="size-4 mr-2 animate-spin" />
+                    Moving...
+                  </>
+                ) : (
+                  "Move Member"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
-      <div className="space-y-3">
-        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex gap-2">
-          <AlertCircle className="size-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-blue-800 dark:text-blue-200">
-            Member will be removed from their current team and added to the selected team.
-          </p>
-        </div>
+        {/* Remove Member Dialog */}
+        <AlertDialog open={!!memberToRemove} onOpenChange={(open) => !open && setMemberToRemove(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove Member from League</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to remove <span className="font-semibold">{memberToRemove?.username}</span> from this league? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
 
-        <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
-          <SelectTrigger>
-            <SelectValue placeholder="Choose destination team..." />
-          </SelectTrigger>
-          <SelectContent side="top" sideOffset={8} className="z-50">
-            {allTeams.length > 0 ? (
-              allTeams
-                .filter((t) => t.team_id !== teamId)
-                .map((team) => (
-                  <SelectItem key={team.team_id} value={team.team_id}>
-                    {team.team_name}
-                  </SelectItem>
-                ))
-            ) : (
-              <div className="p-2 text-sm text-muted-foreground">
-                No other teams available
-              </div>
-            )}
-          </SelectContent>
-        </Select>
-      </div>
+            <Alert variant="destructive">
+              <AlertCircle className="size-4" />
+              <AlertDescription>
+                The member will lose access to the league and all their data will be preserved in history.
+              </AlertDescription>
+            </Alert>
 
-      <AlertDialogFooter>
-        <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
-        <AlertDialogAction
-          onClick={handleConfirmMove}
-          disabled={!selectedTeamId || isProcessing}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          {isProcessing ? (
-            <>
-              <Loader2 className="size-4 mr-2 animate-spin" />
-              Moving...
-            </>
-          ) : (
-            "Move Member"
-          )}
-        </AlertDialogAction>
-      </AlertDialogFooter>
-    </AlertDialogContent>
-  </AlertDialog>
-
-  {/* Remove Member Dialog */ }
-  <AlertDialog open={!!memberToRemove} onOpenChange={(open) => !open && setMemberToRemove(null)}>
-    <AlertDialogContent>
-      <AlertDialogHeader>
-        <AlertDialogTitle>Remove Member from League</AlertDialogTitle>
-        <AlertDialogDescription>
-          Are you sure you want to remove <span className="font-semibold">{memberToRemove?.username}</span> from this league? This action cannot be undone.
-        </AlertDialogDescription>
-      </AlertDialogHeader>
-
-      <Alert variant="destructive">
-        <AlertCircle className="size-4" />
-        <AlertDescription>
-          The member will lose access to the league and all their data will be preserved in history.
-        </AlertDescription>
-      </Alert>
-
-      <AlertDialogFooter>
-        <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
-        <AlertDialogAction
-          onClick={handleConfirmRemove}
-          disabled={isProcessing}
-          className="bg-red-600 hover:bg-red-700"
-        >
-          {isProcessing ? (
-            <>
-              <Loader2 className="size-4 mr-2 animate-spin" />
-              Removing...
-            </>
-          ) : (
-            "Remove Member"
-          )}
-        </AlertDialogAction>
-      </AlertDialogFooter>
-    </AlertDialogContent>
-  </AlertDialog>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmRemove}
+                disabled={isProcessing}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="size-4 mr-2 animate-spin" />
+                    Removing...
+                  </>
+                ) : (
+                  "Remove Member"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent >
     </Dialog >
   );
