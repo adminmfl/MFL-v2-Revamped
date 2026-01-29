@@ -24,7 +24,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -206,27 +206,29 @@ function TeamMemberView({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>#</TableHead>
+              <TableHead className="hidden sm:table-cell">#</TableHead>
               <TableHead>Member</TableHead>
-              <TableHead>Role</TableHead>
+              <TableHead className="hidden sm:table-cell">Role</TableHead>
+              <TableHead className="text-center">Rest Days</TableHead>
               <TableHead className="text-center">Points</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {paginatedMembers.map((m, i) => (
               <TableRow key={m.league_member_id}>
-                <TableCell>
+                <TableCell className="hidden sm:table-cell">
                   {pagination.pageIndex * pagination.pageSize + i + 1}
                 </TableCell>
                 <TableCell className="flex items-center gap-3">
                   <Avatar>
+                    <AvatarImage src={(m as any).profile_picture_url || undefined} />
                     <AvatarFallback>
                       {m.username.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   {m.username}
                 </TableCell>
-                <TableCell>
+                <TableCell className="hidden sm:table-cell">
                   {m.is_captain ? (
                     <Badge>
                       <Shield className="size-3 mr-1" />
@@ -235,6 +237,9 @@ function TeamMemberView({
                   ) : (
                     <Badge variant="outline">Player</Badge>
                   )}
+                </TableCell>
+                <TableCell className="text-center text-muted-foreground text-sm">
+                  {(m as any).rest_days_used ?? 0}
                 </TableCell>
                 <TableCell className="text-center font-medium">
                   {m.points}
@@ -350,7 +355,7 @@ export default function TeamPage({ params }: { params: Promise<{ id: string }> }
         leagueId={leagueId}
         teamId={activeLeague.team_id}
         teamName={activeLeague.team_name}
-         teamCapacity={activeLeague.league_capacity || 20}
+        teamCapacity={activeLeague.league_capacity || 20}
         isCaptain={isCaptain}
       />
     );

@@ -98,7 +98,7 @@ export default function DashboardPage() {
       <div className="flex flex-col gap-4 px-4 lg:px-6">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">
-            Welcome back, {userName}!
+            Hi {userName} !
           </h1>
           <p className="text-muted-foreground">
             {userLeagues.length > 0

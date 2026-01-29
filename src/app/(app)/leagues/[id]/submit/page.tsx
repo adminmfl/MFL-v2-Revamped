@@ -13,7 +13,6 @@ import Confetti from 'react-confetti';
 import {
   Dumbbell,
   Upload,
-  Calendar as CalendarIcon,
   Loader2,
   CheckCircle2,
   ArrowRight,
@@ -44,12 +43,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -109,6 +102,28 @@ export default function SubmitActivityPage({
   const searchParams = useSearchParams();
   const { activeLeague } = useLeague();
   const { canSubmitWorkouts } = useRole();
+
+  // Fetch user profile for age calculation
+  const [userAge, setUserAge] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    async function fetchUserAge() {
+      try {
+        const response = await fetch('/api/user/profile');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.date_of_birth) {
+            const birthDate = new Date(data.date_of_birth);
+            const age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+            setUserAge(age);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch user age:', error);
+      }
+    }
+    fetchUserAge();
+  }, []);
 
   // Check if this is a resubmission
   const resubmitId = searchParams.get('resubmit');
@@ -184,6 +199,18 @@ export default function SubmitActivityPage({
 
   const today = React.useMemo(() => startOfDay(new Date()), []);
   const yesterday = React.useMemo(() => subDays(today, 1), [today]);
+  const activityDateKey = React.useMemo(
+    () => format(activityDate, 'yyyy-MM-dd'),
+    [activityDate]
+  );
+  const isTodaySelected = React.useMemo(
+    () => activityDateKey === format(today, 'yyyy-MM-dd'),
+    [activityDateKey, today]
+  );
+  const isYesterdaySelected = React.useMemo(
+    () => activityDateKey === format(yesterday, 'yyyy-MM-dd'),
+    [activityDateKey, yesterday]
+  );
 
   // League start date (local)
   const leagueStartLocal = React.useMemo(() => {
@@ -352,74 +379,173 @@ export default function SubmitActivityPage({
   }, [activitiesData?.activities, formData.activity_type]);
 
   const getMinimumRequirement = React.useCallback((measurementType: string) => {
-    switch (measurementType) {
-      case 'duration':
-        return 'Minimum requirement: 45 min';
-      case 'distance':
-        return 'Minimum requirement: 4 km';
-      case 'steps':
-        return 'Minimum requirement: 10000 steps';
-      case 'hole':
-        return 'Minimum requirement: 9 holes';
-      default:
-        return null;
+    if (!selectedActivity) return null;
+    
+    // Get the league activity configuration with minimums
+    const leagueActivity = activitiesData?.activities.find(
+      (a) => a.activity_id === selectedActivity.activity_id
+    );
+    
+    console.log('=== getMinimumRequirement Debug ===');
+    console.log('Measurement Type:', measurementType);
+    console.log('Activity ID:', selectedActivity.activity_id);
+    console.log('Activity Name:', selectedActivity.activity_name);
+    console.log('League Activity:', leagueActivity);
+    console.log('Base min_value:', leagueActivity?.min_value);
+    console.log('Age Overrides:', leagueActivity?.age_group_overrides);
+    console.log('User Age:', userAge);
+    
+    let minValue = leagueActivity?.min_value;
+    
+    // Check for age-specific overrides
+    if (userAge !== null && leagueActivity?.age_group_overrides) {
+      const overrides = leagueActivity.age_group_overrides;
+      console.log('Checking age overrides...');
+      
+      // Find the matching age tier
+      for (const tierKey of Object.keys(overrides)) {
+        const tier = overrides[tierKey];
+        console.log(`Checking ${tierKey}:`, tier);
+        if (tier.ageRange && tier.minValue !== undefined) {
+          const { min, max } = tier.ageRange;
+          console.log(`Age range: ${min}-${max}, User age: ${userAge}`);
+          if (userAge >= min && userAge <= max) {
+            console.log('✓ MATCH! Using override:', tier.minValue);
+            minValue = tier.minValue;
+            break;
+          }
+        }
+      }
     }
-  }, []);
+    
+    // Use configured minimum if available, otherwise use system defaults
+    const defaults: Record<string, number> = {
+      duration: 45,
+      distance: 4,
+      steps: 10000,
+      hole: 9,
+    };
+    
+    const minimum = minValue !== null && minValue !== undefined ? minValue : defaults[measurementType];
+    
+    console.log('Final minimum value:', minimum);
+    console.log('===================================');
+    
+    if (!minimum) return null;
+    
+    const units: Record<string, string> = {
+      duration: 'min',
+      distance: 'km',
+      steps: 'steps',
+      hole: 'holes',
+    };
+    
+    return `Minimum requirement: ${minimum} ${units[measurementType] || ''}`;
+  }, [selectedActivity, activitiesData, userAge]);
 
-  // Estimated RR calculation (simplified - actual calculation done on backend)
+  // Helper to get configured minimum for a measurement type
+  const getConfiguredMinimum = React.useCallback((measurementType: string): number => {
+    if (!selectedActivity) return 0;
+    
+    const leagueActivity = activitiesData?.activities.find(
+      (a) => a.activity_id === selectedActivity.activity_id
+    );
+    
+    let minValue = leagueActivity?.min_value;
+    
+    // Check for age-specific overrides
+    if (userAge !== null && leagueActivity?.age_group_overrides) {
+      const overrides = leagueActivity.age_group_overrides;
+      
+      for (const tierKey of Object.keys(overrides)) {
+        const tier = overrides[tierKey];
+        if (tier.ageRange && tier.minValue !== undefined) {
+          const { min, max } = tier.ageRange;
+          if (userAge >= min && userAge <= max) {
+            minValue = tier.minValue;
+            break;
+          }
+        }
+      }
+    }
+    
+    // Use configured minimum or system defaults
+    const defaults: Record<string, number> = {
+      duration: 45,
+      distance: 4,
+      steps: 10000,
+      hole: 9,
+    };
+    
+    return minValue !== null && minValue !== undefined ? minValue : defaults[measurementType];
+  }, [selectedActivity, activitiesData, userAge]);
+
+  // Estimated RR calculation using configured minimums
   const estimatedRR = React.useMemo(() => {
     if (!selectedActivity) return 0;
-    const activityValue = selectedActivity?.value || formData.activity_type;
 
     let maxRR = 0;
+
+    // Get measurement type for the selected activity
+    const measurementType = selectedActivity.measurement_type || 'duration';
+    const secondaryType = selectedActivity.settings?.secondary_measurement_type;
+
+    // Duration
+    if (formData.duration) {
+      const val = parseInt(formData.duration);
+      const minDuration = getConfiguredMinimum('duration');
+      if (!isNaN(val) && val > 0) {
+        if (val >= minDuration) {
+          maxRR = Math.max(maxRR, Math.min(val / minDuration, 2.0));
+        } else {
+          maxRR = Math.max(maxRR, 0); // Below minimum
+        }
+      }
+    }
 
     // Distance
     if (formData.distance) {
       const val = parseFloat(formData.distance);
+      const minDistance = getConfiguredMinimum('distance');
       if (!isNaN(val) && val > 0) {
-        // Generic approximation (4km = 1.0 RR)
-        maxRR = Math.max(maxRR, Math.min(val / 4.0, 2.0));
+        if (val >= minDistance) {
+          maxRR = Math.max(maxRR, Math.min(val / minDistance, 2.0));
+        } else {
+          maxRR = Math.max(maxRR, 0); // Below minimum
+        }
       }
     }
 
     // Steps
     if (formData.steps) {
       const val = parseInt(formData.steps);
-      if (!isNaN(val) && val >= 10000) {
-        maxRR = Math.max(maxRR, Math.min(1 + (val - 10000) / 10000, 2.0));
+      const minSteps = getConfiguredMinimum('steps');
+      const maxSteps = minSteps * 2; // Max is min * 2
+      if (!isNaN(val) && val > 0) {
+        if (val >= minSteps) {
+          const capped = Math.min(val, maxSteps);
+          maxRR = Math.max(maxRR, Math.min(1 + (capped - minSteps) / (maxSteps - minSteps), 2.0));
+        } else {
+          maxRR = Math.max(maxRR, 0); // Below minimum
+        }
       }
     }
 
     // Holes
     if (formData.holes) {
       const val = parseInt(formData.holes);
+      const minHoles = getConfiguredMinimum('hole');
       if (!isNaN(val) && val > 0) {
-        maxRR = Math.max(maxRR, Math.min(val / 9, 2.0));
+        if (val >= minHoles) {
+          maxRR = Math.max(maxRR, Math.min(val / minHoles, 2.0));
+        } else {
+          maxRR = Math.max(maxRR, 0); // Below minimum
+        }
       }
     }
 
-    // Duration
-    if (formData.duration) {
-      const val = parseInt(formData.duration);
-      if (!isNaN(val) && val > 0) {
-        maxRR = Math.max(maxRR, Math.min(val / 45, 2.0));
-      }
-    }
-
-    // If no metrics provided but activity selected, explicitly show 0 until input
-    if (maxRR === 0 && (formData.duration || formData.distance || formData.steps || formData.holes)) {
-      return 0;
-    }
-
-    // Default to 1.0 only if nothing entered yet? No, better to show 0.
-    // Actually existing logic returned 1.0 at end, maybe for 'rest' or just default?
-    // Let's return maxRR (which is 0 if empty) 
-    // BUT we want to avoid showing 0.0 RR if the user hasn't typed anything yet?
-    // The previous logic returned 1.0 at the end. Let's keep that behavior if nothing is entered to be safe?
-    // No, accurate is better.
-
-    return maxRR > 0 ? maxRR : 1.0;
-  }, [selectedActivity, formData]);
+    return maxRR;
+  }, [selectedActivity, formData, getConfiguredMinimum]);
 
   // Parse workout time from OCR text
   const parseWorkoutTime = (text: string): { raw: string; minutes: number } | null => {
@@ -936,7 +1062,20 @@ export default function SubmitActivityPage({
         </div>
       </div>
 
-      <Tabs value={submissionType} onValueChange={(v) => setSubmissionType(v as 'workout' | 'rest')} className="w-full">
+      {/* Team Assignment Required Check */}
+      {activeLeague && !activeLeague.team_id && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 flex gap-3">
+          <AlertCircle className="size-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="font-semibold text-amber-900 mb-1">Waiting for Team Assignment</h3>
+            <p className="text-sm text-amber-800">
+              Your league host hasn't assigned you to a team yet. Please wait for them to allocate you to a team before you submit activities.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <Tabs value={submissionType} onValueChange={(v) => setSubmissionType(v as 'workout' | 'rest')} className="w-full" disabled={activeLeague && !activeLeague.team_id}>
         {/* Workout Tab Content */}
         <TabsContent value="workout" className="mt-3">
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -986,29 +1125,24 @@ export default function SubmitActivityPage({
 
                 const renderInput = (type: string) => {
                   let label = '';
-                  let placeholder = '';
                   let unit = '';
                   const formKey = type === 'hole' ? 'holes' : type;
 
                   switch (type) {
                     case 'duration':
                       label = 'Duration';
-                      placeholder = '45';
                       unit = 'minutes';
                       break;
                     case 'distance':
                       label = 'Distance';
-                      placeholder = '4';
                       unit = 'km';
                       break;
                     case 'steps':
                       label = 'Steps';
-                      placeholder = '10000';
                       unit = 'steps';
                       break;
                     case 'hole':
                       label = 'Holes';
-                      placeholder = '9';
                       unit = 'holes';
                       break;
                   }
@@ -1022,7 +1156,6 @@ export default function SubmitActivityPage({
                           type="number"
                           min="0"
                           step={type === 'distance' ? '0.01' : '1'}
-                          placeholder={placeholder}
                           value={formData[formKey as keyof typeof formData]}
                           onChange={(e) =>
                             setFormData((prev) => ({ ...prev, [formKey]: e.target.value }))
@@ -1071,32 +1204,20 @@ export default function SubmitActivityPage({
                 <div className="space-y-2">
                   <Label>Activity Date</Label>
                   <p className="text-xs text-muted-foreground">Only today or yesterday can be selected.</p>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                      >
-                        <CalendarIcon className="mr-2 size-4" />
-                        {format(activityDate, 'MMM d, yyyy')}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={activityDate}
-                        onSelect={(date) => date && setActivityDate(startOfDay(date))}
-                        disabled={(date) => {
-                          const day = startOfDay(date);
-
-                          if (isAfter(day, maxActivityDate)) return true;
-                          if (isBefore(day, minActivityDate)) return true;
-                          return false;
-                        }}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <Select
+                    value={isTodaySelected ? 'today' : 'yesterday'}
+                    onValueChange={(value) =>
+                      setActivityDate(value === 'today' ? today : yesterday)
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="today">Today ({format(today, 'MMM d, yyyy')})</SelectItem>
+                      <SelectItem value="yesterday">Yesterday ({format(yesterday, 'MMM d, yyyy')})</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -1117,7 +1238,7 @@ export default function SubmitActivityPage({
                     <img
                       src={imagePreview}
                       alt="Selected workout"
-                      className="w-full h-32 object-contain rounded-lg border bg-muted"
+                      className="w-full h-20 object-contain rounded-lg border bg-muted"
                     />
                     <Button
                       type="button"
@@ -1132,14 +1253,14 @@ export default function SubmitActivityPage({
                 ) : (
                   <div
                     onClick={handleUploadClick}
-                    className="border-2 border-dashed rounded-lg p-4 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                    className="border-2 border-dashed rounded-lg p-2 text-center hover:border-primary/50 transition-colors cursor-pointer"
                   >
                     {uploadingImage || ocrProcessing ? (
-                      <Loader2 className="size-6 mx-auto text-primary animate-spin" />
+                      <Loader2 className="size-5 mx-auto text-primary animate-spin" />
                     ) : (
                       <>
-                        <ImageIcon className="size-6 mx-auto text-muted-foreground mb-1" />
-                        <p className="text-sm text-muted-foreground">Click to upload image</p>
+                        <ImageIcon className="size-4 mx-auto text-muted-foreground mb-1" />
+                        <p className="text-[11px] text-muted-foreground">Click to upload image</p>
                       </>
                     )}
                   </div>
@@ -1163,9 +1284,9 @@ export default function SubmitActivityPage({
               {/* Summary and Submit */}
               <div className="pt-4 border-t space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Estimated RR</span>
+                  <span className="text-sm text-muted-foreground">RR Value</span>
                   <span className="text-lg font-bold text-primary">
-                    ~{estimatedRR.toFixed(1)} RR
+                    {estimatedRR.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex gap-2">
@@ -1269,34 +1390,20 @@ export default function SubmitActivityPage({
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Rest Day Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                      >
-                        <CalendarIcon className="mr-2 size-4" />
-                        {format(activityDate, 'MMM d, yyyy')}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={activityDate}
-                        onSelect={(date) => date && setActivityDate(date)}
-                        disabled={(date) => {
-                          if (date > new Date()) return true;
-                          if (activeLeague?.end_date) {
-                            const endString = String(activeLeague.end_date).slice(0, 10);
-                            const dateYmd = format(date, 'yyyy-MM-dd');
-                            return dateYmd > endString;
-                          }
-                          return false;
-                        }}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <Select
+                    value={isTodaySelected ? 'today' : 'yesterday'}
+                    onValueChange={(value) =>
+                      setActivityDate(value === 'today' ? today : yesterday)
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="today">Today ({format(today, 'MMM d, yyyy')})</SelectItem>
+                      <SelectItem value="yesterday">Yesterday ({format(yesterday, 'MMM d, yyyy')})</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">

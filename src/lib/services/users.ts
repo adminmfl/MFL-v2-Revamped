@@ -14,6 +14,7 @@ export interface User {
   password_hash?: string;
   is_active?: boolean;
   needsProfileCompletion?: boolean;
+  profile_picture_url?: string;
 }
 
 /**

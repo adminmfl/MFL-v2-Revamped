@@ -142,7 +142,7 @@ export async function GET(
       email: (m as any).users?.email ?? '',
       team_id: m.team_id,
       team_name: (m as any).teams?.team_name ?? null,
-    }));
+    })).filter((m) => m.team_id !== null); // Only show users assigned to teams
 
     return NextResponse.json({ success: true, data: members });
   } catch (error) {
@@ -185,7 +185,7 @@ export async function POST(
 
     const { data: member, error: memberError } = await supabase
       .from('leaguemembers')
-      .select('league_id, user_id, users!leaguemembers_user_id_fkey(date_of_birth)')
+      .select('league_id, user_id, team_id, users!leaguemembers_user_id_fkey(date_of_birth)')
       .eq('league_member_id', payload.league_member_id)
       .single();
 
@@ -198,6 +198,15 @@ export async function POST(
       return NextResponse.json(
         { error: 'League member not found in this league' },
         { status: 404 }
+      );
+    }
+
+    // CRITICAL: User must be assigned to a team to have entries submitted
+    // This prevents host-only users (with team_id = NULL) from having activities logged
+    if (!member.team_id) {
+      return NextResponse.json(
+        { error: 'Member must be assigned to a team. Please assign them to a team first.' },
+        { status: 403 }
       );
     }
 

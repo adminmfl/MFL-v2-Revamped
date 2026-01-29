@@ -75,7 +75,7 @@ export function ViewTeamMembersDialog({
       setMemberToMove(null);
       setSelectedTeamId("");
       setMemberToRemove(null);
-      
+
       // Set teams from prop if available, otherwise fetch
       if (teams && teams.length > 0) {
         setAllTeams(teams);
@@ -222,7 +222,7 @@ export function ViewTeamMembersDialog({
           )}
 
           {/* Members List */}
-          <ScrollArea className="h-[350px] rounded-md border">
+          <ScrollArea className="max-h-[60vh] rounded-md border">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center h-full py-8">
                 <div className="size-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -245,11 +245,10 @@ export function ViewTeamMembersDialog({
                 {filteredMembers.map((member) => (
                   <div
                     key={member.league_member_id}
-                    className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                      member.is_captain
+                    className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${member.is_captain
                         ? "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
                         : "bg-card hover:bg-muted/50"
-                    }`}
+                      }`}
                   >
                     <div className="relative">
                       <Avatar className="size-10">
@@ -275,9 +274,11 @@ export function ViewTeamMembersDialog({
                           <span className="text-amber-600 ml-1">(Captain)</span>
                         )}
                       </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        Points: {(member as any).points ?? 0}
-                      </p>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground truncate">
+                        <span>Points: {(member as any).points ?? 0}</span>
+                        <span>•</span>
+                        <span>Rest Days: {(member as any).rest_days_used ?? 0}</span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-1">
                       {member.roles
@@ -290,8 +291,8 @@ export function ViewTeamMembersDialog({
                               role === "governor"
                                 ? "bg-blue-500/10 text-blue-600 border-blue-200"
                                 : role === "host"
-                                ? "bg-purple-500/10 text-purple-600 border-purple-200"
-                                : ""
+                                  ? "bg-purple-500/10 text-purple-600 border-purple-200"
+                                  : ""
                             }
                           >
                             {role}
@@ -425,8 +426,8 @@ export function ViewTeamMembersDialog({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </DialogContent>
-    </Dialog>
+      </DialogContent >
+    </Dialog >
   );
 }
 

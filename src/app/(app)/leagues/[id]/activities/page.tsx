@@ -17,6 +17,7 @@ import {
 import { useRole } from '@/contexts/role-context';
 import { useLeague } from '@/contexts/league-context';
 import { useLeagueActivities } from '@/hooks/use-league-activities';
+import { ActivityMinimumDropdown } from '@/components/leagues/activity-minimum-dropdown';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -82,6 +83,13 @@ export default function LeagueActivitiesPage({
   const [selectedCategory, setSelectedCategory] = React.useState<string>('all');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [frequencyDrafts, setFrequencyDrafts] = React.useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [resetKey, setResetKey] = React.useState(0);
+  
+  // Track pending changes before saving
+  const [pendingChanges, setPendingChanges] = React.useState<Map<string, { enabled?: boolean; frequency?: number | null; minimums?: { min_value: number | null; age_group_overrides: Record<string, any> } }>>(new Map());
+  
+  const hasChanges = pendingChanges.size > 0;
 
   const enabledActivityIds = React.useMemo(() => {
     return new Set(data?.activities.map((a) => a.activity_id) || []);
@@ -146,51 +154,53 @@ export default function LeagueActivitiesPage({
     });
   }, [filteredActivities, enabledActivityIds]);
 
-  const handleToggle = async (activityId: string, enable: boolean) => {
-    setToggleLoading(activityId);
-    try {
-      let success = false;
-      if (enable) {
-        success = await addActivities([activityId]);
-        if (success) {
-          toast.success('Activity enabled');
-        }
+  const handleToggle = (activityId: string, enable: boolean) => {
+    // Check if the new state matches the original state
+    const originallyEnabled = enabledActivityIds.has(activityId);
+    
+    setPendingChanges((prev) => {
+      const next = new Map(prev);
+      
+      // If toggling back to original state, remove the pending change
+      if (enable === originallyEnabled) {
+        next.delete(activityId);
       } else {
-        success = await removeActivity(activityId);
-        if (success) {
-          toast.success('Activity disabled');
-        }
+        // Store change locally instead of saving immediately
+        const change = next.get(activityId) || {};
+        next.set(activityId, { ...change, enabled: enable });
       }
-      if (!success) {
-        toast.error('Failed to update activity');
-      }
-    } catch (err) {
-      toast.error('An error occurred');
-    } finally {
-      setToggleLoading(null);
-    }
+      return next;
+    });
   };
 
-  const handleFrequencyBlur = async (activityId: string) => {
+  // Compute checkbox state: use pending change if exists, otherwise use current enabled state
+  const getCheckboxState = (activityId: string): boolean => {
+    const pendingChange = pendingChanges.get(activityId);
+    if (pendingChange?.enabled !== undefined) {
+      return pendingChange.enabled;
+    }
+    return enabledActivityIds.has(activityId);
+  };
+
+  const handleFrequencyBlur = (activityId: string) => {
     const raw = (frequencyDrafts[activityId] ?? '').trim();
     const current = enabledActivityMap.get(activityId)?.frequency ?? null;
 
     if (raw === '') {
       if (current === null) return;
-      const success = await updateFrequency(activityId, null);
-      if (!success) {
-        toast.error('Failed to update frequency');
-        setFrequencyDrafts((prev) => ({
-          ...prev,
-          [activityId]: typeof current === 'number' ? String(current) : '',
-        }));
-      }
+      // Store frequency change
+      setPendingChanges((prev) => {
+        const next = new Map(prev);
+        const change = next.get(activityId) || {};
+        next.set(activityId, { ...change, frequency: null });
+        return next;
+      });
       return;
     }
 
     const parsed = Number(raw);
-    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 7) {
-      toast.error('Frequency must be between 0 and 7 (or empty for unlimited)');
+    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 7) {
+      toast.error('Frequency must be between 1 and 7');
       setFrequencyDrafts((prev) => ({
         ...prev,
         [activityId]: typeof current === 'number' ? String(current) : '',
@@ -201,14 +211,139 @@ export default function LeagueActivitiesPage({
     const next = Math.floor(parsed);
     if (current === next) return;
 
-    const success = await updateFrequency(activityId, next);
-    if (!success) {
-      toast.error('Failed to update frequency');
-      setFrequencyDrafts((prev) => ({
-        ...prev,
-        [activityId]: typeof current === 'number' ? String(current) : '',
-      }));
+    // Store frequency change
+    setPendingChanges((prev) => {
+      const nextMap = new Map(prev);
+      const change = nextMap.get(activityId) || {};
+      nextMap.set(activityId, { ...change, frequency: next });
+      return nextMap;
+    });
+  };
+
+  const handleFrequencyChange = (activityId: string, value: string) => {
+    setFrequencyDrafts((prev) => ({
+      ...prev,
+      [activityId]: value,
+    }));
+    
+    // Mark as pending immediately when user starts typing
+    const trimmed = value.trim();
+    const current = enabledActivityMap.get(activityId)?.frequency ?? null;
+    
+    if (trimmed === '') {
+      if (current !== null) {
+        setPendingChanges((prev) => {
+          const next = new Map(prev);
+          const change = next.get(activityId) || {};
+          next.set(activityId, { ...change, frequency: null });
+          return next;
+        });
+      }
+    } else {
+      const parsed = Number(trimmed);
+      if (Number.isFinite(parsed) && parsed >= 1 && parsed <= 7) {
+        const numVal = Math.floor(parsed);
+        if (current !== numVal) {
+          setPendingChanges((prev) => {
+            const next = new Map(prev);
+            const change = next.get(activityId) || {};
+            next.set(activityId, { ...change, frequency: numVal });
+            return next;
+          });
+        }
+      }
     }
+  };
+
+  const handleMinimumChange = (config: { activity_id: string; min_value: number | null; age_group_overrides: Record<string, any> }) => {
+    setPendingChanges((prev) => {
+      const next = new Map(prev);
+      const change = next.get(config.activity_id) || {};
+      next.set(config.activity_id, {
+        ...change,
+        minimums: {
+          min_value: config.min_value,
+          age_group_overrides: config.age_group_overrides,
+        },
+      });
+      return next;
+    });
+  };
+
+  const handleSaveChanges = async () => {
+    if (!hasChanges) return;
+
+    setIsSaving(true);
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const [activityId, change] of pendingChanges) {
+        try {
+          if (change.enabled !== undefined) {
+            const success = change.enabled 
+              ? await addActivities([activityId])
+              : await removeActivity(activityId);
+            if (success) successCount++;
+            else errorCount++;
+          }
+
+          if (change.frequency !== undefined) {
+            const success = await updateFrequency(activityId, change.frequency);
+            if (success) successCount++;
+            else errorCount++;
+          }
+
+          if (change.minimums !== undefined) {
+            try {
+              const response = await fetch('/api/leagues/activity-minimums', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  league_id: leagueId,
+                  activity_id: activityId,
+                  symbol: enabledActivityMap.get(activityId)?.activity_name || 'Activity',
+                  min_value: change.minimums.min_value,
+                  age_group_overrides: change.minimums.age_group_overrides,
+                }),
+              });
+              if (response.ok) successCount++;
+              else errorCount++;
+            } catch (err) {
+              errorCount++;
+            }
+          }
+        } catch (err) {
+          errorCount++;
+        }
+      }
+
+      if (errorCount === 0) {
+        toast.success(`All ${successCount} changes saved successfully`);
+        setPendingChanges(new Map());
+      } else if (successCount > 0) {
+        toast.error(`Saved ${successCount} changes, but ${errorCount} failed`);
+      } else {
+        toast.error('Failed to save changes');
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDiscardChanges = () => {
+    setPendingChanges(new Map());
+    // Reset frequency drafts to current values
+    if (data?.activities) {
+      const next: Record<string, string> = {};
+      for (const activity of data.activities) {
+        next[activity.activity_id] =
+          typeof activity.frequency === 'number' ? String(activity.frequency) : '';
+      }
+      setFrequencyDrafts(next);
+    }
+    // Force dropdown components to remount with fresh data
+    setResetKey(prev => prev + 1);
   };
 
   // no-op bulk handlers (removed UI); using original per-item toggle UX
@@ -334,7 +469,7 @@ export default function LeagueActivitiesPage({
     <div className="flex flex-col gap-6 py-4 md:py-6">
       {/* Header */}
       <div className="flex flex-col gap-4 px-4 lg:px-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col gap-4">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
               <Dumbbell className="size-6 text-primary" />
@@ -344,8 +479,8 @@ export default function LeagueActivitiesPage({
               Enable or disable activities for your league
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
-            <div className="relative w-full sm:w-52">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full">
+            <div className="relative flex-1 min-w-52">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search activities"
@@ -373,16 +508,50 @@ export default function LeagueActivitiesPage({
                 </SelectContent>
               </Select>
             )}
-            <Badge variant="outline">
-              {data?.activities.length || 0} Active
-            </Badge>
-            <Button variant="outline" size="sm" onClick={refetch}>
-              <RefreshCw className="mr-2 size-4" />
-              Refresh
-            </Button>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">
+                {data?.activities.length || 0} Active
+              </Badge>
+              <Button variant="ghost" size="icon" onClick={refetch} disabled={isSaving} title="Refresh activities">
+                <RefreshCw className="size-4" />
+              </Button>
+            </div>
+            {hasChanges && (
+              <div className="flex items-center gap-2 sm:ml-auto">
+                <Button onClick={handleSaveChanges} disabled={isSaving} size="sm">
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="size-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="size-4 mr-2" />
+                      Confirm
+                    </>
+                  )}
+                </Button>
+                <Button variant="outline" onClick={handleDiscardChanges} disabled={isSaving} size="sm">
+                  Discard
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Unsaved Changes Alert */}
+      {hasChanges && (
+        <div className="px-4 lg:px-6">
+          <Alert className="border-amber-200 bg-amber-50 dark:border-primary/20 dark:bg-primary/10">
+            <AlertCircle className="size-4 text-amber-600 dark:text-primary" />
+            <AlertTitle className="text-amber-900 dark:text-primary">Unsaved Changes</AlertTitle>
+            <AlertDescription className="text-amber-800 dark:text-primary/80">
+              You have {pendingChanges.size} pending change{pendingChanges.size !== 1 ? 's' : ''}. Click "Confirm" to save or "Discard" to cancel.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
 
       {/* Content */}
       <div className="px-4 lg:px-6 space-y-6">
@@ -424,17 +593,18 @@ export default function LeagueActivitiesPage({
             {isHost && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {sortedActivities.map((activity) => {
-                  const isEnabled = enabledActivityIds.has(activity.activity_id);
+                  const isEnabled = getCheckboxState(activity.activity_id);
                   const isProcessing = toggleLoading === activity.activity_id;
+                  const hasPendingChange = pendingChanges.has(activity.activity_id);
 
                   return (
                     <div
                       key={activity.activity_id}
                       className={cn(
                         'flex items-start gap-3 p-4 rounded-lg border transition-all cursor-pointer',
-                        isEnabled
-                          ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                          : 'border-border bg-card hover:border-primary/50',
+                        hasPendingChange && 'ring-2 ring-amber-400 bg-amber-50/50 dark:ring-primary/60 dark:bg-primary/10',
+                        !hasPendingChange && isEnabled && 'border-primary bg-primary/5 ring-1 ring-primary',
+                        !hasPendingChange && !isEnabled && 'border-border bg-card hover:border-primary/50',
                         isProcessing && 'opacity-50 pointer-events-none'
                       )}
                       onClick={() =>
@@ -463,34 +633,36 @@ export default function LeagueActivitiesPage({
                               {activity.category.display_name}
                             </Badge>
                           )}
+                          {hasPendingChange && (
+                            <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 dark:bg-primary/10 dark:text-primary dark:border-primary/20">
+                              Pending
+                            </Badge>
+                          )}
                         </div>
                         {activity.description && (
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                             {activity.description}
                           </p>
                         )}
-                        {isEnabled && supportsFrequency && (
-                          <div
-                            className="mt-2 flex items-center gap-2"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <span className="text-xs text-muted-foreground">Weekly limit</span>
-                            <Input
-                              type="number"
-                              min={0}
-                              max={7}
-                              step={1}
-                              value={frequencyDrafts[activity.activity_id] ?? ''}
-                              placeholder="Unlimited"
-                              onChange={(e) =>
-                                setFrequencyDrafts((prev) => ({
-                                  ...prev,
-                                  [activity.activity_id]: e.target.value,
-                                }))
-                              }
-                              onBlur={() => handleFrequencyBlur(activity.activity_id)}
-                              className="h-7 w-28 text-xs"
-                              disabled={isProcessing}
+                        
+                        {isEnabled && (
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <ActivityMinimumDropdown
+                              key={`${activity.activity_id}-${resetKey}`}
+                              leagueId={leagueId}
+                              activityId={activity.activity_id}
+                              symbol={activity.activity_name}
+                              measurementType={activity.measurement_type}
+                              frequency={frequencyDrafts[activity.activity_id] ? parseInt(frequencyDrafts[activity.activity_id]) : null}
+                              supportsFrequency={supportsFrequency}
+                              initialConfig={{
+                                min_value: enabledActivityMap.get(activity.activity_id)?.min_value ?? null,
+                                max_value: null,
+                                age_group_overrides: enabledActivityMap.get(activity.activity_id)?.age_group_overrides ?? {},
+                              }}
+                              onMinimumChange={handleMinimumChange}
+                              onFrequencyChange={handleFrequencyChange}
+                              onFrequencyBlur={handleFrequencyBlur}
                             />
                           </div>
                         )}

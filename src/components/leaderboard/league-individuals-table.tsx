@@ -31,6 +31,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Select,
   SelectContent,
@@ -108,21 +109,35 @@ export function LeagueIndividualsTable({
     {
       accessorKey: 'username',
       header: 'Player',
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-            <User className="size-4 text-primary" />
+      cell: ({ row }) => {
+        const getInitials = (name: string) => {
+          if (!name) return 'U';
+          const parts = name.split(' ');
+          if (parts.length >= 2) {
+            return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+          }
+          return name.substring(0, 2).toUpperCase();
+        };
+
+        return (
+          <div className="flex items-center gap-2">
+            <Avatar className="size-8 shrink-0">
+              <AvatarImage src={(row.original as any).profile_picture_url || undefined} />
+              <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                {getInitials(row.original.username)}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="font-semibold text-sm whitespace-nowrap">{row.original.username}</p>
+              {row.original.team_name && (
+                <p className="text-xs text-muted-foreground whitespace-nowrap">
+                  {row.original.team_name}
+                </p>
+              )}
+            </div>
           </div>
-          <div>
-            <p className="font-semibold text-sm whitespace-nowrap">{row.original.username}</p>
-            {row.original.team_name && (
-              <p className="text-xs text-muted-foreground whitespace-nowrap">
-                {row.original.team_name}
-              </p>
-            )}
-          </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       accessorKey: 'points',

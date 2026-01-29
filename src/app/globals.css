@@ -71,7 +71,7 @@
   --radius: 0.75rem;
 
   /* Backgrounds */
-  --background: #F8FAFC;
+  --background: #F1F5FB;
   --foreground: #0F172A;
 
   /* Cards & Popovers */
@@ -127,7 +127,7 @@
    ============================================================================ */
 .dark {
   /* Backgrounds - Deep immersive dark */
-  --background: #0A1628;
+  --background: #081326;
   --foreground: #F8FAFC;
 
   /* Cards & Popovers */
@@ -194,13 +194,13 @@
 
   /* Light mode subtle gradient */
   :root body {
-    background: linear-gradient(135deg, #F8FAFC 0%, #EFF6FF 50%, #F0FDF4 100%);
+    background: linear-gradient(135deg, #F1F5FB 0%, #EAF2FF 50%, #ECFDF5 100%);
     background-attachment: fixed;
   }
 
   /* Dark mode gradient - premium fitness feel */
   .dark body {
-    background: linear-gradient(135deg, #0A1628 0%, #0F172A 50%, #0A1628 100%);
+    background: linear-gradient(135deg, #081326 0%, #0B162B 50%, #081326 100%);
     background-attachment: fixed;
   }
 }

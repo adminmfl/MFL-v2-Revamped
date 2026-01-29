@@ -40,6 +40,7 @@ interface InviteDialogProps {
   memberCount?: number;
   maxCapacity?: number;
   trigger?: React.ReactNode;
+  buttonLabel?: string;
 }
 
 // ============================================================================
@@ -53,6 +54,7 @@ export function InviteDialog({
   memberCount = 0,
   maxCapacity = 20,
   trigger,
+  buttonLabel,
 }: InviteDialogProps) {
   const [copiedCode, setCopiedCode] = React.useState(false);
   const [copiedLink, setCopiedLink] = React.useState(false);
@@ -174,9 +176,16 @@ export function InviteDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button variant="ghost" size="icon" className="h-9 w-9">
-            <Share2 className="size-4" />
-          </Button>
+          buttonLabel ? (
+            <Button variant="outline" size="sm" className="text-xs px-2 h-8">
+              <Share2 className="mr-1 size-3" />
+              {buttonLabel}
+            </Button>
+          ) : (
+            <Button variant="ghost" size="icon" className="h-9 w-9">
+              <Share2 className="size-4" />
+            </Button>
+          )
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">

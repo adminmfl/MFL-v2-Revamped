@@ -77,6 +77,7 @@ import { AssignGovernorDialog } from "./assign-governor-dialog";
 import { ViewUnallocatedDialog } from "./view-unallocated-dialog";
 import { ViewTeamMembersDialog } from "./view-team-members-dialog";
 import { TeamInviteDialog } from "./team-invite-dialog";
+import { InviteDialog } from "@/components/league/invite-dialog";
 
 import {
   useLeagueTeams,
@@ -183,7 +184,7 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
         const json = await res.json();
         if (mounted && res.ok && json?.success && json.data?.individuals) {
           console.debug('[TeamsTable] leaderboard individuals count:', json.data.individuals.length);
-          console.debug('[TeamsTable] sample individuals:', json.data.individuals.slice(0,5));
+          console.debug('[TeamsTable] sample individuals:', json.data.individuals.slice(0, 5));
           const map = new Map<string, number>(
             json.data.individuals.map((i: any) => [String(i.user_id), Number(i.points || 0)])
           );
@@ -247,13 +248,13 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
       const response = await fetch(`/api/leagues/${leagueId}/teams/${team.team_id}/members`);
       const result = await response.json();
       if (result.success) {
-          console.debug('[TeamsTable] fetched team members count:', (result.data || []).length);
-          const membersWithPoints = (result.data || []).map((m: any) => ({
-            ...m,
-            points: pointsMap?.get(String(m.user_id)) ?? 0,
-          }));
-          console.debug('[TeamsTable] membersWithPoints sample:', membersWithPoints.slice(0,5));
-          setTeamMembers(membersWithPoints as TeamMember[]);
+        console.debug('[TeamsTable] fetched team members count:', (result.data || []).length);
+        const membersWithPoints = (result.data || []).map((m: any) => ({
+          ...m,
+          points: pointsMap?.get(String(m.user_id)) ?? 0,
+        }));
+        console.debug('[TeamsTable] membersWithPoints sample:', membersWithPoints.slice(0, 5));
+        setTeamMembers(membersWithPoints as TeamMember[]);
       }
     } catch (err) {
       console.error("Error fetching team members:", err);
@@ -390,19 +391,18 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
       accessorKey: "team_name",
       header: "Team",
       cell: ({ row }) => (
-        <div className="flex items-center gap-3">
-          <Avatar className="size-10 rounded-lg">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Avatar className="size-6 rounded-lg flex-shrink-0">
             {row.original.logo_url ? (
               <AvatarImage src={row.original.logo_url} alt={row.original.team_name} />
             ) : (
-              <AvatarFallback className="rounded-lg text-xs uppercase">
+              <AvatarFallback className="rounded-lg text-[10px] uppercase">
                 {row.original.team_name.slice(0, 2)}
               </AvatarFallback>
             )}
           </Avatar>
-          <div className="flex flex-col leading-tight">
-            <div className="font-medium">{row.original.team_name}</div>
-            {/* Removed redundant member count line (already shown in Members column) */}
+          <div className="flex flex-col leading-tight min-w-0">
+            <div className="font-medium text-xs break-words">{row.original.team_name}</div>
           </div>
         </div>
       ),
@@ -414,16 +414,16 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
         const captain = row.original.captain;
         if (!captain) {
           return (
-            <span className="text-sm text-muted-foreground italic">
-              No captain assigned
+            <span className="text-[10px] text-muted-foreground italic">
+              No captain
             </span>
           );
         }
         return (
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Avatar className="size-8">
-                <AvatarFallback className="text-xs">
+          <div className="flex items-center gap-1 min-w-0">
+            <div className="relative flex-shrink-0">
+              <Avatar className="size-5">
+                <AvatarFallback className="text-[9px]">
                   {captain.username
                     .split(" ")
                     .map((n) => n[0])
@@ -432,11 +432,11 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
                     .slice(0, 2)}
                 </AvatarFallback>
               </Avatar>
-              <div className="absolute -bottom-0.5 -right-0.5 size-4 rounded-full bg-amber-500 flex items-center justify-center ring-2 ring-background">
-                <Crown className="size-2.5 text-white" />
+              <div className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-amber-500 flex items-center justify-center ring-1 ring-background">
+                <Crown className="size-1.5 text-white" />
               </div>
             </div>
-            <span className="text-sm">{captain.username}</span>
+            <span className="text-[10px] break-words min-w-0">{captain.username}</span>
           </div>
         );
       },
@@ -445,7 +445,7 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
       accessorKey: "member_count",
       header: "Members",
       cell: ({ row }) => (
-        <Badge variant="outline">
+        <Badge variant="outline" className="text-[10px] px-1 py-0">
           {row.original.member_count}
         </Badge>
       ),
@@ -458,44 +458,45 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8">
-                <MoreVertical className="size-4" />
+              <Button variant="ghost" size="icon" className="size-6 p-0">
+                <MoreVertical className="size-3.5" />
                 <span className="sr-only">Open menu</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-40">
               {canManageLogos && (
                 <>
                   <DropdownMenuItem onClick={() => {
                     setLogoUploadTeamId(row.original.team_id);
                     fileInputRef.current?.click();
-                  }}>
-                    <Pencil className="mr-2 size-4" />
+                  }} className="text-xs">
+                    <Pencil className="mr-1.5 size-3.5" />
                     Upload Logo
                   </DropdownMenuItem>
                   {row.original.logo_url ? (
                     <DropdownMenuItem
                       onClick={() => removeTeamLogo(row.original.team_id)}
                       disabled={logoRemovingTeamId === row.original.team_id}
+                      className="text-xs"
                     >
-                      <Trash2 className="mr-2 size-4" />
+                      <Trash2 className="mr-1.5 size-3.5" />
                       {logoRemovingTeamId === row.original.team_id ? 'Removing...' : 'Remove Logo'}
                     </DropdownMenuItem>
                   ) : null}
                   <DropdownMenuSeparator />
                 </>
               )}
-              <DropdownMenuItem onClick={() => handleViewTeamMembersClick(row.original)}>
-                <Users className="mr-2 size-4" />
+              <DropdownMenuItem onClick={() => handleViewTeamMembersClick(row.original)} className="text-xs">
+                <Users className="mr-1.5 size-3.5" />
                 View Members
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleAddMembersClick(row.original)}>
-                <UserPlus className="mr-2 size-4" />
+              <DropdownMenuItem onClick={() => handleAddMembersClick(row.original)} className="text-xs">
+                <UserPlus className="mr-1.5 size-3.5" />
                 Add Members
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAssignCaptainClick(row.original)}>
-                <Crown className="mr-2 size-4" />
+              <DropdownMenuItem onClick={() => handleAssignCaptainClick(row.original)} className="text-xs">
+                <Crown className="mr-1.5 size-3.5" />
                 Assign Captain
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -506,8 +507,8 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
                 memberCount={row.original.member_count}
                 maxCapacity={data?.league.league_capacity || 20}
                 trigger={
-                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                    <Share2 className="mr-2 size-4" />
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-xs">
+                    <Share2 className="mr-1.5 size-3.5" />
                     Invite to Team
                   </DropdownMenuItem>
                 }
@@ -515,9 +516,9 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => handleDeleteClick(row.original)}
-                className="text-destructive focus:text-destructive"
+                className="text-destructive focus:text-destructive text-xs"
               >
-                <Trash2 className="mr-2 size-4" />
+                <Trash2 className="mr-1.5 size-3.5" />
                 Delete Team
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -563,40 +564,51 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
           </p>
         </div>
         {canManageTeams && (
-  <div className="flex flex-wrap gap-2">
-    <Button
-      size="sm"
-      variant="outline"
-      className="text-xs px-2 h-8"
-      onClick={() => setViewUnallocatedDialogOpen(true)}
-    >
-      <Users className="mr-1 size-3" />
-      Unallocated ({data?.members.unallocated.length || 0})
-    </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs px-2 h-8"
+              onClick={() => setViewUnallocatedDialogOpen(true)}
+            >
+              <Users className="mr-1 size-3" />
+              Unallocated ({data?.members.unallocated.length || 0})
+            </Button>
 
-    {isHost && (
-      <Button
-        size="sm"
-        variant="outline"
-        className="text-xs px-2 h-8"
-        onClick={() => setAssignGovernorDialogOpen(true)}
-      >
-        <Shield className="mr-1 size-3" />
-        Governors
-      </Button>
-    )}
+            {isHost && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs px-2 h-8"
+                onClick={() => setAssignGovernorDialogOpen(true)}
+              >
+                <Shield className="mr-1 size-3" />
+                Governors
+              </Button>
+            )}
 
-    <Button
-      size="sm"
-      className="text-xs px-2 h-8"
-      onClick={() => setCreateDialogOpen(true)}
-      disabled={!data?.meta.can_create_more}
-    >
-      <Plus className="mr-1 size-3" />
-      Create Team
-    </Button>
-  </div>
-)}
+            <Button
+              size="sm"
+              className="text-xs px-2 h-8"
+              onClick={() => setCreateDialogOpen(true)}
+              disabled={!data?.meta.can_create_more}
+            >
+              <Plus className="mr-1 size-3" />
+              Create Team
+            </Button>
+
+            {isHost && data?.league && (
+              <InviteDialog
+                leagueId={leagueId}
+                leagueName={data.league.league_name}
+                inviteCode={data.league.invite_code || ''}
+                memberCount={data.meta.member_count}
+                maxCapacity={data.league.league_capacity || 20}
+                buttonLabel="League Invite"
+              />
+            )}
+          </div>
+        )}
 
       </div>
 
@@ -631,15 +643,15 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border overflow-x-hidden">
-        <Table className="w-full table-auto">
+      <div className="rounded-lg border overflow-hidden">
+        <Table className="w-full table-fixed">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    className={`whitespace-nowrap px-3 py-2 text-xs font-semibold text-muted-foreground ${header.id === "actions" ? "text-right pr-2 pl-1 w-10" : ""}`}
+                    className={`px-2 py-2 text-xs font-semibold text-muted-foreground ${header.id === "actions" ? "text-right pr-1 pl-1 w-8" : ""} ${header.id === "team_name" ? "w-auto" : ""} ${header.id === "captain" ? "w-[30%]" : ""} ${header.id === "member_count" ? "w-[15%]" : ""}`}
                   >
                     {header.isPlaceholder
                       ? null
@@ -656,7 +668,7 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
-                      className={`whitespace-nowrap px-3 py-2 align-middle text-sm ${cell.column.id === "actions" ? "text-right pr-2 pl-1" : ""}`}
+                      className={`px-2 py-2 align-middle text-xs ${cell.column.id === "actions" ? "text-right pr-1 pl-1" : ""}`}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>

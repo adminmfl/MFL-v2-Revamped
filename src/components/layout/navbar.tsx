@@ -7,6 +7,7 @@ import { Dumbbell, Trophy, Users, BookOpen, User, Menu, X, LogOut, Flag } from '
 import { signOut, useSession } from 'next-auth/react'
 import { useState, useEffect } from 'react'
 import { getTeamNameForUser } from '@/lib/services/teams'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 const navItems = [
   { href: '/dashboard', label: 'My Progress', icon: Dumbbell },
@@ -163,11 +164,10 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
-                    isActive
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${isActive
                       ? 'bg-rfl-coral text-white'
                       : 'text-gray-300 hover:text-white hover:bg-rfl-light-blue'
-                  }`}
+                    }`}
                 >
                   <Icon className="w-4 h-4" />
                   <span>{item.label}</span>
@@ -180,26 +180,22 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
           <div className="flex items-center space-x-4">
             {name && (
               <div className="flex items-center space-x-2">
-                <div className="w-6 h-6 rounded border border-white/20 overflow-hidden bg-white">
-                  <img 
-                    src={getTeamLogoPath(teamName)} 
-                    alt={`${teamName || 'Team'} logo`} 
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/img/placeholder-team.svg';
-                    }}
-                  />
-                </div>
+                <Avatar className="size-6 border border-white/20">
+                  <AvatarImage src={(session?.user as any)?.profile_picture_url || undefined} />
+                  <AvatarFallback className="text-xs bg-white text-rfl-navy">
+                    {name.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
                 <span className="text-sm">{name}</span>
               </div>
             )}
             {/* Desktop-only auth actions */}
             <div className="hidden md:flex items-center space-x-3">
               {name ? (
-                  <Button onClick={() => signOut({ callbackUrl: '/' })} variant="outline" size="sm" className="text-rfl-navy border-white hover:bg-white hover:text-rfl-navy flex items-center">
-                    <LogOut className="w-4 h-4 mr-1" />
-                    Sign Out
-                  </Button>
+                <Button onClick={() => signOut({ callbackUrl: '/' })} variant="outline" size="sm" className="text-rfl-navy border-white hover:bg-white hover:text-rfl-navy flex items-center">
+                  <LogOut className="w-4 h-4 mr-1" />
+                  Sign Out
+                </Button>
               ) : null}
             </div>
             {/* Hamburger toggle (mobile only) */}
@@ -222,16 +218,12 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
               {name && (
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded border border-white/20 overflow-hidden bg-white">
-                    <img 
-                      src={getTeamLogoPath(teamName)} 
-                      alt={`${teamName || 'Team'} logo`} 
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/img/placeholder-team.svg';
-                      }}
-                    />
-                  </div>
+                  <Avatar className="size-6 border border-white/20">
+                    <AvatarImage src={(session?.user as any)?.profile_picture_url || undefined} />
+                    <AvatarFallback className="text-xs bg-white text-rfl-navy">
+                      {name.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
                   <span className="text-sm">{name}</span>
                 </div>
               )}
@@ -240,20 +232,19 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
               </button>
             </div>
             <div className="px-2 pt-2 pb-3 space-y-1">
-            {navItems.map((item) => {
+              {navItems.map((item) => {
                 const Icon = item.icon
-              const isActive = item.href === '/dashboard'
-                ? (pathname === '/dashboard' || pathname === '/')
-                : pathname.startsWith(item.href)
+                const isActive = item.href === '/dashboard'
+                  ? (pathname === '/dashboard' || pathname === '/')
+                  : pathname.startsWith(item.href)
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                      isActive
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${isActive
                         ? 'bg-rfl-coral text-white'
                         : 'text-gray-300 hover:text-white hover:bg-rfl-light-blue'
-                    }`}
+                      }`}
                     onClick={() => setMobileOpen(false)}
                   >
                     <Icon className="w-5 h-5" />
@@ -264,13 +255,13 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
             </div>
             <div className="mt-auto px-4 py-3 border-t border-white/10 space-y-2">
               {name ? (
-                  <button
-                    className="w-full text-left px-3 py-2 rounded-md bg-white text-rfl-navy font-medium flex items-center gap-2"
-                    onClick={() => { setMobileOpen(false); signOut({ callbackUrl: '/' }) }}
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Sign Out
-                  </button>
+                <button
+                  className="w-full text-left px-3 py-2 rounded-md bg-white text-rfl-navy font-medium flex items-center gap-2"
+                  onClick={() => { setMobileOpen(false); signOut({ callbackUrl: '/' }) }}
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sign Out
+                </button>
               ) : null}
             </div>
           </div>

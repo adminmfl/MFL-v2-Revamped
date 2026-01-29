@@ -1,6 +1,7 @@
 'use client';
 
 import React, { use, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Settings,
@@ -15,10 +16,12 @@ import {
   Info,
   Shield,
   Calendar,
+  Activity,
 } from 'lucide-react';
 
 import { useRole } from '@/contexts/role-context';
 import { useLeague } from '@/contexts/league-context';
+import { useLeagueActivities } from '@/hooks/use-league-activities';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -66,6 +69,9 @@ export default function LeagueSettingsPage({
   const router = useRouter();
   const { isHost } = useRole();
   const { activeLeague, refetch } = useLeague();
+  const { data: activitiesData, isLoading: activitiesLoading } = useLeagueActivities(id, {
+    includeAll: true,
+  });
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -404,6 +410,7 @@ export default function LeagueSettingsPage({
                     }
                     placeholder="Enter league name"
                     disabled={!canEditStructure}
+                    className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
                   />
                 </div>
                 <div className="space-y-2">
@@ -419,6 +426,7 @@ export default function LeagueSettingsPage({
                     }
                     rows={4}
                     placeholder="Describe your league goals and rules..."
+                    className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -431,6 +439,7 @@ export default function LeagueSettingsPage({
                         setFormData((prev) => ({ ...prev, start_date: e.target.value }))
                       }
                       disabled={!canEditStructure}
+                      className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
                     />
                   </div>
                   <div className="space-y-2">
@@ -442,8 +451,31 @@ export default function LeagueSettingsPage({
                         setFormData((prev) => ({ ...prev, end_date: e.target.value }))
                       }
                       disabled={!canEditStructure}
+                      className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
                     />
                   </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  <Button
+                    asChild
+                    size="sm"
+                    className="gap-2 border border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 dark:border-primary/30 dark:bg-primary/15 dark:text-primary-foreground/90"
+                  >
+                    <Link href={`/leagues/${id}/team`}>
+                      <Users className="size-4" />
+                      Team Management
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    size="sm"
+                    className="gap-2 border border-accent/30 bg-accent/10 text-accent hover:bg-accent/20 dark:border-accent/40 dark:bg-accent/15 dark:text-accent-foreground"
+                  >
+                    <Link href={`/leagues/${id}/activities`}>
+                      <Activity className="size-4" />
+                      Configure Activities
+                    </Link>
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -569,6 +601,7 @@ export default function LeagueSettingsPage({
                         setFormData((prev) => ({ ...prev, rest_days: e.target.value }))
                       }
                       placeholder="e.g. 18"
+                      className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
                     />
                   </div>
                 </div>
@@ -598,7 +631,7 @@ export default function LeagueSettingsPage({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex items-center justify-between p-4 rounded-lg border">
+                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/60">
                   <div className="space-y-1">
                     <Label className="flex items-center gap-2">Auto Rest Day</Label>
                     <p className="text-sm text-muted-foreground">
@@ -628,7 +661,7 @@ export default function LeagueSettingsPage({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex items-center justify-between p-4 rounded-lg border">
+                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/60">
                   <div className="space-y-1">
                     <Label className="flex items-center gap-2">Normalize Points by Team Size</Label>
                     <p className="text-sm text-muted-foreground">
@@ -655,7 +688,7 @@ export default function LeagueSettingsPage({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-lg border">
+                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/60">
                   <div className="space-y-0.5">
                     <Label className="flex items-center gap-2">
                       <Globe className="size-4 text-muted-foreground" />
@@ -674,7 +707,7 @@ export default function LeagueSettingsPage({
                     disabled={!canEditStructure}
                   />
                 </div>
-                <div className="flex items-center justify-between p-4 rounded-lg border">
+                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/60">
                   <div className="space-y-0.5">
                     <Label className="flex items-center gap-2">
                       <Lock className="size-4 text-muted-foreground" />
@@ -692,6 +725,74 @@ export default function LeagueSettingsPage({
                     }
                     disabled={!canEditStructure}
                   />
+                </div>
+              </CardContent>
+            </Card>
+
+          </div>
+
+          {/* Right Column - Summary Sidebar */}
+          <div className="space-y-6">
+            {/* Teams Summary Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Users className="size-4 text-primary" />
+                  Teams Summary
+                </CardTitle>
+                <CardDescription>Configured team settings</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Teams</span>
+                  <span className="font-medium tabular-nums">{formData.num_teams}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Rest Days</span>
+                  <span className="font-medium tabular-nums">{formData.rest_days}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Auto Rest Day</span>
+                  <span className="font-medium">{formData.auto_rest_day_enabled ? 'On' : 'Off'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Point Normalization</span>
+                  <span className="font-medium">{formData.normalize_points_by_team_size ? 'On' : 'Off'}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Activities Summary Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Activity className="size-4 text-primary" />
+                  Activities Summary
+                </CardTitle>
+                <CardDescription>Enabled activity configuration</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Enabled</span>
+                  <span className="font-medium tabular-nums">
+                    {activitiesLoading ? '—' : activitiesData?.activities.length ?? 0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Available</span>
+                  <span className="font-medium tabular-nums">
+                    {activitiesLoading ? '—' : activitiesData?.allActivities?.length ?? activitiesData?.activities.length ?? 0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Weekly Limits</span>
+                  <span className="font-medium">
+                    {activitiesLoading
+                      ? '—'
+                      : activitiesData?.supportsFrequency === false
+                        ? 'Off'
+                        : 'On'}
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -743,10 +844,7 @@ export default function LeagueSettingsPage({
                 </AlertDialog>
               </CardContent>
             </Card>
-          </div>
 
-          {/* Right Column - Summary Sidebar */}
-          <div className="space-y-6">
             {/* Summary Card */}
             <Card className="sticky top-6">
               <CardHeader>

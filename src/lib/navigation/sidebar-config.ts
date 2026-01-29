@@ -117,11 +117,6 @@ export function getSidebarNavItems(
   // ========================================
   const primaryItems: NavItem[] = [
     {
-      title: 'Submit Activity',
-      url: leagueUrl('/submit'),
-      icon: Dumbbell,
-    },
-    {
       title: 'My Activities',
       url: leagueUrl(''),
       icon: Trophy,
@@ -159,21 +154,6 @@ export function getSidebarNavItems(
   // Host/Governor extras (keep scoped to admin section below)
   // ========================================
   const leagueAdminItems: NavItem[] = [];
-
-  if (role === 'host' || role === 'governor') {
-    leagueAdminItems.push(
-      {
-        title: 'Team Management',
-        url: leagueUrl('/team'),
-        icon: Users,
-      },
-      {
-        title: 'Configure Activities',
-        url: leagueUrl('/activities'),
-        icon: Activity,
-      }
-    );
-  }
 
   if (role === 'host') {
     leagueAdminItems.push({

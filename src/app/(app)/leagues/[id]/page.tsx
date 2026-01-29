@@ -795,15 +795,13 @@ export default function LeagueDashboardPage({
             <h1 className="text-2xl font-bold tracking-tight">
               Welcome back, {user?.name || 'User'}!
             </h1>
-            {isHost && (
+            {(user as any)?.profile_picture_url && (
               <div className="ml-auto">
-                <InviteDialog
-                  leagueId={league.league_id}
-                  leagueName={league.league_name}
-                  inviteCode={league.invite_code}
-                  memberCount={stats?.memberCount}
-                  maxCapacity={stats?.maxCapacity || league.league_capacity}
-                />
+                <Link href="/profile">
+                  <Avatar className="size-12 ring-2 ring-primary/20 hover:ring-primary/40 transition-all cursor-pointer">
+                    <AvatarImage src={(user as any).profile_picture_url} alt={user?.name || 'Profile'} />
+                  </Avatar>
+                </Link>
               </div>
             )}
           </div>

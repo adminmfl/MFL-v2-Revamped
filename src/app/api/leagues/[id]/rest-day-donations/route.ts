@@ -93,26 +93,23 @@ export async function GET(
             return NextResponse.json({ error: 'Failed to fetch donations' }, { status: 500 });
         }
 
-        // Get teammates only (members on the same team) for the dropdown
-        let membersQuery = supabase
+        // Get all league members (any team) for the dropdown
+        const { data: allMembers } = await supabase
             .from('leaguemembers')
             .select(`
                 league_member_id,
-                users!leaguemembers_user_id_fkey (user_id, username)
+                team_id,
+                users!leaguemembers_user_id_fkey (user_id, username),
+                teams!leaguemembers_team_id_fkey (team_name)
             `)
             .eq('league_id', leagueId);
-
-        // Filter by team if user has a team
-        if (membership.team_id) {
-            membersQuery = membersQuery.eq('team_id', membership.team_id);
-        }
-
-        const { data: allMembers } = await membersQuery;
 
         const membersList = (allMembers || []).map((m: any) => ({
             league_member_id: m.league_member_id,
             user_id: m.users?.user_id,
             username: m.users?.username,
+            team_id: m.team_id || null,
+            team_name: m.teams?.team_name || null,
         }));
 
         // Format response
@@ -149,6 +146,7 @@ export async function GET(
             members: membersList,
             userRole,
             userMemberId: membership.league_member_id,
+            userTeamId: membership.team_id,
         });
     } catch (error) {
         console.error('Error in rest-day-donations GET:', error);

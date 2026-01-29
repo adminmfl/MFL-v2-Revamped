@@ -228,7 +228,10 @@ export default function HelpPage() {
       {/* Quick Links */}
       <div className="px-4 lg:px-6">
         <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="hover:shadow-md transition-all cursor-pointer group border-primary/10 hover:border-primary/30">
+          <Card
+            className="hover:shadow-md transition-all cursor-pointer group border-primary/10 hover:border-primary/30"
+            onClick={() => document.getElementById('faq-getting-started')?.scrollIntoView({ behavior: 'smooth' })}
+          >
             <CardContent className="p-4 flex items-start gap-4">
               <div className="size-10 rounded-lg bg-blue-100 dark:bg-blue-950 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
                 <Zap className="size-5 text-blue-600 dark:text-blue-400" />
@@ -241,7 +244,10 @@ export default function HelpPage() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md transition-all cursor-pointer group border-primary/10 hover:border-primary/30">
+          <Card
+            className="hover:shadow-md transition-all cursor-pointer group border-primary/10 hover:border-primary/30"
+            onClick={() => document.getElementById('faq-challenges-submissions')?.scrollIntoView({ behavior: 'smooth' })}
+          >
             <CardContent className="p-4 flex items-start gap-4">
               <div className="size-10 rounded-lg bg-green-100 dark:bg-green-950 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
                 <Target className="size-5 text-green-600 dark:text-green-400" />
@@ -254,7 +260,10 @@ export default function HelpPage() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md transition-all cursor-pointer group border-primary/10 hover:border-primary/30">
+          <Card
+            className="hover:shadow-md transition-all cursor-pointer group border-primary/10 hover:border-primary/30"
+            onClick={() => document.getElementById('faq-teams-leaderboards')?.scrollIntoView({ behavior: 'smooth' })}
+          >
             <CardContent className="p-4 flex items-start gap-4">
               <div className="size-10 rounded-lg bg-purple-100 dark:bg-purple-950 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
                 <Users className="size-5 text-purple-600 dark:text-purple-400" />
@@ -267,7 +276,10 @@ export default function HelpPage() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md transition-all cursor-pointer group border-primary/10 hover:border-primary/30">
+          <Card
+            className="hover:shadow-md transition-all cursor-pointer group border-primary/10 hover:border-primary/30"
+            onClick={() => document.getElementById('faq-league-management-for-hosts')?.scrollIntoView({ behavior: 'smooth' })}
+          >
             <CardContent className="p-4 flex items-start gap-4">
               <div className="size-10 rounded-lg bg-amber-100 dark:bg-amber-950 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
                 <Trophy className="size-5 text-amber-600 dark:text-amber-400" />
@@ -297,29 +309,33 @@ export default function HelpPage() {
             </Card>
           ) : (
             <div className="space-y-6">
-              {filteredFaqs.map((category) => (
-                <div key={category.category} className="space-y-3">
-                  <h2 className="text-lg font-semibold flex items-center gap-2 px-2">
-                    <div className="size-1 rounded-full bg-primary" />
-                    {category.category}
-                  </h2>
-                  <Card>
-                    <CardContent className="p-0 space-y-0">
-                      {category.items.map((item, index) => (
-                        <Collapsible key={index} className="border-b last:border-b-0">
-                          <CollapsibleTrigger className="px-6 py-4 hover:bg-muted/50 transition-colors flex w-full items-start gap-3 text-left">
-                            <CheckCircle2 className="size-5 text-primary flex-shrink-0 mt-0.5" />
-                            <span className="font-medium text-sm">{item.question}</span>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent className="px-6 py-4 text-muted-foreground border-t bg-muted/30">
-                            {item.answer}
-                          </CollapsibleContent>
-                        </Collapsible>
-                      ))}
-                    </CardContent>
-                  </Card>
-                </div>
-              ))}
+              {filteredFaqs.map((category) => {
+                // Create slug for section ID
+                const sectionId = 'faq-' + category.category.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                return (
+                  <div key={category.category} id={sectionId} className="space-y-3 scroll-mt-4">
+                    <h2 className="text-lg font-semibold flex items-center gap-2 px-2">
+                      <div className="size-1 rounded-full bg-primary" />
+                      {category.category}
+                    </h2>
+                    <Card>
+                      <CardContent className="p-0 space-y-0">
+                        {category.items.map((item, index) => (
+                          <Collapsible key={index} className="border-b last:border-b-0">
+                            <CollapsibleTrigger className="px-6 py-4 hover:bg-muted/50 transition-colors flex w-full items-start gap-3 text-left">
+                              <CheckCircle2 className="size-5 text-primary flex-shrink-0 mt-0.5" />
+                              <span className="font-medium text-sm">{item.question}</span>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="px-6 py-4 text-muted-foreground border-t bg-muted/30">
+                              {item.answer}
+                            </CollapsibleContent>
+                          </Collapsible>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
