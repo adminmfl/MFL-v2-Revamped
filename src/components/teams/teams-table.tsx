@@ -77,6 +77,7 @@ import { AssignGovernorDialog } from "./assign-governor-dialog";
 import { ViewUnallocatedDialog } from "./view-unallocated-dialog";
 import { ViewTeamMembersDialog } from "./view-team-members-dialog";
 import { TeamInviteDialog } from "./team-invite-dialog";
+import { InviteDialog } from "@/components/league/invite-dialog";
 
 import {
   useLeagueTeams,
@@ -183,7 +184,7 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
         const json = await res.json();
         if (mounted && res.ok && json?.success && json.data?.individuals) {
           console.debug('[TeamsTable] leaderboard individuals count:', json.data.individuals.length);
-          console.debug('[TeamsTable] sample individuals:', json.data.individuals.slice(0,5));
+          console.debug('[TeamsTable] sample individuals:', json.data.individuals.slice(0, 5));
           const map = new Map<string, number>(
             json.data.individuals.map((i: any) => [String(i.user_id), Number(i.points || 0)])
           );
@@ -247,13 +248,13 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
       const response = await fetch(`/api/leagues/${leagueId}/teams/${team.team_id}/members`);
       const result = await response.json();
       if (result.success) {
-          console.debug('[TeamsTable] fetched team members count:', (result.data || []).length);
-          const membersWithPoints = (result.data || []).map((m: any) => ({
-            ...m,
-            points: pointsMap?.get(String(m.user_id)) ?? 0,
-          }));
-          console.debug('[TeamsTable] membersWithPoints sample:', membersWithPoints.slice(0,5));
-          setTeamMembers(membersWithPoints as TeamMember[]);
+        console.debug('[TeamsTable] fetched team members count:', (result.data || []).length);
+        const membersWithPoints = (result.data || []).map((m: any) => ({
+          ...m,
+          points: pointsMap?.get(String(m.user_id)) ?? 0,
+        }));
+        console.debug('[TeamsTable] membersWithPoints sample:', membersWithPoints.slice(0, 5));
+        setTeamMembers(membersWithPoints as TeamMember[]);
       }
     } catch (err) {
       console.error("Error fetching team members:", err);
@@ -563,40 +564,51 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
           </p>
         </div>
         {canManageTeams && (
-  <div className="flex flex-wrap gap-2">
-    <Button
-      size="sm"
-      variant="outline"
-      className="text-xs px-2 h-8"
-      onClick={() => setViewUnallocatedDialogOpen(true)}
-    >
-      <Users className="mr-1 size-3" />
-      Unallocated ({data?.members.unallocated.length || 0})
-    </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs px-2 h-8"
+              onClick={() => setViewUnallocatedDialogOpen(true)}
+            >
+              <Users className="mr-1 size-3" />
+              Unallocated ({data?.members.unallocated.length || 0})
+            </Button>
 
-    {isHost && (
-      <Button
-        size="sm"
-        variant="outline"
-        className="text-xs px-2 h-8"
-        onClick={() => setAssignGovernorDialogOpen(true)}
-      >
-        <Shield className="mr-1 size-3" />
-        Governors
-      </Button>
-    )}
+            {isHost && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs px-2 h-8"
+                onClick={() => setAssignGovernorDialogOpen(true)}
+              >
+                <Shield className="mr-1 size-3" />
+                Governors
+              </Button>
+            )}
 
-    <Button
-      size="sm"
-      className="text-xs px-2 h-8"
-      onClick={() => setCreateDialogOpen(true)}
-      disabled={!data?.meta.can_create_more}
-    >
-      <Plus className="mr-1 size-3" />
-      Create Team
-    </Button>
-  </div>
-)}
+            <Button
+              size="sm"
+              className="text-xs px-2 h-8"
+              onClick={() => setCreateDialogOpen(true)}
+              disabled={!data?.meta.can_create_more}
+            >
+              <Plus className="mr-1 size-3" />
+              Create Team
+            </Button>
+
+            {isHost && data?.league && (
+              <InviteDialog
+                leagueId={leagueId}
+                leagueName={data.league.league_name}
+                inviteCode={data.league.invite_code || ''}
+                memberCount={data.meta.member_count}
+                maxCapacity={data.league.league_capacity || 20}
+                buttonLabel="League Invite"
+              />
+            )}
+          </div>
+        )}
 
       </div>
 

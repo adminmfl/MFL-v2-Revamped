@@ -14,6 +14,7 @@ declare module "next-auth" {
       phone?: string;
       platform_role: 'admin' | 'user';
       needsProfileCompletion: boolean;
+      profile_picture_url?: string;
     };
   }
 }
@@ -73,6 +74,7 @@ const authConfig = {
         token.phone = user.phone;
         token.platform_role = user.platform_role || 'user';
         token.needsProfileCompletion = user.needsProfileCompletion || false;
+        token.profile_picture_url = user.profile_picture_url;
       }
 
       // Sync with DB on every check to ensure token is fresh
@@ -80,7 +82,7 @@ const authConfig = {
         const supabase = getSupabaseServiceRole();
         const { data: dbUser } = await supabase
           .from("users")
-          .select("username, email, phone, platform_role, password_hash")
+          .select("username, email, phone, platform_role, password_hash, profile_picture_url")
           .eq("user_id", token.id)
           .single();
 
@@ -90,6 +92,7 @@ const authConfig = {
           token.phone = dbUser.phone;
           token.platform_role = dbUser.platform_role || 'user';
           token.needsProfileCompletion = !(dbUser as any).password_hash;
+          token.profile_picture_url = (dbUser as any).profile_picture_url;
         }
       }
 
@@ -103,6 +106,7 @@ const authConfig = {
         phone: String(token.phone || ""),
         platform_role: token.platform_role || 'user',
         needsProfileCompletion: token.needsProfileCompletion || false,
+        profile_picture_url: token.profile_picture_url || null,
       };
       return session;
     },

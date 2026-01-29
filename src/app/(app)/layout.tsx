@@ -88,7 +88,7 @@ export default function AppLayout({
   const user = {
     name: session?.user?.name || 'User',
     email: session?.user?.email || 'user@example.com',
-    avatar: session?.user?.image || '',
+    avatar: (session?.user as any)?.profile_picture_url || session?.user?.image || '',
   };
 
   return (

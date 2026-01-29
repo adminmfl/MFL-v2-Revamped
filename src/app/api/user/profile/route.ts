@@ -16,7 +16,7 @@ export async function GET() {
         const supabase = getSupabaseServiceRole();
         const { data: user, error } = await supabase
             .from('users')
-            .select('user_id, username, email, phone, date_of_birth')
+            .select('user_id, username, email, phone, date_of_birth, profile_picture_url')
             .eq('user_id', userId)
             .single();
 
@@ -47,7 +47,7 @@ export async function PATCH(req: Request) {
         }
 
         const body = await req.json();
-        const { name, phone } = body;
+        const { name, phone, profile_picture_url } = body;
 
         // Validate inputs
         if (!name || name.trim().length < 2) {
@@ -61,6 +61,7 @@ export async function PATCH(req: Request) {
         const updatedUser = await updateUserProfile(userId, {
             username: name.trim(),
             phone: phone || null,
+            profile_picture_url: profile_picture_url || null,
         }, true);
 
         if (!updatedUser) {

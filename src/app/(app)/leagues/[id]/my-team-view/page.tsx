@@ -406,9 +406,10 @@ export default function MyTeamViewPage({
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableHead className="w-12">#</TableHead>
+                <TableHead className="w-12 hidden sm:table-cell">#</TableHead>
                 <TableHead>Member</TableHead>
-                <TableHead>Role</TableHead>
+                <TableHead className="hidden sm:table-cell">Role</TableHead>
+                <TableHead className="text-center">Rest Days</TableHead>
                 <TableHead className="text-center">Points</TableHead>
               </TableRow>
             </TableHeader>
@@ -416,7 +417,7 @@ export default function MyTeamViewPage({
               {paginatedMembers.length > 0 ? (
                 paginatedMembers.map((member, index) => (
                   <TableRow key={member.league_member_id}>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-muted-foreground hidden sm:table-cell">
                       {pagination.pageIndex * pagination.pageSize + index + 1}
                     </TableCell>
                     <TableCell>
@@ -443,7 +444,7 @@ export default function MyTeamViewPage({
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       {member.is_captain ? (
                         <Badge className="bg-amber-500/10 text-amber-600 border-amber-200">
                           <Shield className="size-3 mr-1" />
@@ -452,6 +453,9 @@ export default function MyTeamViewPage({
                       ) : (
                         <Badge variant="outline">Player</Badge>
                       )}
+                    </TableCell>
+                    <TableCell className="text-center text-muted-foreground text-sm">
+                      {(member as any).rest_days_used ?? 0}
                     </TableCell>
                     <TableCell className="text-center text-muted-foreground text-sm">
                       {(member as any).points ?? 0}

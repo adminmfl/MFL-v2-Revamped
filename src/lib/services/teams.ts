@@ -38,8 +38,10 @@ export interface TeamMember {
   league_id: string;
   username: string;
   email: string;
+  profile_picture_url?: string;
   is_captain: boolean;
   roles: string[];
+  rest_days_used?: number;
 }
 
 export interface LeagueMemberWithDetails {
@@ -390,7 +392,7 @@ export async function getTeamMembers(
         user_id,
         team_id,
         league_id,
-        users!leaguemembers_user_id_fkey(username, email)
+        users!leaguemembers_user_id_fkey(username, email, profile_picture_url)
       `)
       .eq('team_id', teamId)
       .eq('league_id', leagueId);
@@ -398,6 +400,24 @@ export async function getTeamMembers(
     if (error || !members) {
       return [];
     }
+
+    // Get member IDs for rest days query
+    const memberIds = members.map(m => m.league_member_id);
+
+    // Get rest days used count for all members in one query
+    const { data: restDaysCounts } = await supabase
+      .from('effortentry')
+      .select('league_member_id')
+      .in('league_member_id', memberIds)
+      .eq('type', 'rest')
+      .eq('status', 'approved');
+
+    // Build a map of member_id -> rest_days_used count
+    const restDaysMap = new Map<string, number>();
+    (restDaysCounts || []).forEach((entry: any) => {
+      const current = restDaysMap.get(entry.league_member_id) || 0;
+      restDaysMap.set(entry.league_member_id, current + 1);
+    });
 
     // Get roles for each member
     const membersWithRoles = await Promise.all(
@@ -418,8 +438,10 @@ export async function getTeamMembers(
           league_id: member.league_id,
           username: (member.users as any)?.username || 'Unknown',
           email: (member.users as any)?.email || '',
+          profile_picture_url: (member.users as any)?.profile_picture_url || undefined,
           is_captain: isCaptain,
           roles,
+          rest_days_used: restDaysMap.get(member.league_member_id) || 0,
         } as TeamMember;
       })
     );

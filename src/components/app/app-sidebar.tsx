@@ -68,7 +68,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
   const pathname = usePathname();
   const { activeLeague } = useLeague();
   const { activeRole, isAlsoPlayer } = useRole();
-  const { state } = useSidebar();
+  const { state, setOpenMobile } = useSidebar();
   const isCollapsed = state === 'collapsed';
 
   // Get navigation items based on current context
@@ -168,13 +168,13 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                   <DropdownMenuItem asChild className="cursor-pointer">
-                    <Link href="/profile">
+                    <Link href="/profile" onClick={() => setOpenMobile(false)}>
                       <Settings className="mr-2 size-4" />
                       Profile Settings
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild className="cursor-pointer">
-                    <Link href="/help">
+                    <Link href="/help" onClick={() => setOpenMobile(false)}>
                       <HelpCircle className="mr-2 size-4" />
                       Help & Support
                     </Link>
