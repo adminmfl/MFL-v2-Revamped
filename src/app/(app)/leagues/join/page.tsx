@@ -158,21 +158,14 @@ export default function JoinLeaguePage() {
     <div className="flex flex-col gap-6 py-4 md:py-6">
       {/* Header */}
       <div className="flex flex-col gap-4 px-4 lg:px-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/dashboard">
-              <ArrowLeft className="size-4" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
-              <Search className="size-6 text-primary" />
-              Join a League
-            </h1>
-            <p className="text-muted-foreground">
-              Enter an invite code or browse public leagues to join
-            </p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
+            <Search className="size-6 text-primary" />
+            Join a League
+          </h1>
+          <p className="text-muted-foreground">
+            Enter an invite code or browse public leagues to join
+          </p>
         </div>
       </div>
 

@@ -5,6 +5,7 @@
 'use client';
 
 import { use, useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import {
   Users,
   Trophy,
@@ -19,6 +20,8 @@ import {
   ChevronsRight,
   AlertCircle,
   Eye,
+  Gift,
+  ArrowRight,
 } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
@@ -338,25 +341,43 @@ export default function MyTeamViewPage({
         </div>
       )}
 
-      {/* Stats Cards - Compact 2x2 grid */}
-      <div className="grid grid-cols-2 gap-2 px-4 lg:px-6">
+      {/* Stats + Donate Cards (2,2,1) */}
+      <div className="grid grid-cols-2 gap-1 px-4 lg:px-6">
         {stats.map((stat, index) => {
           const StatIcon = stat.icon;
           return (
-            <Card key={index} className="p-2.5">
-              <div className="flex items-center gap-1.5 text-muted-foreground text-[10px] mb-0.5">
-                <StatIcon className="size-3" />
+            <Card key={index} className="p-1.5">
+              <div className="flex items-center gap-1 text-muted-foreground text-[11px]">
+                <StatIcon className="size-2" />
                 {stat.title}
               </div>
-              <div className="text-lg font-bold tabular-nums leading-tight">
+              <div className="text-[20px] font-semibold tabular-nums leading-tight">
                 {stat.value}
               </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">
+              <div className="text-[11px] text-muted-foreground line-clamp-1">
                 {stat.description}
               </div>
             </Card>
           );
         })}
+
+        <Link
+          href={`/leagues/${leagueId}/rest-day-donations`}
+          className="block col-span-2"
+        >
+          <Card className="hover:shadow-md transition-all hover:border-primary/30 cursor-pointer group">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="size-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shrink-0">
+                <Gift className="size-6 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold group-hover:text-primary transition-colors">Donate Rest Days</h3>
+                <p className="text-sm text-muted-foreground">Help a teammate in need</p>
+              </div>
+              <ArrowRight className="size-5 text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all" />
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* Team Members Table */}
