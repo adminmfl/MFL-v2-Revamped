@@ -27,8 +27,10 @@ import {
     IconLoader2,
     IconArrowLeft,
     IconClock,
+    IconEye,
 } from '@tabler/icons-react';
 import Link from 'next/link';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Donation {
     id: string;
@@ -58,6 +60,8 @@ interface LeagueMember {
     league_member_id: string;
     user_id: string;
     username: string;
+    team_id: string | null;
+    team_name: string | null;
 }
 
 export default function RestDayDonationsPage() {
@@ -70,15 +74,34 @@ export default function RestDayDonationsPage() {
     const [members, setMembers] = useState<LeagueMember[]>([]);
     const [userRole, setUserRole] = useState<string>('');
     const [userMemberId, setUserMemberId] = useState<string>('');
+    const [userTeamId, setUserTeamId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Form state
     const [receiverMemberId, setReceiverMemberId] = useState('');
+    const [selectedTeam, setSelectedTeam] = useState('');
     const [daysToTransfer, setDaysToTransfer] = useState('1');
     const [notes, setNotes] = useState('');
     const [proofFile, setProofFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [proofDialogOpen, setProofDialogOpen] = useState(false);
+    const [selectedProofUrl, setSelectedProofUrl] = useState<string | null>(null);
+
+    const normalizedTeamName = (teamName: string | null) =>
+        teamName && teamName.trim().length > 0 ? teamName : 'Unassigned';
+
+    const teamOptions = React.useMemo(() => {
+        const names = new Set<string>();
+        members.forEach((member) => names.add(normalizedTeamName(member.team_name)));
+        return Array.from(names).sort((a, b) => a.localeCompare(b));
+    }, [members]);
+
+    const filteredMembers = React.useMemo(() => {
+        if (!selectedTeam) return [];
+        if (selectedTeam === 'all') return members;
+        return members.filter((member) => normalizedTeamName(member.team_name) === selectedTeam);
+    }, [members, selectedTeam]);
 
     // Fetch donations and members
     const fetchData = useCallback(async () => {
@@ -90,6 +113,7 @@ export default function RestDayDonationsPage() {
                 setDonations(donationsData.data || []);
                 setUserRole(donationsData.userRole || '');
                 setUserMemberId(donationsData.userMemberId || '');
+                setUserTeamId(donationsData.userTeamId || null);
                 setMembers(donationsData.members || []);
             }
         } catch (error) {
@@ -201,9 +225,17 @@ export default function RestDayDonationsPage() {
     const isCaptain = userRole === 'captain';
     const isGovernorOrHost = ['governor', 'host'].includes(userRole);
 
-    // Captain sees pending donations from their own team
-    // Governor/Host sees captain_approved donations (and can also handle pending)
-    const pendingDonations = donations.filter(d => d.status === 'pending');
+    // Captain sees pending donations from their own team only
+    // Governor/Host sees all pending donations and captain_approved donations
+    const pendingDonations = donations.filter(d => {
+        if (d.status !== 'pending') return false;
+        // Captains only see donations from their own team members
+        if (isCaptain && !isGovernorOrHost) {
+            return d.donor.team_id === userTeamId;
+        }
+        // Governor/Host see all pending donations
+        return true;
+    });
     const captainApprovedDonations = donations.filter(d => d.status === 'captain_approved');
     const myDonations = donations.filter(
         d => d.donor.member_id === userMemberId || d.receiver.member_id === userMemberId
@@ -239,7 +271,7 @@ export default function RestDayDonationsPage() {
 
             <Tabs defaultValue={(isGovernorOrHost || isCaptain) ? 'approval' : 'request'} className="space-y-4">
                 <TabsList>
-                    <TabsTrigger value="request">Request Donation</TabsTrigger>
+                    <TabsTrigger value="request">Make a Donation</TabsTrigger>
                     <TabsTrigger value="my-donations">My Donations</TabsTrigger>
                     {(isGovernorOrHost || isCaptain) && (
                         <TabsTrigger value="approval" className="relative">
@@ -258,22 +290,45 @@ export default function RestDayDonationsPage() {
                 <TabsContent value="request">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Request approval for rest day donation</CardTitle>
+                            <CardTitle>Make a rest day donation</CardTitle>
                             <CardDescription>
-                                Donate your rest days to another league member. Requires approval.
+                                Donate to any league member. Requires captain approval first, then governor/host approval.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <form onSubmit={handleSubmit} className="space-y-4">
-                                <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="grid gap-4 sm:grid-cols-3">
                                     <div className="space-y-2">
-                                        <Label htmlFor="receiver">Receiver</Label>
-                                        <Select value={receiverMemberId} onValueChange={setReceiverMemberId}>
-                                            <SelectTrigger id="receiver">
-                                                <SelectValue placeholder="Select a teammate" />
+                                        <Label htmlFor="team">Team</Label>
+                                        <Select
+                                            value={selectedTeam}
+                                            onValueChange={(value) => {
+                                                setSelectedTeam(value);
+                                                setReceiverMemberId('');
+                                            }}
+                                        >
+                                            <SelectTrigger id="team">
+                                                <SelectValue placeholder="Select team" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {members
+                                                <SelectItem value="all">All teams</SelectItem>
+                                                {teamOptions.map((team) => (
+                                                    <SelectItem key={team} value={team}>
+                                                        {team}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="receiver">Receiver</Label>
+                                        <Select value={receiverMemberId} onValueChange={setReceiverMemberId} disabled={!selectedTeam}>
+                                            <SelectTrigger id="receiver">
+                                                <SelectValue placeholder={!selectedTeam ? 'Select team first' : 'Select a league member'} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {filteredMembers
                                                     .filter(m => m.league_member_id !== userMemberId)
                                                     .map(m => (
                                                         <SelectItem key={m.league_member_id} value={m.league_member_id}>
@@ -414,92 +469,58 @@ export default function RestDayDonationsPage() {
                                         No pending requests
                                     </p>
                                 ) : (
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Donor</TableHead>
-                                                <TableHead>Receiver</TableHead>
-                                                <TableHead>Days</TableHead>
-                                                <TableHead>Notes</TableHead>
-                                                <TableHead>Actions</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {pendingDonations.map(d => (
-                                                <TableRow key={d.id}>
-                                                    <TableCell className="font-medium">
-                                                        {d.donor.username}
-                                                    </TableCell>
-                                                    <TableCell>{d.receiver.username}</TableCell>
-                                                    <TableCell>{d.days_transferred}</TableCell>
-                                                    <TableCell className="text-muted-foreground max-w-[200px] truncate">
-                                                        {d.notes || '-'}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex gap-2">
-                                                            <Button
-                                                                size="sm"
-                                                                variant="default"
-                                                                onClick={() => handleUpdateStatus(d.id, 'approve')}
-                                                            >
-                                                                <IconCheck className="h-4 w-4 mr-1" />
-                                                                Approve
-                                                            </Button>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="destructive"
-                                                                onClick={() => handleUpdateStatus(d.id, 'reject')}
-                                                            >
-                                                                <IconX className="h-4 w-4 mr-1" />
-                                                                Reject
-                                                            </Button>
+                                    <div className="space-y-4">
+                                        {pendingDonations.map(d => (
+                                            <Card key={d.id}>
+                                                <CardContent className="p-4">
+                                                    <div className="space-y-4">
+                                                        <div className="flex items-center justify-between gap-4">
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <span className="font-semibold truncate">{d.donor.username}</span>
+                                                                    <span className="text-muted-foreground">→</span>
+                                                                    <span className="font-semibold truncate">{d.receiver.username}</span>
+                                                                </div>
+                                                                <p className="text-sm text-muted-foreground">
+                                                                    {d.days_transferred} {d.days_transferred === 1 ? 'day' : 'days'}
+                                                                </p>
+                                                            </div>
+                                                            <Badge variant="outline" className="text-yellow-500 border-yellow-500/20 shrink-0">
+                                                                <IconClock className="h-3 w-3 mr-1" />
+                                                                Pending
+                                                            </Badge>
                                                         </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                )}
-
-                                {/* Captain-Approved donations awaiting Governor/Host final approval */}
-                                {captainApprovedDonations.length > 0 && (
-                                    <div className="mt-8">
-                                        <h3 className="text-lg font-semibold mb-4">Awaiting Final Approval</h3>
-                                        <p className="text-sm text-muted-foreground mb-4">
-                                            These donations were approved by the Captain. Governor/Host final approval required.
-                                        </p>
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Donor</TableHead>
-                                                    <TableHead>Receiver</TableHead>
-                                                    <TableHead>Days</TableHead>
-                                                    <TableHead>Captain Approved</TableHead>
-                                                    <TableHead>Actions</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {captainApprovedDonations.map(d => (
-                                                    <TableRow key={d.id}>
-                                                        <TableCell className="font-medium">
-                                                            {d.donor.username}
-                                                        </TableCell>
-                                                        <TableCell>{d.receiver.username}</TableCell>
-                                                        <TableCell>{d.days_transferred}</TableCell>
-                                                        <TableCell className="text-muted-foreground">
-                                                            {d.captain_approved_at
-                                                                ? new Date(d.captain_approved_at).toLocaleDateString()
-                                                                : '-'}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            <div className="flex gap-2">
+                                                        
+                                                        {d.notes && (
+                                                            <div className="text-sm bg-muted/50 p-3 rounded-md">
+                                                                <span className="font-medium text-foreground">Notes:</span>{' '}
+                                                                <span className="text-muted-foreground">{d.notes}</span>
+                                                            </div>
+                                                        )}
+                                                        
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            {d.proof_url && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => {
+                                                                        setSelectedProofUrl(d.proof_url);
+                                                                        setProofDialogOpen(true);
+                                                                    }}
+                                                                >
+                                                                    <IconEye className="h-4 w-4 mr-1" />
+                                                                    View Proof
+                                                                </Button>
+                                                            )}
+                                                            <div className="flex-1 min-w-0" />
+                                                            <div className="flex gap-2 shrink-0">
                                                                 <Button
                                                                     size="sm"
                                                                     variant="default"
                                                                     onClick={() => handleUpdateStatus(d.id, 'approve')}
                                                                 >
                                                                     <IconCheck className="h-4 w-4 mr-1" />
-                                                                    Final Approve
+                                                                    Approve
                                                                 </Button>
                                                                 <Button
                                                                     size="sm"
@@ -510,11 +531,103 @@ export default function RestDayDonationsPage() {
                                                                     Reject
                                                                 </Button>
                                                             </div>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
+                                                        </div>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Captain-Approved donations awaiting Governor/Host final approval */}
+                                {captainApprovedDonations.length > 0 && (
+                                    <div className="mt-8 space-y-4">
+                                        <div>
+                                            <h3 className="text-lg font-semibold mb-2">
+                                                {isGovernorOrHost ? 'Awaiting Final Approval' : 'Approved by You'}
+                                            </h3>
+                                            <p className="text-sm text-muted-foreground">
+                                                {isGovernorOrHost 
+                                                    ? 'These donations were approved by the Captain. Governor/Host final approval required.'
+                                                    : 'These donations have been approved by you and are awaiting final approval from Governor/Host.'
+                                                }
+                                            </p>
+                                        </div>
+                                        <div className="space-y-4">
+                                            {captainApprovedDonations.map(d => (
+                                                <Card key={d.id}>
+                                                    <CardContent className="p-4">
+                                                        <div className="space-y-4">
+                                                            <div className="flex items-center justify-between gap-4">
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-center gap-2 mb-1">
+                                                                        <span className="font-semibold truncate">{d.donor.username}</span>
+                                                                        <span className="text-muted-foreground">→</span>
+                                                                        <span className="font-semibold truncate">{d.receiver.username}</span>
+                                                                    </div>
+                                                                    <p className="text-sm text-muted-foreground">
+                                                                        {d.days_transferred} {d.days_transferred === 1 ? 'day' : 'days'}
+                                                                    </p>
+                                                                    {d.captain_approved_at && (
+                                                                        <p className="text-xs text-muted-foreground mt-1">
+                                                                            Captain approved: {new Date(d.captain_approved_at).toLocaleDateString()}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                                <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20 shrink-0">
+                                                                    <IconClock className="h-3 w-3 mr-1" />
+                                                                    {isGovernorOrHost ? 'Captain Approved' : 'Awaiting Governor'}
+                                                                </Badge>
+                                                            </div>
+                                                            
+                                                            {d.notes && (
+                                                                <div className="text-sm bg-muted/50 p-3 rounded-md">
+                                                                    <span className="font-medium text-foreground">Notes:</span>{' '}
+                                                                    <span className="text-muted-foreground">{d.notes}</span>
+                                                                </div>
+                                                            )}
+                                                            
+                                                            <div className="flex flex-wrap items-center gap-2">
+                                                                {d.proof_url && (
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        onClick={() => {
+                                                                            setSelectedProofUrl(d.proof_url);
+                                                                            setProofDialogOpen(true);
+                                                                        }}
+                                                                    >
+                                                                        <IconEye className="h-4 w-4 mr-1" />
+                                                                        View Proof
+                                                                    </Button>
+                                                                )}
+                                                                <div className="flex-1 min-w-0" />
+                                                                {isGovernorOrHost && (
+                                                                    <div className="flex gap-2 shrink-0">
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="default"
+                                                                            onClick={() => handleUpdateStatus(d.id, 'approve')}
+                                                                        >
+                                                                            <IconCheck className="h-4 w-4 mr-1" />
+                                                                            Final Approve
+                                                                        </Button>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="destructive"
+                                                                            onClick={() => handleUpdateStatus(d.id, 'reject')}
+                                                                        >
+                                                                            <IconX className="h-4 w-4 mr-1" />
+                                                                            Reject
+                                                                        </Button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                             </CardContent>
@@ -522,6 +635,24 @@ export default function RestDayDonationsPage() {
                     </TabsContent>
                 )}
             </Tabs>
+
+            {/* Proof View Dialog */}
+            <Dialog open={proofDialogOpen} onOpenChange={setProofDialogOpen}>
+                <DialogContent className="max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle>Donation Proof</DialogTitle>
+                    </DialogHeader>
+                    {selectedProofUrl && (
+                        <div className="mt-4">
+                            <img 
+                                src={selectedProofUrl} 
+                                alt="Donation proof" 
+                                className="w-full h-auto rounded-lg border"
+                            />
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

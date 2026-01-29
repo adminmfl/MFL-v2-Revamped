@@ -413,6 +413,16 @@ export function SubmissionDetailDialog({
             )}
           </div>
 
+          {/* Notes - Only show if there are notes and it's NOT an exemption (exemptions show notes in alert) */}
+          {submission.notes && !isExemption && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Notes</p>
+              <div className="p-3 rounded-lg bg-muted/50 border">
+                <p className="text-sm text-foreground whitespace-pre-wrap">{submission.notes}</p>
+              </div>
+            </div>
+          )}
+
           <Separator />
 
           {/* Submission Metadata */}

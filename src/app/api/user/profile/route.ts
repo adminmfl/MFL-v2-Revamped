@@ -2,6 +2,40 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 import { updateUserProfile } from '@/lib/services/users';
+import { getSupabaseServiceRole } from '@/lib/supabase/client';
+
+export async function GET() {
+    try {
+        const session = await getServerSession(authOptions as any);
+        const userId = (session?.user as any)?.id;
+
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const supabase = getSupabaseServiceRole();
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('user_id, username, email, phone, date_of_birth, profile_picture_url')
+            .eq('user_id', userId)
+            .single();
+
+        if (error || !user) {
+            return NextResponse.json(
+                { error: 'User not found' },
+                { status: 404 }
+            );
+        }
+
+        return NextResponse.json(user);
+    } catch (error) {
+        console.error('Error fetching profile:', error);
+        return NextResponse.json(
+            { error: 'Internal server error' },
+            { status: 500 }
+        );
+    }
+}
 
 export async function PATCH(req: Request) {
     try {
@@ -13,7 +47,7 @@ export async function PATCH(req: Request) {
         }
 
         const body = await req.json();
-        const { name, phone } = body;
+        const { name, phone, profile_picture_url } = body;
 
         // Validate inputs
         if (!name || name.trim().length < 2) {
@@ -27,6 +61,7 @@ export async function PATCH(req: Request) {
         const updatedUser = await updateUserProfile(userId, {
             username: name.trim(),
             phone: phone || null,
+            profile_picture_url: profile_picture_url || null,
         }, true);
 
         if (!updatedUser) {

@@ -34,7 +34,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -436,6 +435,7 @@ export default function MyTeamPage({
                 <TableHead className="w-12">#</TableHead>
                 <TableHead>Member</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead className="text-center">Rest Days</TableHead>
                 <TableHead className="text-center">Points</TableHead>
               </TableRow>
             </TableHeader>
@@ -449,16 +449,16 @@ export default function MyTeamPage({
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="relative">
-                          <Avatar className="size-10">
-                            <AvatarFallback>
+                          <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span className="text-sm font-medium text-primary">
                               {member.username
                                 .split(' ')
                                 .map((n) => n[0])
                                 .join('')
                                 .toUpperCase()
                                 .slice(0, 2)}
-                            </AvatarFallback>
-                          </Avatar>
+                            </span>
+                          </div>
                           {member.is_captain && (
                             <div className="absolute -bottom-0.5 -right-0.5 size-4 rounded-full bg-amber-500 flex items-center justify-center ring-2 ring-background">
                               <Crown className="size-2.5 text-white" />
@@ -481,13 +481,16 @@ export default function MyTeamPage({
                       )}
                     </TableCell>
                     <TableCell className="text-center text-muted-foreground text-sm">
+                      {(member as any).rest_days_used ?? 0}
+                    </TableCell>
+                    <TableCell className="text-center text-muted-foreground text-sm">
                       {(member as any).points ?? 0}
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
+                  <TableCell colSpan={5} className="h-24 text-center">
                     {searchQuery
                       ? 'No members found matching your search.'
                       : 'No members in this team yet.'}

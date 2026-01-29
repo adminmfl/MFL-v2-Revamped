@@ -82,6 +82,7 @@ export interface IndividualRanking {
   challenge_points?: number;
   avg_rr: number;
   submission_count: number;
+  profile_picture_url?: string;
 }
 
 export interface SubTeamRanking {
@@ -243,7 +244,7 @@ export async function GET(
         league_member_id,
         user_id,
         team_id,
-        users!leaguemembers_user_id_fkey(user_id, username)
+        users!leaguemembers_user_id_fkey(user_id, username, profile_picture_url)
       `)
       .eq('league_id', leagueId);
 
@@ -254,7 +255,7 @@ export async function GET(
 
     // Create member lookup maps
     const memberIds = (members || []).map((m) => m.league_member_id);
-    const memberToUser = new Map<string, { user_id: string; username: string; team_id: string | null }>();
+    const memberToUser = new Map<string, { user_id: string; username: string; team_id: string | null; profile_picture_url?: string }>();
     const teamMembers = new Map<string, string[]>(); // team_id -> league_member_ids
 
     (members || []).forEach((m) => {
@@ -263,6 +264,7 @@ export async function GET(
         user_id: m.user_id,
         username: user?.username || 'Unknown',
         team_id: m.team_id,
+        profile_picture_url: user?.profile_picture_url || undefined,
       });
 
       if (m.team_id) {
@@ -741,6 +743,7 @@ export async function GET(
       total_rr: number;
       rr_count: number;
       submission_count: number;
+      profile_picture_url?: string;
     }>();
 
     // Initialize individual stats from members
@@ -759,6 +762,7 @@ export async function GET(
         total_rr: 0,
         rr_count: 0,
         submission_count: 0,
+        profile_picture_url: user?.profile_picture_url || undefined,
       });
     });
 
@@ -808,6 +812,7 @@ export async function GET(
         challenge_points: is.challenge_points,
         avg_rr: is.rr_count > 0 ? Number((is.total_rr / is.rr_count).toFixed(2)) : 0,
         submission_count: is.submission_count,
+        profile_picture_url: is.profile_picture_url,
       }))
       .sort((a, b) => {
         // Sort by points DESC, then avg_rr DESC

@@ -16,6 +16,8 @@ export interface LeagueActivity {
   description: string | null;
   category_id: string | null;
   frequency?: number | null;
+  min_value?: number | null;
+  age_group_overrides?: Record<string, any> | null;
   category?: {
     category_id: string;
     category_name: string;

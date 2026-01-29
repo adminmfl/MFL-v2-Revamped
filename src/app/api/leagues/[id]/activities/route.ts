@@ -211,6 +211,8 @@ export async function GET(
       .select(`
         activity_id,
         frequency,
+        min_value,
+        age_group_overrides,
         activities(
           activity_id, 
           activity_name, 
@@ -236,6 +238,8 @@ export async function GET(
           .from('leagueactivities')
           .select(`
             activity_id,
+            min_value,
+            age_group_overrides,
             activities(
               activity_id, 
               activity_name, 
@@ -273,6 +277,8 @@ export async function GET(
           description: activity.description,
           category_id: activity.category_id,
           frequency: (la as any).frequency ?? null,
+          min_value: (la as any).min_value ?? null,
+          age_group_overrides: (la as any).age_group_overrides ?? null,
           category: activity.activity_categories,
           value: activity.activity_name,
           measurement_type: activity.measurement_type,

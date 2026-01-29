@@ -164,8 +164,8 @@ export function AppHeader() {
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-background transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
-        {/* Sidebar Toggle */}
-        <SidebarTrigger className="-ml-1" />
+          {/* Sidebar Toggle */}
+          <SidebarTrigger className="-ml-1" />
         <Separator
           orientation="vertical"
           className="mx-2 data-[orientation=vertical]:h-4"
@@ -199,7 +199,11 @@ export function AppHeader() {
           {activeLeague && (
             <LeagueSwitcher
               trigger={
-                <Button variant="ghost" size="sm" className="flex gap-2 px-2 sm:px-4 h-auto py-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex gap-2 px-2 sm:px-4 h-auto py-1 border border-transparent bg-transparent shadow-none hover:bg-muted/40"
+                >
                   <Avatar className="size-8 sm:size-9 rounded-md">
                     {activeLeague.logo_url ? (
                       <AvatarImage src={activeLeague.logo_url} alt={activeLeague.name} />

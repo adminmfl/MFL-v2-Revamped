@@ -787,36 +787,30 @@ export default function TeamSubmissionsPage({
                       <Eye className="size-3.5 mr-1.5" /> View
                     </Button>
 
-                    {isPending && !isOwnSubmission && (
-                      <>
-                        <Input
-                          type="number"
-                          placeholder="Pts"
-                          value={tableAwardedPoints[submission.id] ?? ''}
-                          onChange={(e) => setTableAwardedPoints((p) => ({ ...p, [submission.id]: e.target.value === '' ? '' : Number(e.target.value) }))}
-                          className="w-14 h-8 text-center px-1 text-xs"
-                        />
-                        <Button
-                          variant="default"
-                          size="sm"
-                          className="flex-[2] h-8 bg-green-600 hover:bg-green-700 text-white text-xs"
-                          onClick={() => handleValidate(submission.id, 'approved', tableAwardedPoints[submission.id] === '' ? undefined : (tableAwardedPoints[submission.id] as number))}
-                          disabled={isValidating}
-                        >
-                          {isValidating ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5 mr-1.5" />}
-                          Approve
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="h-8 w-10 shrink-0"
-                          onClick={() => handleValidate(submission.id, 'rejected', null)}
-                          disabled={isValidating}
-                        >
-                          <X className="size-4" />
-                        </Button>
-                      </>
-                    )}
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className={cn(
+                        "h-8 text-xs px-3",
+                        submission.status === 'approved' 
+                          ? 'bg-gray-300 text-gray-600 hover:bg-gray-300 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400' 
+                          : 'bg-green-600 hover:bg-green-700 text-white'
+                      )}
+                      onClick={() => handleValidate(submission.id, 'approved', undefined)}
+                      disabled={isValidating || submission.status === 'approved'}
+                    >
+                      {isValidating ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5 mr-1.5" />}
+                      {submission.status === 'approved' ? 'Approved' : 'Approve'}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-8 w-10 shrink-0"
+                      onClick={() => handleValidate(submission.id, 'rejected', null)}
+                      disabled={isValidating}
+                    >
+                      <X className="size-4" />
+                    </Button>
                   </div>
                 </div>
               );
@@ -925,15 +919,15 @@ export default function TeamSubmissionsPage({
             created_date: selectedSubmission.created_date,
             modified_date: selectedSubmission.modified_date,
           }}
-          canOverride={false}
-          onApprove={selectedSubmission.status === 'pending' ? (id) => {
+          canOverride={true}
+          onApprove={(id) => {
             handleValidate(id, 'approved');
             setDetailDialogOpen(false);
-          } : undefined}
-          onReject={selectedSubmission.status === 'pending' ? (id) => {
+          }}
+          onReject={(id) => {
             handleValidate(id, 'rejected');
             setDetailDialogOpen(false);
-          } : undefined}
+          }}
           isValidating={validatingId === selectedSubmission.id}
         />
       )}
