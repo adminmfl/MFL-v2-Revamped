@@ -205,6 +205,22 @@ export default function ManualEntryPage({
   const [weekRows, setWeekRows] = React.useState<WeekRow[] | null>(null);
   const [entriesLoading, setEntriesLoading] = React.useState(false);
   const [formMemberId, setFormMemberId] = React.useState('');
+  const [selectedTeam, setSelectedTeam] = React.useState('');
+
+  const normalizedTeamName = (teamName: string | null) =>
+    teamName && teamName.trim().length > 0 ? teamName : 'Unassigned';
+
+  const teamOptions = React.useMemo(() => {
+    const names = new Set<string>();
+    members.forEach((member) => names.add(normalizedTeamName(member.team_name)));
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [members]);
+
+  const filteredMembers = React.useMemo(() => {
+    if (!selectedTeam) return [];
+    if (selectedTeam === 'all') return members;
+    return members.filter((member) => normalizedTeamName(member.team_name) === selectedTeam);
+  }, [members, selectedTeam]);
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [dialogMode, setDialogMode] = React.useState<'add' | 'overwrite'>('add');
@@ -498,26 +514,64 @@ export default function ManualEntryPage({
           <CardDescription>Select the player to manage, then adjust the week and add/overwrite entries.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="team">Team</Label>
+              <Select
+                value={selectedTeam}
+                onValueChange={(value) => {
+                  setSelectedTeam(value);
+                  setFormMemberId('');
+                  setWeekOffset(0);
+                }}
+                disabled={membersLoading}
+              >
+                <SelectTrigger
+                  id="team"
+                  className="h-auto min-h-12 py-3 [&>span]:line-clamp-none [&>span]:whitespace-normal text-left"
+                >
+                  <SelectValue placeholder={membersLoading ? 'Loading teams...' : 'Select team'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All teams</SelectItem>
+                  {teamOptions.map((team) => (
+                    <SelectItem key={team} value={team}>
+                      {team}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="member">Player</Label>
               <Select
                 value={formMemberId}
                 onValueChange={(value) => setFormMemberId(value)}
-                disabled={membersLoading}
+                disabled={membersLoading || !selectedTeam}
               >
                 <SelectTrigger id="member" className="h-auto min-h-12 py-3 [&>span]:line-clamp-none [&>span]:whitespace-normal text-left">
-                  <SelectValue placeholder={membersLoading ? 'Loading players...' : 'Select player'} />
+                  <SelectValue
+                    placeholder={
+                      membersLoading
+                        ? 'Loading players...'
+                        : !selectedTeam
+                          ? 'Select team first'
+                          : 'Select player'
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  {members.map((member) => (
+                  {filteredMembers.map((member) => (
                     <SelectItem key={member.league_member_id} value={member.league_member_id}>
                       <div className="flex flex-col text-left">
                         <span className="font-medium">{member.username || member.email}</span>
                         <span className="text-xs text-muted-foreground">{member.email}</span>
                         {member.team_name ? (
                           <span className="text-xs text-muted-foreground">Team: {member.team_name}</span>
-                        ) : null}
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Team: Unassigned</span>
+                        )}
                       </div>
                     </SelectItem>
                   ))}

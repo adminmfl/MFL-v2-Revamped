@@ -89,9 +89,9 @@ export async function GET(
 
     // =========================================================================
     // REST DAY DONATION ADJUSTMENTS
-    // Formula: final_used = auto + donated - received
-    // (donated increases usage because donor gives away allowance)
-    // (received decreases usage because receiver gains allowance)
+    // Formula: final_used = auto - received + donated
+    // (received decreases usage because receiver gains extra days)
+    // (donated increases usage because donor gives away their days)
     // =========================================================================
 
     // Get approved donations received by this member
@@ -113,16 +113,18 @@ export async function GET(
     const daysDonated = (donatedDonations || []).reduce((sum, d) => sum + d.days_transferred, 0);
 
     // Final calculation with adjustments
-    // If you donate, your effective usage increases (less remaining)
-    // If you receive, your effective usage decreases (more remaining)
-    const finalUsedRestDays = autoRestDays + daysDonated - daysReceived;
-    const finalRemainingRestDays = Math.max(0, totalAllowedRestDays - finalUsedRestDays);
-    const isAtLimit = finalUsedRestDays >= totalAllowedRestDays;
+    // When you receive donations, your total allowed increases
+    // When you donate, your total allowed decreases
+    // Used stays the same (just auto rest days taken)
+    const adjustedTotalAllowed = totalAllowedRestDays + daysReceived - daysDonated;
+    const finalUsedRestDays = autoRestDays;
+    const finalRemainingRestDays = Math.max(0, adjustedTotalAllowed - finalUsedRestDays);
+    const isAtLimit = finalUsedRestDays >= adjustedTotalAllowed;
 
     return NextResponse.json({
       success: true,
       data: {
-        totalAllowed: totalAllowedRestDays,
+        totalAllowed: adjustedTotalAllowed,
         used: finalUsedRestDays,
         autoUsed: autoRestDays,
         pending: pendingRestDays || 0,

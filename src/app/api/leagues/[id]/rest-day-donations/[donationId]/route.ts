@@ -61,9 +61,12 @@ async function getMemberFinalRestDays(
 
     const donated = (donatedDonations || []).reduce((sum, d) => sum + d.days_transferred, 0);
 
-    // Formula: final_used = auto + donated - received
-    const finalUsed = (autoRestDays || 0) + donated - received;
-    const finalRemaining = Math.max(0, totalAllowed - finalUsed);
+    // Adjusted total allowed = base total + received - donated
+    // Used = just auto rest days
+    // Remaining = adjusted total - used
+    const adjustedTotalAllowed = totalAllowed + received - donated;
+    const finalUsed = autoRestDays || 0;
+    const finalRemaining = Math.max(0, adjustedTotalAllowed - finalUsed);
 
     return {
         autoRestDays: autoRestDays || 0,

@@ -106,7 +106,7 @@ export default function AppLayout({
             {/* Page Content */}
             <main className="flex-1 overflow-auto pb-20 md:pb-0">
               <div className="p-4 lg:p-6">
-                {pathname !== '/dashboard' && (
+                {pathname !== '/dashboard' && !/^\/leagues\/[^/]+$/.test(pathname || '') && !/^\/leagues\/[^/]+\/submit$/.test(pathname || '') && (
                   <Button asChild variant="outline" size="sm" className="mb-4 gap-2">
                     <Link href={backHref}>
                       <ArrowLeft className="size-4" />

@@ -10,6 +10,7 @@ import {
   HelpCircle,
   ChevronRight,
   Dumbbell,
+  MoreVertical,
 } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
@@ -139,6 +140,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                       {user?.email || 'user@example.com'}
                     </span>
                   </div>
+                  <MoreVertical className="ml-auto size-4 text-muted-foreground" aria-hidden="true" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
