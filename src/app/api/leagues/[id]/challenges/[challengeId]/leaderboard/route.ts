@@ -112,25 +112,36 @@ export async function GET(
     let rankings: Array<{ id: string; name: string; score: number; rank: number }> = [];
 
     if (challenge.challenge_type === 'individual') {
-      // Individual challenge - group by league_member_id
-      const memberScores = new Map<string, { name: string; score: number; userId: string }>();
+      // Individual challenge - scores go to player but aggregate to TEAM level for leaderboard display
+      // Each individual submission counts toward their team's total
+      const teamScores = new Map<string, { name: string; score: number }>();
+
+      // Fetch team names for all teams of submitters
+      const teamIds = Array.from(new Set((submissions || []).map((s: any) => s.leaguemembers?.team_id).filter(Boolean)));
+      const { data: teams } = await supabase
+        .from('teams')
+        .select('team_id, team_name')
+        .in('team_id', teamIds);
+
+      const teamNameMap = new Map((teams || []).map((t) => [t.team_id, t.team_name]));
 
       (submissions || []).forEach((sub: any) => {
-        const memberId = sub.league_member_id;
-        const points = Number(sub.awarded_points || 0);
-        const username = sub.leaguemembers?.users?.username || 'Unknown';
-        const userId = sub.leaguemembers?.user_id || memberId;
+        const teamId = sub.leaguemembers?.team_id;
+        if (!teamId) return;
 
-        const existing = memberScores.get(memberId) || { name: username, score: 0, userId };
-        memberScores.set(memberId, {
+        const points = Number(sub.awarded_points || 0);
+        const teamName = teamNameMap.get(teamId) || 'Unknown Team';
+
+        const existing = teamScores.get(teamId) || { name: teamName, score: 0 };
+        teamScores.set(teamId, {
           ...existing,
           score: existing.score + points,
         });
       });
 
-      rankings = Array.from(memberScores.entries())
+      rankings = Array.from(teamScores.entries())
         .map(([id, data]) => ({
-          id: data.userId,
+          id,
           name: data.name,
           score: data.score,
           rank: 0,
@@ -176,20 +187,21 @@ export async function GET(
         .map((item, index) => ({ ...item, rank: index + 1 }));
 
     } else if (challenge.challenge_type === 'sub_team') {
-      // Sub-team challenge - group by sub_team_id
-      const subTeamScores = new Map<string, { name: string; score: number; teamName: string }>();
+      // Sub-team challenge - aggregate to TEAM level for leaderboard display
+      // Sub-team scores roll up to their parent team's total
+      const teamScores = new Map<string, { name: string; score: number }>();
 
-      // Fetch sub-team names with team info
+      // Fetch sub-team to team mapping
       const subTeamIds = Array.from(new Set((submissions || []).map((s: any) => s.sub_team_id).filter(Boolean)));
       if (subTeamIds.length > 0) {
         const { data: subTeams } = await supabase
           .from('challenge_subteams')
-          .select('subteam_id, name, team_id, teams(team_name)')
+          .select('subteam_id, team_id, teams(team_name)')
           .in('subteam_id', subTeamIds);
 
-        const subTeamDataMap = new Map((subTeams || []).map((st: any) => [
+        const subTeamToTeamMap = new Map((subTeams || []).map((st: any) => [
           st.subteam_id,
-          { name: st.name, teamName: st.teams?.team_name || 'Unknown Team' }
+          { teamId: st.team_id, teamName: st.teams?.team_name || 'Unknown Team' }
         ]));
 
         (submissions || []).forEach((sub: any) => {
@@ -197,21 +209,21 @@ export async function GET(
           if (!subTeamId) return;
 
           const points = Number(sub.awarded_points || 0);
-          const subTeamData = subTeamDataMap.get(subTeamId) || { name: 'Unknown Sub-team', teamName: 'Unknown Team' };
+          const teamData = subTeamToTeamMap.get(subTeamId);
+          if (!teamData?.teamId) return;
 
-          const existing = subTeamScores.get(subTeamId) || { name: subTeamData.name, score: 0, teamName: subTeamData.teamName };
-          subTeamScores.set(subTeamId, {
+          const existing = teamScores.get(teamData.teamId) || { name: teamData.teamName, score: 0 };
+          teamScores.set(teamData.teamId, {
             ...existing,
             score: existing.score + points,
           });
         });
 
-        rankings = Array.from(subTeamScores.entries())
+        rankings = Array.from(teamScores.entries())
           .map(([id, data]) => ({
             id,
             name: data.name,
             score: data.score,
-            teamName: data.teamName,
             rank: 0,
           }))
           .sort((a, b) => b.score - a.score)
