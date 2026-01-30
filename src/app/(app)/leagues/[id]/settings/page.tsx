@@ -54,11 +54,31 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 
 // ============================================================================
 // League Settings Page (Host Only)
 // ============================================================================
+
+function FieldInfoButton({ text }: { text: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex size-5 items-center justify-center rounded-full border border-muted-foreground/30 text-muted-foreground hover:text-foreground hover:border-muted-foreground/60"
+          aria-label="Field information"
+        >
+          <Info className="size-3" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs">
+        {text}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 export default function LeagueSettingsPage({
   params,
@@ -391,6 +411,7 @@ export default function LeagueSettingsPage({
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Trophy className="size-5 text-primary" />
                   Basic Information
+                  <FieldInfoButton text="Update core league details and schedule." />
                 </CardTitle>
                 <CardDescription>
                   Update your league details and description
@@ -486,6 +507,7 @@ export default function LeagueSettingsPage({
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Shield className="size-5 text-primary" />
                   League Branding
+                  <FieldInfoButton text="Upload a square logo shown on league pages and invites." />
                 </CardTitle>
                 <CardDescription>
                   Upload a square logo (PNG/JPEG/WebP, max 2MB)
@@ -561,6 +583,7 @@ export default function LeagueSettingsPage({
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Users className="size-5 text-primary" />
                   Team Configuration
+                  <FieldInfoButton text="Adjust team count and rest day rules." />
                 </CardTitle>
                 <CardDescription>
                   Configure team settings (changes may not apply to active
@@ -625,6 +648,7 @@ export default function LeagueSettingsPage({
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Shield className="size-5 text-primary" />
                   Rest Day Automation
+                  <FieldInfoButton text="Automatically apply rest days when members miss deadlines." />
                 </CardTitle>
                 <CardDescription>
                   Auto-assign a rest day if a member misses the daily deadline
@@ -655,6 +679,7 @@ export default function LeagueSettingsPage({
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Trophy className="size-5 text-primary" />
                   Point Normalization
+                  <FieldInfoButton text="Normalize points to account for team size differences." />
                 </CardTitle>
                 <CardDescription>
                   Normalize team points based on team size for fair competition
@@ -682,7 +707,10 @@ export default function LeagueSettingsPage({
             {/* Visibility Settings Card */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Visibility & Access</CardTitle>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  Visibility & Access
+                  <FieldInfoButton text="Control discoverability and invite-only access." />
+                </CardTitle>
                 <CardDescription>
                   Control who can see and join your league
                 </CardDescription>
@@ -739,6 +767,7 @@ export default function LeagueSettingsPage({
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Users className="size-4 text-primary" />
                   Teams Summary
+                  <FieldInfoButton text="Quick overview of team configuration." />
                 </CardTitle>
                 <CardDescription>Configured team settings</CardDescription>
               </CardHeader>
@@ -768,6 +797,7 @@ export default function LeagueSettingsPage({
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Activity className="size-4 text-primary" />
                   Activities Summary
+                  <FieldInfoButton text="Summary of enabled activities and limits." />
                 </CardTitle>
                 <CardDescription>Enabled activity configuration</CardDescription>
               </CardHeader>
@@ -803,6 +833,7 @@ export default function LeagueSettingsPage({
                 <CardTitle className="text-lg text-destructive flex items-center gap-2">
                   <AlertTriangle className="size-5" />
                   Danger Zone
+                  <FieldInfoButton text="Irreversible actions for this league." />
                 </CardTitle>
                 <CardDescription>
                   Irreversible actions. Proceed with caution.
@@ -848,7 +879,10 @@ export default function LeagueSettingsPage({
             {/* Summary Card */}
             <Card className="sticky top-6">
               <CardHeader>
-                <CardTitle className="text-lg">Settings Summary</CardTitle>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  Settings Summary
+                  <FieldInfoButton text="Review current settings before saving." />
+                </CardTitle>
                 <CardDescription>Review your changes</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">

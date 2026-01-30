@@ -265,6 +265,14 @@ function LeagueCard({
             {league.description || 'No description'}
           </p>
 
+          {/* Creator Badge */}
+          {league.creator_name ? (
+            <Badge className="mb-2 text-white border-0 px-2 py-0.5 hover:from-blue-600 hover:to-cyan-600 transition-all shadow-sm text-[9px] lg:text-xs">
+              <Crown className="size-2.5 lg:size-3 mr-1" />
+              Hosted by {league.creator_name}
+            </Badge>
+          ) : null}
+
           {/* Roles */}
           <div className="flex flex-wrap gap-1">
             {league.roles.map((role) => {

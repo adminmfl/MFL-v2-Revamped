@@ -122,6 +122,8 @@ interface LeagueDetails {
   league_capacity: number;
   rest_days: number;
   invite_code: string | null;
+  created_by?: string;
+  creator_name?: string;
 }
 
 interface LeagueStats {
@@ -163,6 +165,7 @@ export default function LeagueDashboardPage({
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [rejectedCount, setRejectedCount] = React.useState<number>(0);
+  const [hostName, setHostName] = React.useState<string | null>(null);
   const [recentDays, setRecentDays] = React.useState<RecentDayRow[] | null>(null);
   const [weekOffset, setWeekOffset] = React.useState(0);
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
@@ -237,7 +240,12 @@ export default function LeagueDashboardPage({
 
         const leagueData = await leagueRes.json();
         if (leagueData.success && leagueData.data) {
-          setLeague(leagueData.data);
+          const leagueInfo = leagueData.data;
+          setLeague(leagueInfo);
+
+          if (leagueInfo.creator_name) {
+            setHostName(leagueInfo.creator_name);
+          }
         } else {
           throw new Error('League not found');
         }
@@ -806,6 +814,12 @@ export default function LeagueDashboardPage({
             )}
           </div>
           <p className="text-muted-foreground">One workout closer to your best self !</p>
+          {/* {hostName && (
+            <Badge className="mt-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-0 px-3 py-1.5 hover:from-blue-600 hover:to-cyan-600 transition-all shadow-sm">
+              <Crown className="size-3.5 mr-1.5" />
+              Hosted by {hostName}
+            </Badge>
+          )} */}
         </div>
 
         <div className="flex gap-2 flex-wrap sm:ml-auto sm:justify-end">
