@@ -33,8 +33,10 @@ import {
   AlertCircle,
   Activity,
   ArrowRight,
+  Crown,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 
 // ============================================================================
 // Types
@@ -337,6 +339,7 @@ export default function RulesPage({
   const [error, setError] = useState<string | null>(null);
   const [rulesData, setRulesData] = useState<RulesData | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [hostName, setHostName] = useState<string | null>(null);
 
   const fetchRules = async () => {
     try {
@@ -357,6 +360,22 @@ export default function RulesPage({
       setLoading(false);
     }
   };
+
+  // Fetch host name
+  useEffect(() => {
+    async function fetchHostName() {
+      try {
+        const res = await fetch(`/api/leagues/${id}`);
+        const json = await res.json();
+        if (res.ok && json?.success && json.data?.creator_name) {
+          setHostName(json.data.creator_name);
+        }
+      } catch (err) {
+        console.error('Error fetching host name:', err);
+      }
+    }
+    fetchHostName();
+  }, [id]);
 
   useEffect(() => {
     fetchRules();
@@ -413,6 +432,12 @@ export default function RulesPage({
             <p className="text-muted-foreground">
               Official rules and guidelines for this league
             </p>
+            {hostName && (
+              <Badge className="mt-3 text-white border-0 px-3 py-1.5 shadow-sm">
+                <Crown className="size-3.5 mr-1.5" />
+                League is hosted by {hostName}
+              </Badge>
+            )}
           </div>
           {isHost && (
             <Button onClick={() => setEditorOpen(true)}>

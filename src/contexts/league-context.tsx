@@ -28,6 +28,7 @@ export interface LeagueWithRoles {
   team_name: string | null;
   team_logo_url: string | null;
   is_host: boolean;
+  creator_name?: string | null;
 }
 
 

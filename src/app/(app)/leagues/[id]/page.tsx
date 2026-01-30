@@ -814,9 +814,12 @@ export default function LeagueDashboardPage({
             )}
           </div>
           <p className="text-muted-foreground">One workout closer to your best self !</p>
-          {hostName && (
-            <p className="text-sm bold text-muted-foreground mt-1">Hosted by {hostName}</p>
-          )}
+          {/* {hostName && (
+            <Badge className="mt-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-0 px-3 py-1.5 hover:from-blue-600 hover:to-cyan-600 transition-all shadow-sm">
+              <Crown className="size-3.5 mr-1.5" />
+              Hosted by {hostName}
+            </Badge>
+          )} */}
         </div>
 
         <div className="flex gap-2 flex-wrap sm:ml-auto sm:justify-end">
