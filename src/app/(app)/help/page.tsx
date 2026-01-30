@@ -31,6 +31,7 @@ import {
   CheckCircle2,
   FileText,
   ArrowRight,
+  Crown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -227,70 +228,65 @@ export default function HelpPage() {
 
       {/* Quick Links */}
       <div className="px-4 lg:px-6">
-        <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card
-            className="hover:shadow-md transition-all cursor-pointer group border-primary/10 hover:border-primary/30"
+        <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+          <div
+            className="h-20 rounded-lg border border-primary/10 hover:border-primary/30 hover:shadow-md transition-all cursor-pointer group flex flex-col items-center justify-center gap-2 p-3 hover:bg-muted/50"
             onClick={() => document.getElementById('faq-getting-started')?.scrollIntoView({ behavior: 'smooth' })}
           >
-            <CardContent className="p-4 flex items-start gap-4">
-              <div className="size-10 rounded-lg bg-blue-100 dark:bg-blue-950 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                <Zap className="size-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold group-hover:text-primary transition-colors">Getting Started</h3>
-                <p className="text-xs text-muted-foreground mt-1">Learn the basics</p>
-              </div>
-              <ChevronRight className="size-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
-            </CardContent>
-          </Card>
+            <div className="size-8 rounded-lg bg-blue-100 dark:bg-blue-950 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+              <Zap className="size-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="text-center">
+              <p className="text-xs font-medium group-hover:text-primary transition-colors line-clamp-2">Getting Started</p>
+            </div>
+          </div>
 
-          <Card
-            className="hover:shadow-md transition-all cursor-pointer group border-primary/10 hover:border-primary/30"
+          <div
+            className="h-20 rounded-lg border border-primary/10 hover:border-primary/30 hover:shadow-md transition-all cursor-pointer group flex flex-col items-center justify-center gap-2 p-3 hover:bg-muted/50"
             onClick={() => document.getElementById('faq-challenges-submissions')?.scrollIntoView({ behavior: 'smooth' })}
           >
-            <CardContent className="p-4 flex items-start gap-4">
-              <div className="size-10 rounded-lg bg-green-100 dark:bg-green-950 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                <Target className="size-5 text-green-600 dark:text-green-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold group-hover:text-primary transition-colors">Challenges</h3>
-                <p className="text-xs text-muted-foreground mt-1">Submit and track progress</p>
-              </div>
-              <ChevronRight className="size-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
-            </CardContent>
-          </Card>
+            <div className="size-8 rounded-lg bg-green-100 dark:bg-green-950 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+              <Target className="size-4 text-green-600 dark:text-green-400" />
+            </div>
+            <div className="text-center">
+              <p className="text-xs font-medium group-hover:text-primary transition-colors line-clamp-2">Challenges</p>
+            </div>
+          </div>
 
-          <Card
-            className="hover:shadow-md transition-all cursor-pointer group border-primary/10 hover:border-primary/30"
+          <div
+            className="h-20 rounded-lg border border-primary/10 hover:border-primary/30 hover:shadow-md transition-all cursor-pointer group flex flex-col items-center justify-center gap-2 p-3 hover:bg-muted/50"
             onClick={() => document.getElementById('faq-teams-leaderboards')?.scrollIntoView({ behavior: 'smooth' })}
           >
-            <CardContent className="p-4 flex items-start gap-4">
-              <div className="size-10 rounded-lg bg-purple-100 dark:bg-purple-950 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                <Users className="size-5 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold group-hover:text-primary transition-colors">Teams & Leaderboards</h3>
-                <p className="text-xs text-muted-foreground mt-1">Collaborate and compete</p>
-              </div>
-              <ChevronRight className="size-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
-            </CardContent>
-          </Card>
+            <div className="size-8 rounded-lg bg-purple-100 dark:bg-purple-950 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+              <Users className="size-4 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div className="text-center">
+              <p className="text-xs font-medium group-hover:text-primary transition-colors line-clamp-2">Teams</p>
+            </div>
+          </div>
 
-          <Card
-            className="hover:shadow-md transition-all cursor-pointer group border-primary/10 hover:border-primary/30"
+          <div
+            className="h-20 rounded-lg border border-primary/10 hover:border-primary/30 hover:shadow-md transition-all cursor-pointer group flex flex-col items-center justify-center gap-2 p-3 hover:bg-muted/50"
             onClick={() => document.getElementById('faq-league-management-for-hosts')?.scrollIntoView({ behavior: 'smooth' })}
           >
-            <CardContent className="p-4 flex items-start gap-4">
-              <div className="size-10 rounded-lg bg-amber-100 dark:bg-amber-950 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                <Trophy className="size-5 text-amber-600 dark:text-amber-400" />
+            <div className="size-8 rounded-lg bg-amber-100 dark:bg-amber-950 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+              <Trophy className="size-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="text-center">
+              <p className="text-xs font-medium group-hover:text-primary transition-colors line-clamp-2">For Hosts</p>
+            </div>
+          </div>
+
+          <Link href="/help/host-support" className="block">
+            <div className="h-20 rounded-lg border border-primary/10 hover:border-primary/30 hover:shadow-md transition-all cursor-pointer group flex flex-col items-center justify-center gap-2 p-3 hover:bg-muted/50">
+              <div className="size-8 rounded-lg bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                <Crown className="size-4 text-indigo-600 dark:text-indigo-400" />
               </div>
-              <div className="flex-1">
-                <h3 className="font-semibold group-hover:text-primary transition-colors">For League Hosts</h3>
-                <p className="text-xs text-muted-foreground mt-1">Manage your league</p>
+              <div className="text-center">
+                <p className="text-xs font-medium group-hover:text-primary transition-colors line-clamp-2">Host Support</p>
               </div>
-              <ChevronRight className="size-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
-            </CardContent>
-          </Card>
+            </div>
+          </Link>
         </div>
       </div>
 
@@ -360,13 +356,13 @@ export default function HelpPage() {
                 <div className="flex items-start gap-3">
                   <Mail className="size-5 text-primary flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-medium text-sm">Email Support</p>
+                    <p className="font-medium text-sm">MFL Support</p>
                     <p className="text-xs text-muted-foreground mt-1">
                       <a
                         href="mailto:support@myfitnessleague.com"
                         className="text-primary hover:underline"
                       >
-                        support@myfitnessleague.com
+                        mflsupport@mpowero.com
                       </a>
                     </p>
                   </div>
@@ -375,9 +371,9 @@ export default function HelpPage() {
                 <div className="flex items-start gap-3">
                   <Clock className="size-5 text-primary flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-medium text-sm">Response Time</p>
+                    <p className="font-medium text-sm">MFL Management</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Usually within 24 hours
+                      mflmanagement@mpowero.com
                     </p>
                   </div>
                 </div>
@@ -385,10 +381,10 @@ export default function HelpPage() {
                 <div className="flex items-start gap-3">
                   <FileText className="size-5 text-primary flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-medium text-sm">Documentation</p>
+                    <p className="font-medium text-sm">MFL Billing</p>
                     <p className="text-xs text-muted-foreground mt-1">
                       <a href="#" className="text-primary hover:underline">
-                        View our guides
+                        mflbilling@mpowero.com
                       </a>
                     </p>
                   </div>

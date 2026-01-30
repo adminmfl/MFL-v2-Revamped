@@ -274,9 +274,21 @@ export async function getLeagueById(leagueId: string): Promise<League | null> {
       }
     }
 
+    let creatorName: string | null = null;
+    if (data.created_by) {
+      const { data: creatorData } = await supabase
+        .from('users')
+        .select('username')
+        .eq('user_id', data.created_by)
+        .single();
+
+      creatorName = creatorData?.username ?? null;
+    }
+
     const leagueWithCapacity = {
       ...data,
       league_capacity: leagueCapacity,
+      creator_name: creatorName,
     };
 
     // Derive the status for UI and persist completion back to DB when needed.

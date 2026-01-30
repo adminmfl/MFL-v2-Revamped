@@ -34,7 +34,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -424,6 +424,9 @@ export default function MyTeamViewPage({
                       <div className="flex items-center gap-3">
                         <div className="relative">
                           <Avatar className="size-10">
+                            {(member as any).profile_picture_url && (
+                              <AvatarImage src={(member as any).profile_picture_url} alt={member.username} />
+                            )}
                             <AvatarFallback>
                               {member.username
                                 .split(' ')

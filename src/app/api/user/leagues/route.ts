@@ -66,6 +66,23 @@ export async function GET() {
       return NextResponse.json({ error: 'Failed to fetch leagues' }, { status: 500 });
     }
 
+    // Fetch creator usernames for each league
+    const creatorIds = Array.from(
+      new Set((leaguesData || []).map((l: any) => l.created_by).filter(Boolean))
+    );
+
+    let creatorNameMap = new Map<string, string>();
+    if (creatorIds.length > 0) {
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('user_id, username')
+        .in('user_id', creatorIds);
+
+      (usersData || []).forEach((u: any) => {
+        creatorNameMap.set(u.user_id, u.username);
+      });
+    }
+
     // Fetch tier capacities separately
     const tierIds = Array.from(
       new Set((leaguesData || []).map((l: any) => l.tier_id).filter(Boolean))
@@ -188,6 +205,7 @@ export async function GET() {
         team_name: team?.team_name || null,
         team_logo_url: membership.team_id ? teamLogoMap.get(`${membership.team_id}_${leagueId}`) || null : null,
         is_host: isHost,
+        creator_name: league?.created_by ? creatorNameMap.get(league.created_by) || null : null,
       };
 
     });
