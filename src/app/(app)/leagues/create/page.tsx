@@ -57,6 +57,7 @@ import {
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { TierConfig, PriceBreakdown, TierValidationResult } from '@/lib/services/tier-helpers';
 
@@ -73,6 +74,25 @@ declare global {
 // ============================================================================
 // Create League Page
 // ============================================================================
+
+function FieldInfoButton({ text }: { text: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex size-5 items-center justify-center rounded-full border border-muted-foreground/30 text-muted-foreground hover:text-foreground hover:border-muted-foreground/60"
+          aria-label="Field information"
+        >
+          <Info className="size-3" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs">
+        {text}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 export default function CreateLeaguePage() {
   const router = useRouter();
@@ -546,6 +566,7 @@ export default function CreateLeaguePage() {
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Sparkles className="size-5 text-primary" />
                   Choose Tier
+                  <FieldInfoButton text="Select a plan to set maximum duration, participants, and pricing." />
                 </CardTitle>
                 <CardDescription>
                   Pick a plan for your league. Pricing and duration update automatically.
@@ -644,7 +665,10 @@ export default function CreateLeaguePage() {
               <CardContent className="space-y-4">
                 {/* League Name */}
                 <div className="space-y-2">
-                  <Label htmlFor="league_name">League Name *</Label>
+                  <Label htmlFor="league_name" className="flex items-center gap-2">
+                    League Name *
+                    <FieldInfoButton text="Name shown to participants and in invites." />
+                  </Label>
                   <Input
                     id="league_name"
                     name="league_name"
@@ -657,7 +681,10 @@ export default function CreateLeaguePage() {
 
                 {/* Description */}
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description" className="flex items-center gap-2">
+                    Description
+                    <FieldInfoButton text="Optional overview of goals, rules, and expectations." />
+                  </Label>
                   <Textarea
                     id="description"
                     name="description"
@@ -685,7 +712,10 @@ export default function CreateLeaguePage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Start Date */}
                   <div className="space-y-2">
-                    <Label>Start Date *</Label>
+                    <Label className="flex items-center gap-2">
+                      Start Date *
+                      <FieldInfoButton text="League starts at midnight on this date." />
+                    </Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
@@ -713,8 +743,9 @@ export default function CreateLeaguePage() {
 
                   {/* Duration Selector */}
                   <div className="space-y-2">
-                    <Label htmlFor="duration">
-                      League Duration (days) *
+                    <Label htmlFor="duration" className="flex items-center gap-2">
+                      <span>League Duration (days) *</span>
+                      <FieldInfoButton text="Total number of days for the league. End date updates automatically." />
                       {selectedTier && (
                         <span className="text-xs text-muted-foreground ml-2">
                           Max: {selectedTier.max_days} days
@@ -753,14 +784,20 @@ export default function CreateLeaguePage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>End Date</Label>
+                    <Label className="flex items-center gap-2">
+                      End Date
+                      <FieldInfoButton text="Calculated from start date and duration." />
+                    </Label>
                     <div className="h-10 px-3 flex items-center rounded-md border bg-muted text-sm">
                       {endDate ? format(endDate, 'PPP') : '—'}
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Total Days</Label>
+                    <Label className="flex items-center gap-2">
+                      Total Days
+                      <FieldInfoButton text="Calculated duration in days." />
+                    </Label>
                     <div className="h-10 px-3 flex items-center rounded-md border bg-muted text-sm">
                       {duration > 0 ? `${duration} days` : '—'}
                     </div>
@@ -783,7 +820,10 @@ export default function CreateLeaguePage() {
               <CardContent>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Number of Teams</Label>
+                    <Label className="flex items-center gap-2">
+                      Number of Teams
+                      <FieldInfoButton text="How many teams will be created in the league." />
+                    </Label>
                     <Select
                       value={formData.num_teams}
                       onValueChange={(v) => handleSelectChange('num_teams', v)}
@@ -802,8 +842,9 @@ export default function CreateLeaguePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="max_participants">
-                      Max Participants *
+                    <Label htmlFor="max_participants" className="flex items-center gap-2">
+                      <span>Max Participants *</span>
+                      <FieldInfoButton text="Total participants allowed across all teams." />
                       {selectedTier && (
                         <span className="text-xs text-muted-foreground ml-2">
                           Limit: {selectedTier.max_participants}
@@ -830,7 +871,10 @@ export default function CreateLeaguePage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                   <div className="space-y-2">
-                    <Label htmlFor="rest_days">Total Rest Days</Label>
+                    <Label htmlFor="rest_days" className="flex items-center gap-2">
+                      Total Rest Days
+                      <FieldInfoButton text="Days without scoring. Default is 20% of duration." />
+                    </Label>
                     <Input
                       id="rest_days"
                       type="number"
@@ -843,7 +887,10 @@ export default function CreateLeaguePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Avg Team Size</Label>
+                    <Label className="flex items-center gap-2">
+                      Avg Team Size
+                      <FieldInfoButton text="Estimated participants per team based on capacity." />
+                    </Label>
                     <div className="h-10 px-3 flex items-center rounded-md border bg-muted text-sm">
                       {Math.round(tierCapacity / parseInt(formData.num_teams))} players/team
                     </div>
@@ -876,6 +923,7 @@ export default function CreateLeaguePage() {
                     <Label className="flex items-center gap-2">
                       <Globe className="size-4 text-muted-foreground" />
                       Public League
+                      <FieldInfoButton text="Anyone can discover and view this league." />
                     </Label>
                     <p className="text-sm text-muted-foreground">
                       Allow anyone to discover and view this league
@@ -892,6 +940,7 @@ export default function CreateLeaguePage() {
                     <Label className="flex items-center gap-2">
                       <Lock className="size-4 text-muted-foreground" />
                       Invite Only
+                      <FieldInfoButton text="Only invited members can join the league." />
                     </Label>
                     <p className="text-sm text-muted-foreground">
                       Only invited members can join the league
