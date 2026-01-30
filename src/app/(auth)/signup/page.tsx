@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Dumbbell } from "lucide-react";
 
 import { SignupForm } from "@/components/auth/signup-form";
 import { getLastLeagueId } from "@/lib/last-league-storage";
@@ -100,9 +99,11 @@ export default function SignupPage() {
         {/* Brand */}
         <div className="flex justify-center gap-2 md:justify-start">
           <Link href="/" className="flex items-center gap-2 font-medium">
-            <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
-              <Dumbbell className="size-4" />
-            </div>
+            <img
+              src="/img/mfl-logo.jpg"
+              alt="My Fitness League"
+              className="size-8 rounded-md object-cover"
+            />
             My Fitness League
           </Link>
         </div>

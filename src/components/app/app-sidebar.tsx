@@ -9,7 +9,6 @@ import {
   Settings,
   HelpCircle,
   ChevronRight,
-  Dumbbell,
   MoreVertical,
 } from 'lucide-react';
 
@@ -83,10 +82,12 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
       {/* Header - Logo + League Switcher */}
       <SidebarHeader>
         <div className={`flex items-center py-2 ${isCollapsed ? 'justify-center' : 'gap-3 md:justify-start'}`}>
-          <Link href="#" className={`flex items-center font-semibold ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
-            <div className="bg-primary text-primary-foreground flex size-10 items-center justify-center rounded-md shadow-sm shrink-0">
-              <Dumbbell className="size-6" />
-            </div>
+          <Link href="/dashboard" className={`flex items-center font-semibold ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
+            <img
+              src="/img/mfl-logo.jpg"
+              alt="My Fitness League"
+              className="size-10 rounded-md object-cover shadow-sm shrink-0"
+            />
             {!isCollapsed && (
               <div className="flex flex-col leading-tight min-w-0">
                 <span className="text-lg truncate">My Fitness League</span>
