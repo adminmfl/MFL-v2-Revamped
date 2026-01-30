@@ -143,6 +143,13 @@ export default function ChallengesPage({ params }: { params: Promise<{ id: strin
     fetchChallenges();
   }, [fetchChallenges]);
 
+  const approvedCount = React.useMemo(
+    () => challenges.filter((c) => c.my_submission?.status === 'approved').length,
+    [challenges]
+  );
+
+  const totalChallenges = challenges.length;
+
   const handleOpenSubmit = (challenge: Challenge) => {
     setSubmitChallenge(challenge);
     setSelectedFile(null);
@@ -224,10 +231,22 @@ export default function ChallengesPage({ params }: { params: Promise<{ id: strin
     <div className="flex-1 flex flex-col gap-4 lg:gap-6">
       <div className="flex flex-col gap-3 px-4 lg:px-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Challenges</h1>
-          <p className="text-muted-foreground">
-            Participate in challenges and submit your proofs.
-          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Challenges</h1>
+            </div>
+            <div className="text-right sm:-mt-10">
+              <div className="text-2xl font-semibold text-foreground tabular-nums leading-none">
+                {loading ? '—/—' : `${approvedCount}/${totalChallenges}`}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Challenges you participated in
+              </div>
+              <p className="text-muted-foreground mt-2">
+                Participate in challenges and submit your proofs.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
