@@ -328,3 +328,78 @@ export async function getRevenueChartData(days: number = 90): Promise<RevenueCha
     return { data: [] };
   }
 }
+
+// ============================================================================
+// Recent Activity Data
+// ============================================================================
+
+export interface RecentLeague {
+  league_id: string;
+  league_name: string;
+  status: string;
+  start_date: string;
+  end_date: string;
+  created_date: string;
+  actual_participants: number | null;
+}
+
+export interface RecentUser {
+  user_id: string;
+  username: string;
+  email: string;
+  created_date: string;
+  platform_role: string;
+}
+
+/**
+ * Get recent leagues (last 5 created)
+ */
+export async function getRecentLeagues(limit: number = 5): Promise<RecentLeague[]> {
+  try {
+    const supabase = getSupabaseServiceRole();
+
+    const { data, error } = await supabase
+      .from('leagues')
+      .select('league_id, league_name, status, start_date, end_date, created_date, actual_participants')
+      .eq('is_active', true)
+      .order('created_date', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching recent leagues:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (err) {
+    console.error('Error in getRecentLeagues:', err);
+    return [];
+  }
+}
+
+/**
+ * Get recent users (last 5 registered)
+ */
+export async function getRecentUsers(limit: number = 5): Promise<RecentUser[]> {
+  try {
+    const supabase = getSupabaseServiceRole();
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('user_id, username, email, created_date, platform_role')
+      .eq('is_active', true)
+      .order('created_date', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching recent users:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (err) {
+    console.error('Error in getRecentUsers:', err);
+    return [];
+  }
+}
+
