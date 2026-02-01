@@ -1,6 +1,6 @@
 /**
- * Challenge-Specific Leaderboard Component
- * Shows rankings specific to a selected challenge based on its type
+ * Challenge Leaderboard Component
+ * Shows team rankings for challenges (simplified view)
  */
 'use client';
 
@@ -22,7 +22,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Medal, Users, User } from 'lucide-react';
+import { Trophy, Medal, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ============================================================================
@@ -44,7 +44,7 @@ interface ChallengeScore {
   name: string;
   score: number;
   rank: number;
-  teamName?: string; // For sub-team challenges, shows the parent team
+  teamName?: string;
 }
 
 interface ChallengeSpecificLeaderboardProps {
@@ -105,7 +105,11 @@ export function ChallengeSpecificLeaderboard({ leagueId, renderViewSwitcher }: C
         const res = await fetch(`/api/leagues/${leagueId}/challenges`);
         const json = await res.json();
         if (json.success && json.data?.active) {
-          setChallenges(json.data.active);
+          // Filter to only show published/closed challenges in leaderboard
+          const visibleChallenges = (json.data.active as Challenge[]).filter(
+            (c) => c.status === 'published' || c.status === 'closed'
+          );
+          setChallenges(visibleChallenges);
         }
       } catch (err) {
         console.error('Failed to fetch challenges:', err);
@@ -114,6 +118,7 @@ export function ChallengeSpecificLeaderboard({ leagueId, renderViewSwitcher }: C
     fetchChallenges();
   }, [leagueId]);
 
+  // Auto-select most recent challenge
   React.useEffect(() => {
     if (selectedChallengeId || challenges.length === 0) return;
 
@@ -121,19 +126,13 @@ export function ChallengeSpecificLeaderboard({ leagueId, renderViewSwitcher }: C
       if (!dateStr) return 0;
       const dtIso = new Date(dateStr);
       if (!Number.isNaN(dtIso.getTime())) return dtIso.getTime();
-      const parts = String(dateStr).split('-').map((p) => Number(p));
-      if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
-        return new Date(parts[0], parts[1] - 1, parts[2]).getTime();
-      }
       return 0;
     };
 
-    const completedStatuses = new Set(['published', 'closed', 'submission_closed']);
-    const completed = challenges.filter((c) => completedStatuses.has(String(c.status || '')));
     const sortByRecent = (a: Challenge, b: Challenge) =>
       (toTime(b.end_date || b.start_date) - toTime(a.end_date || a.start_date));
 
-    const defaultChallenge = (completed.length ? completed.sort(sortByRecent) : [...challenges].sort(sortByRecent))[0];
+    const defaultChallenge = [...challenges].sort(sortByRecent)[0];
     if (defaultChallenge?.id) {
       setSelectedChallengeId(defaultChallenge.id);
     }
@@ -172,22 +171,11 @@ export function ChallengeSpecificLeaderboard({ leagueId, renderViewSwitcher }: C
       case 'individual':
         return 'Individual';
       case 'team':
-        return 'Team-wise';
+        return 'Team';
       case 'sub_team':
-        return 'Sub-team';
+        return 'Sub-Team';
       default:
         return type;
-    }
-  };
-
-  const getChallengeIcon = (type: string) => {
-    switch (type) {
-      case 'team':
-      case 'sub_team':
-        return <Users className="size-4" />;
-      case 'individual':
-      default:
-        return <User className="size-4" />;
     }
   };
 
@@ -197,22 +185,13 @@ export function ChallengeSpecificLeaderboard({ leagueId, renderViewSwitcher }: C
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Trophy className="size-5" />
-            Challenges
+            Challenge Rankings
           </h2>
           {renderViewSwitcher}
         </div>
-        <div className="text-sm text-muted-foreground">
-          <p>
-            {selectedChallenge
-              ? `${getChallengeTypeLabel(selectedChallenge.challenge_type)} scores per challenge`
-              : 'Select a challenge to view rankings'}
-          </p>
-          {selectedChallenge && (
-            <p className="mt-1">
-              All points are added to the overall Team/Individual leaderboard respectively.
-            </p>
-          )}
-        </div>
+        <p className="text-sm text-muted-foreground">
+          Team rankings by challenge
+        </p>
       </div>
 
       <div className="space-y-4">
@@ -224,10 +203,10 @@ export function ChallengeSpecificLeaderboard({ leagueId, renderViewSwitcher }: C
             {challenges.map((challenge) => (
               <SelectItem key={challenge.id} value={challenge.id}>
                 <div className="flex items-center gap-2">
-                  {getChallengeIcon(challenge.challenge_type)}
+                  <Users className="size-4" />
                   <span>{challenge.name}</span>
-                  <Badge variant="outline" className="ml-2">
-                    {challenge.total_points} pts
+                  <Badge variant="outline" className="ml-2 capitalize">
+                    {getChallengeTypeLabel(challenge.challenge_type)}
                   </Badge>
                 </div>
               </SelectItem>
@@ -237,19 +216,19 @@ export function ChallengeSpecificLeaderboard({ leagueId, renderViewSwitcher }: C
 
         {!selectedChallengeId && challenges.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
-            No challenges yet.
+            No completed challenges yet.
           </div>
         )}
 
         {!selectedChallengeId && challenges.length > 0 && (
           <div className="text-center py-12 text-muted-foreground">
-            Select a challenge to view rankings
+            Select a challenge to view team rankings
           </div>
         )}
 
         {selectedChallengeId && loading && (
           <div className="text-center py-12 text-muted-foreground">
-            Loading scores...
+            Loading rankings...
           </div>
         )}
 
@@ -261,7 +240,7 @@ export function ChallengeSpecificLeaderboard({ leagueId, renderViewSwitcher }: C
 
         {selectedChallengeId && !loading && !error && scores.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
-            No submissions yet for this challenge.
+            No scores yet for this challenge.
           </div>
         )}
 
@@ -271,17 +250,8 @@ export function ChallengeSpecificLeaderboard({ leagueId, renderViewSwitcher }: C
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-16">Rank</TableHead>
-                  <TableHead>
-                    {selectedChallenge?.challenge_type === 'individual'
-                      ? 'Player'
-                      : selectedChallenge?.challenge_type === 'sub_team'
-                        ? 'Sub-team'
-                        : 'Team'}
-                  </TableHead>
-                  {selectedChallenge?.challenge_type === 'sub_team' && (
-                    <TableHead>Team</TableHead>
-                  )}
-                  <TableHead className="text-right">Points</TableHead>
+                  <TableHead>Team</TableHead>
+                  <TableHead className="text-right">Score</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -294,11 +264,6 @@ export function ChallengeSpecificLeaderboard({ leagueId, renderViewSwitcher }: C
                       <RankBadge rank={score.rank} />
                     </TableCell>
                     <TableCell className="font-medium">{score.name}</TableCell>
-                    {selectedChallenge?.challenge_type === 'sub_team' && (
-                      <TableCell className="text-muted-foreground">
-                        {score.teamName || 'Unknown Team'}
-                      </TableCell>
-                    )}
                     <TableCell className="text-right">
                       <span className="text-lg font-bold text-primary">
                         {score.score}
@@ -314,4 +279,3 @@ export function ChallengeSpecificLeaderboard({ leagueId, renderViewSwitcher }: C
     </div>
   );
 }
-

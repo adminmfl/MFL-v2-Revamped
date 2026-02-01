@@ -126,21 +126,6 @@ export function SettingsForm() {
               }
             />
           </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Maintenance Mode</Label>
-              <p className="text-sm text-muted-foreground">
-                Temporarily disable the platform for maintenance
-              </p>
-            </div>
-            <Switch
-              checked={settings.maintenanceMode}
-              onCheckedChange={(checked) =>
-                setSettings({ ...settings, maintenanceMode: checked })
-              }
-            />
-          </div>
         </CardContent>
       </Card>
 
@@ -182,88 +167,6 @@ export function SettingsForm() {
                 Maximum number of members allowed per team
               </p>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Email Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Email Settings</CardTitle>
-          <CardDescription>Configure email notifications and preferences</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Welcome Emails</Label>
-              <p className="text-sm text-muted-foreground">
-                Send welcome email to new users upon registration
-              </p>
-            </div>
-            <Switch
-              checked={settings.sendWelcomeEmails}
-              onCheckedChange={(checked) =>
-                setSettings({ ...settings, sendWelcomeEmails: checked })
-              }
-            />
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Weekly Digest</Label>
-              <p className="text-sm text-muted-foreground">
-                Send weekly activity digest emails to users
-              </p>
-            </div>
-            <Switch
-              checked={settings.sendWeeklyDigest}
-              onCheckedChange={(checked) =>
-                setSettings({ ...settings, sendWeeklyDigest: checked })
-              }
-            />
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Email Verification</Label>
-              <p className="text-sm text-muted-foreground">
-                Require email verification for new accounts
-              </p>
-            </div>
-            <Switch
-              checked={settings.requireEmailVerification}
-              onCheckedChange={(checked) =>
-                setSettings({ ...settings, requireEmailVerification: checked })
-              }
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Authentication Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Authentication Settings</CardTitle>
-          <CardDescription>Configure login and authentication options</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Social Login</Label>
-              <p className="text-sm text-muted-foreground">
-                Allow users to sign in with Google, Facebook, etc.
-              </p>
-            </div>
-            <Switch
-              checked={settings.allowSocialLogin}
-              onCheckedChange={(checked) =>
-                setSettings({ ...settings, allowSocialLogin: checked })
-              }
-            />
           </div>
         </CardContent>
       </Card>

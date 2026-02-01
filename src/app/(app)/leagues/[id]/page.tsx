@@ -617,34 +617,10 @@ export default function LeagueDashboardPage({
               teamChallengePoints = mine && typeof mine.challenge_bonus === 'number' ? Math.max(0, mine.challenge_bonus) : 0;
             }
 
-            // Extract individual stats for user's total points (includes challenge bonuses)
-            const individuals: Array<{ user_id?: string; points?: number; avg_rr?: number; challenge_points?: number }> =
-              leaderboardData?.data?.individuals || leaderboardData?.data?.individualRankings || [];
-            if (user && Array.isArray(individuals) && individuals.length > 0) {
-              const mine = individuals.find((it) => String(it.user_id) === String(user.id));
-              if (mine && typeof mine.points === 'number' && Number.isFinite(mine.points)) {
-                // Prioritize official challenge points from leaderboard
-                if (typeof mine.challenge_points === 'number' && Number.isFinite(mine.challenge_points)) {
-                  challengePoints = mine.challenge_points;
-                } else {
-                  // Fallback: if challenge bonus acts as a diff (rare)
-                  // Note: subtracting fresh points from stale total might result in negative, so clamp to 0.
-                  const staleTotal = Math.round(mine.points);
-                  challengePoints = Math.max(0, staleTotal - points);
-                }
-
-                // Recalculate totalPoints using FRESH local workout points + leaderboard challenge points.
-                // This ensures the "Total Points" on the dashboard updates immediately for new workouts
-                // instead of showing the leaderboard total which might include invalid entries.
-                totalPoints = points + challengePoints;
-
-                // Overwrite Avg RR with leaderboard official value if available (to ensure parity)
-                // DISABLED: We want fresh stats on dashboard, leaderboard is delayed by 2 days.
-                // if (typeof mine.avg_rr === 'number' && Number.isFinite(mine.avg_rr)) {
-                //   avgRR = mine.avg_rr;
-                // }
-              }
-            }
+            // Individual stats: challenge points are no longer added to individual totals.
+            // Individual players only see activity points - all challenge points go to team.
+            // totalPoints for individual = activity points only
+            totalPoints = points;
           }
         } catch (err) {
           // Fallback: no leaderboard available, use workout-only points
@@ -983,7 +959,7 @@ export default function LeagueDashboardPage({
                   <div className="rounded-md border border-border/60 bg-blue-100 dark:bg-blue-950 px-3 py-2.5 text-center">
                     <div className="text-xs text-muted-foreground">Total Points</div>
                     <div className="text-base font-semibold text-foreground tabular-nums">
-                      {mySummary?.totalPoints.toLocaleString() ?? '—'}
+                      {mySummary?.points.toLocaleString() ?? '—'}
                     </div>
                   </div>
                   <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
@@ -995,40 +971,34 @@ export default function LeagueDashboardPage({
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
-                    <div className="text-xs text-muted-foreground">Activity Points</div>
-                    <div className="text-base font-semibold text-foreground tabular-nums">
-                      {mySummary?.points.toLocaleString() ?? '—'}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-md border border-border/60 bg-blue-100 dark:bg-blue-950 px-3 py-2.5 text-center">
+                    <div className="text-[11px] text-muted-foreground">Rest Days Used</div>
+                    <div className="text-sm font-semibold text-foreground tabular-nums">
+                      {mySummary?.restUsed.toLocaleString() ?? '—'}
                     </div>
                   </div>
                   <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
-                    <div className="text-xs text-muted-foreground">Challenge Points</div>
-                    <div className="text-base font-semibold text-foreground tabular-nums">
-                      {mySummary?.challengePoints.toLocaleString() ?? '—'}
+                    <div className="text-[11px] text-muted-foreground">Rest Days Remaining</div>
+                    <div className="text-sm font-semibold text-foreground tabular-nums">
+                      {mySummary?.restUnused !== null && typeof mySummary?.restUnused === 'number' ? mySummary.restUnused.toLocaleString() : '—'}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-md border border-border/60 bg-muted/40 px-2.5 py-2.5 text-center">
+                    <div className="text-[11px] text-muted-foreground">Days Missed</div>
+                    <div className="text-sm font-semibold text-foreground tabular-nums">
+                      {mySummary?.missedDays.toLocaleString() ?? '—'}
                     </div>
                   </div>
                   <div
                     className={`rounded-md border border-border/60 px-3 py-2.5 text-center ${rejectedCount > 0 ? 'bg-red-100 dark:bg-red-950/40' : 'bg-muted/40'
                       }`}
                   >
-                    <div className="text-xs text-muted-foreground">Rejected Workouts</div>
-                    <div className="text-base font-semibold text-foreground tabular-nums">
+                    <div className="text-[11px] text-muted-foreground">Rejected Workouts</div>
+                    <div className="text-sm font-semibold text-foreground tabular-nums">
                       {rejectedCount.toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-md border border-border/60 bg-blue-100 dark:bg-blue-950 px-3 py-2.5 text-center">
-                    <div className="text-[11px] text-muted-foreground">Rest Days Used</div>
-                    <div className="text-sm font-semibold text-foreground tabular-nums">
-                      {mySummary?.restUsed.toLocaleString() ?? '—'}/{mySummary?.restUnused !== null && typeof mySummary?.restUnused === 'number' ? (mySummary.restUsed + mySummary.restUnused).toLocaleString() : '—'}
-                    </div>
-                  </div>
-                  <div className="rounded-md border border-border/60 bg-muted/40 px-2.5 py-2.5 text-center">
-                    <div className="text-[11px] text-muted-foreground">Days Missed</div>
-                    <div className="text-sm font-semibold text-foreground tabular-nums">
-                      {mySummary?.missedDays.toLocaleString() ?? '—'}
                     </div>
                   </div>
                 </div>

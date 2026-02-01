@@ -359,7 +359,7 @@ export default function HelpPage() {
                     <p className="font-medium text-sm">MFL Support</p>
                     <p className="text-xs text-muted-foreground mt-1">
                       <a
-                        href="mailto:support@myfitnessleague.com"
+                        href="mailto:mflsupport@mpowero.com"
                         className="text-primary hover:underline"
                       >
                         mflsupport@mpowero.com
@@ -373,7 +373,12 @@ export default function HelpPage() {
                   <div>
                     <p className="font-medium text-sm">MFL Management</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      mflmanagement@mpowero.com
+                      <a
+                        href="mailto:mflmanagement@mpowero.com"
+                        className="text-primary hover:underline"
+                      >
+                        mflmanagement@mpowero.com
+                      </a>
                     </p>
                   </div>
                 </div>
@@ -383,60 +388,16 @@ export default function HelpPage() {
                   <div>
                     <p className="font-medium text-sm">MFL Billing</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      <a href="#" className="text-primary hover:underline">
+                      <a
+                        href="mailto:mflbilling@mpowero.com"
+                        className="text-primary hover:underline"
+                      >
                         mflbilling@mpowero.com
                       </a>
                     </p>
                   </div>
                 </div>
               </div>
-
-              {/* Contact Form */}
-              <form onSubmit={handleContactSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <label htmlFor="email" className="text-sm font-medium">
-                    Your Email
-                  </label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={contactEmail}
-                    onChange={(e) => setContactEmail(e.target.value)}
-                    required
-                    className="bg-background"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label htmlFor="message" className="text-sm font-medium">
-                    Message
-                  </label>
-                  <textarea
-                    id="message"
-                    placeholder="Describe your issue or question..."
-                    value={contactMessage}
-                    onChange={(e) => setContactMessage(e.target.value)}
-                    required
-                    rows={4}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-
-                <Button type="submit" disabled={sending} className="w-full">
-                  {sending ? (
-                    <>
-                      <span className="animate-spin mr-2">⏳</span>
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      Send Message
-                      <ArrowRight className="size-4 ml-2" />
-                    </>
-                  )}
-                </Button>
-              </form>
             </CardContent>
           </Card>
         </div>

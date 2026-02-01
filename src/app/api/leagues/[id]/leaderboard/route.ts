@@ -412,26 +412,12 @@ export async function GET(
       console.debug(`[Leaderboard] Including challenge submission ${sub.id} with ${points} points for member ${sub.league_member_id}`);
 
 
-      // UPDATED LOGIC: All challenge submissions (Individual, Team, Sub-team) contribute to the submitting member's
-      // individual score, in addition to their team/sub-team scores. For team challenges we use proportional scaling:
-      // visible = (awarded / internalCap) × visibleCap, capped at visibleCap
+      // UPDATED LOGIC: Challenge points are ONLY added to team totals, NOT to individual scores.
+      // Individual players only earn activity points from workouts.
       const memberKey = sub.league_member_id as string;
       const memberInfo = memberToUser.get(memberKey);
       const memberTeamId = memberInfo?.team_id || null;
       const memberTeamSize = memberTeamId ? Math.max(1, teamSizes.get(memberTeamId) || 1) : 1;
-
-      let visiblePoints = points;
-      if (challenge.challenge_type === 'team' && maxTeamSize > 0) {
-        const totalPoints = Number(challenge.total_points || 0);
-        const internalCap = memberTeamSize > 0 ? totalPoints / memberTeamSize : totalPoints;
-        const visibleCap = totalPoints / maxTeamSize;
-        // Proportional scaling: effort ratio applied to visible max
-        const proportion = internalCap > 0 ? points / internalCap : 1;
-        visiblePoints = Math.round(Math.min(proportion * visibleCap, visibleCap));
-      }
-
-      const current = memberChallengePoints.get(memberKey) || 0;
-      memberChallengePoints.set(memberKey, current + visiblePoints);
 
       // Handle team aggregation based on challenge type
       // All challenges (individual, team, sub_team) contribute to team scores
@@ -789,14 +775,9 @@ export async function GET(
       }
     });
 
-    // Add challenge points to individuals
-    (Array.from(memberChallengePoints.entries()) || []).forEach(([memberId, challengePoints]) => {
-      const individualStat = individualStats.get(memberId);
-      if (individualStat) {
-        individualStat.challenge_points = challengePoints;
-        individualStat.points += challengePoints;
-      }
-    });
+    // NOTE: Challenge points are NO LONGER added to individuals.
+    // All challenge points (individual, team, sub-team) only go to team totals.
+    // Individual players only see their activity points.
 
     // Convert to array and sort
     const fullParam = searchParams.get('full') === 'true';

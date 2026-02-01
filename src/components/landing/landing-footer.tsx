@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { Dumbbell } from 'lucide-react';
 
 import { Separator } from '@/components/ui/separator';
 
@@ -36,9 +35,11 @@ export function LandingFooter() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-lg">
-                <Dumbbell className="size-4" />
-              </div>
+              <img
+                src="/img/mfl-logo.jpg"
+                alt="My Fitness League"
+                className="size-8 rounded-lg object-cover"
+              />
               <span className="font-semibold">MFL</span>
             </Link>
             <p className="text-sm text-muted-foreground">

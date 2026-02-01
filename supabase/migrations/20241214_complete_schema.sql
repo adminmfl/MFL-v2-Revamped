@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   phone varchar,
   date_of_birth date,
   gender varchar,
+  profile_picture_url text,
   platform_role platform_role DEFAULT 'user',
   is_active boolean DEFAULT true,
   created_by uuid REFERENCES public.users(user_id) ON DELETE SET NULL,
@@ -49,6 +50,7 @@ CREATE INDEX IF NOT EXISTS idx_users_username ON public.users(username);
 COMMENT ON TABLE public.users IS 'Core user accounts with authentication and profile data';
 COMMENT ON COLUMN public.users.platform_role IS 'Platform-level role: admin (super admin) or user (regular user)';
 COMMENT ON COLUMN public.users.is_active IS 'Soft delete flag - false indicates deactivated account';
+COMMENT ON COLUMN public.users.profile_picture_url IS 'URL to user profile picture stored in Supabase Storage';
 
 -- =====================================================================================
 
@@ -915,6 +917,45 @@ ON storage.objects FOR DELETE
 USING (
   bucket_id = 'league-rules'
   AND public.is_host(auth.uid(), split_part(split_part(name, '/', 1), '.', 1)::uuid)
+);
+
+-- =====================================================================================
+-- PROFILE PICTURE STORAGE BUCKET
+-- =====================================================================================
+
+-- Create profile-pictures bucket
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('profile-pictures', 'profile-pictures', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Profile picture storage policies
+-- Public read access
+CREATE POLICY "profile-pictures_public_read"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'profile-pictures');
+
+-- Users can upload to their own folder
+CREATE POLICY "profile-pictures_user_insert"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'profile-pictures'
+  AND auth.uid()::text = split_part(name, '/', 1)
+);
+
+-- Users can update their own files
+CREATE POLICY "profile-pictures_user_update"
+ON storage.objects FOR UPDATE
+USING (
+  bucket_id = 'profile-pictures'
+  AND auth.uid()::text = split_part(name, '/', 1)
+);
+
+-- Users can delete their own files
+CREATE POLICY "profile-pictures_user_delete"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'profile-pictures'
+  AND auth.uid()::text = split_part(name, '/', 1)
 );
 
 

@@ -151,3 +151,63 @@ export function useRevenueChartData(initialDays: number = 90): UseRevenueChartDa
     refetch: fetchData,
   };
 }
+
+// ============================================================================
+// Recent Activity Hook
+// ============================================================================
+
+import type { RecentLeague, RecentUser } from '@/lib/services/admin/admin-stats';
+
+interface UseRecentActivityReturn {
+  recentLeagues: RecentLeague[];
+  recentUsers: RecentUser[];
+  isLoading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+}
+
+/**
+ * Hook for fetching recent activity (leagues and users)
+ */
+export function useRecentActivity(): UseRecentActivityReturn {
+  const [recentLeagues, setRecentLeagues] = useState<RecentLeague[]>([]);
+  const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/admin/recent');
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch recent activity');
+      }
+
+      setRecentLeagues(result.data?.recentLeagues || []);
+      setRecentUsers(result.data?.recentUsers || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      setRecentLeagues([]);
+      setRecentUsers([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return {
+    recentLeagues,
+    recentUsers,
+    isLoading,
+    error,
+    refetch: fetchData,
+  };
+}
+
