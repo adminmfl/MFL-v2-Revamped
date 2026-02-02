@@ -857,6 +857,11 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
           ...m,
           points: pointsMap?.get(String(m.user_id)) ?? 0,
         }))}
+        teams={(data?.teams || []).map((t: any) => ({
+          id: t.team_id,
+          name: t.team_name,
+        }))}
+        onAddMember={handleAddMember}
       />
 
       {selectedTeam && (

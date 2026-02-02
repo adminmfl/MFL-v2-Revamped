@@ -310,8 +310,8 @@ export function getMobileTabItems(
   // Role-specific tabs
   if (role === 'host' || role === 'governor') {
     tabs.push({
-      title: 'Teams',
-      url: leagueUrl('/team'),
+      title: 'My Team',
+      url: leagueUrl('/my-team-view'),
       icon: Users,
     });
     tabs.push({

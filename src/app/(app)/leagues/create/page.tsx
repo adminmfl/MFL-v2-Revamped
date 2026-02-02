@@ -58,6 +58,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { TierConfig, PriceBreakdown, TierValidationResult } from '@/lib/services/tier-helpers';
 
@@ -77,20 +78,20 @@ declare global {
 
 function FieldInfoButton({ text }: { text: string }) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
+    <Popover>
+      <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex size-5 items-center justify-center rounded-full border border-muted-foreground/30 text-muted-foreground hover:text-foreground hover:border-muted-foreground/60"
+          className="inline-flex size-5 items-center justify-center rounded-full border border-muted-foreground/30 text-muted-foreground hover:text-foreground hover:border-muted-foreground/60 active:scale-95 transition-transform"
           aria-label="Field information"
         >
           <Info className="size-3" />
         </button>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-xs">
-        {text}
-      </TooltipContent>
-    </Tooltip>
+      </PopoverTrigger>
+      <PopoverContent side="top" className="max-w-[200px] text-xs p-2 bg-popover border shadow-lg">
+        <p className="text-muted-foreground leading-relaxed">{text}</p>
+      </PopoverContent>
+    </Popover>
   );
 }
 

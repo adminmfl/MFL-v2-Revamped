@@ -160,6 +160,7 @@ export function AddMembersDialog({
                         checked={isSelected}
                         onCheckedChange={() => toggleMember(member.league_member_id)}
                         disabled={!canAddMore && !isSelected}
+                        className="border-2 border-black dark:border-white"
                       />
                       <Avatar className="size-9">
                         <AvatarFallback>
@@ -180,23 +181,13 @@ export function AddMembersDialog({
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
-                        {member.roles.map((role) => (
-                          <Badge key={role} variant="outline" className="text-xs">
-                            {role}
-                          </Badge>
-                        ))}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleAddMember(member.league_member_id)}
-                          disabled={!canAddMore || isAdding}
-                        >
-                          {isAdding ? (
-                            <Loader2 className="size-4 animate-spin" />
-                          ) : (
-                            <UserPlus className="size-4" />
-                          )}
-                        </Button>
+                        {member.roles
+                          .filter((role) => role !== "player" && role !== "captain")
+                          .map((role) => (
+                            <Badge key={role} variant="outline" className="text-xs">
+                              {role}
+                            </Badge>
+                          ))}
                       </div>
                     </div>
                   );
