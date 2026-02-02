@@ -74,7 +74,7 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-lg overflow-hidden bg-white">
-                <img src="/img/PFL_Logo.jpeg" alt="PFL Logo" className="w-full h-full object-cover" />
+                <img src="/img/mfl-logo.jpg" alt="My Fitness League" className="w-full h-full object-cover" />
               </div>
               <div className="text-sm sm:text-base">Welcome, {name ?? 'Governor'}</div>
             </div>
@@ -107,7 +107,7 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded overflow-hidden bg-white">
-                    <img src="/img/PFL_Logo.jpeg" alt="PFL Logo" className="w-full h-full object-cover" />
+                    <img src="/img/mfl-logo.jpg" alt="My Fitness League" className="w-full h-full object-cover" />
                   </div>
                   <span className="text-sm">Welcome, {name ?? 'Governor'}</span>
                 </div>
@@ -144,7 +144,7 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
           <div className="flex items-center space-x-4 shrink-0">
             <Link href="/dashboard" className="flex items-center space-x-2 shrink-0">
               <div className="w-10 h-10 rounded-lg overflow-hidden bg-white">
-                <img src="/img/PFL_Logo.jpeg" alt="PFL Logo" className="w-full h-full object-cover" />
+                <img src="/img/mfl-logo.jpg" alt="My Fitness League" className="w-full h-full object-cover" />
               </div>
               <div className="whitespace-nowrap leading-tight">
                 <h1 className="text-lg font-bold whitespace-nowrap">MFL</h1>

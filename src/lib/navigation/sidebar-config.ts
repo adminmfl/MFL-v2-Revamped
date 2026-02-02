@@ -175,6 +175,11 @@ export function getSidebarNavItems(
         icon: ClipboardCheck,
       },
       {
+        title: 'Configure Challenges',
+        url: leagueUrl('/configure-challenges'),
+        icon: Flag,
+      },
+      {
         title: 'Manual Workout Entry',
         url: leagueUrl('/manual-entry'),
         icon: UserCheck,
@@ -185,6 +190,7 @@ export function getSidebarNavItems(
         icon: HeartHandshake,
       },
     ];
+
 
     // Include league admin items here to keep all host/governor tools together
     sections.push({

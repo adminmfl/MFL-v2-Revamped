@@ -89,18 +89,8 @@ export function SectionCards({ stats = defaultStats }: SectionCardsProps) {
               <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
                 {stat.value}
               </CardTitle>
-              <CardAction>
-                <Badge variant="outline">
-                  <TrendIcon className="size-3" />
-                  {isPositive ? "+" : ""}
-                  {stat.change}%
-                </Badge>
-              </CardAction>
             </CardHeader>
             <CardFooter className="flex-col items-start gap-1.5 text-sm">
-              <div className="line-clamp-1 flex gap-2 font-medium">
-                {stat.changeLabel} <TrendIcon className="size-4" />
-              </div>
               <div className="text-muted-foreground">{stat.description}</div>
             </CardFooter>
           </Card>

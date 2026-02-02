@@ -227,7 +227,8 @@ export async function GET(req: NextRequest) {
       const { data: members, error: membersError } = await supabase
         .from('leaguemembers')
         .select('league_member_id, user_id')
-        .eq('league_id', league.league_id);
+        .eq('league_id', league.league_id)
+        .not('team_id', 'is', null);
 
       if (membersError) {
         console.error(`Error fetching members for league ${league.league_id}:`, membersError);

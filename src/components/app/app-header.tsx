@@ -57,6 +57,7 @@ const dynamicRoutePatterns: [RegExp, (match: RegExpMatchArray) => string][] = [
   [/^\/leagues\/([^/]+)\/progress$/, () => 'My Progress'],
   [/^\/leagues\/([^/]+)\/edit$/, () => 'Edit League'],
   [/^\/leagues\/([^/]+)\/challenges$/, () => 'Challenges'],
+  [/^\/leagues\/([^/]+)\/configure-challenges$/, () => 'Configure Challenges'],
   [/^\/leagues\/([^/]+)\/activities$/, () => 'Activities'],
   [/^\/leagues\/([^/]+)\/my-team\/submissions$/, () => 'Team Activities'],
   [/^\/leagues\/([^/]+)\/rest-day-donations$/, () => 'Approve Donations'],
@@ -164,8 +165,8 @@ export function AppHeader() {
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-background transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
-          {/* Sidebar Toggle */}
-          <SidebarTrigger className="-ml-1" />
+        {/* Sidebar Toggle */}
+        <SidebarTrigger className="-ml-1" />
         <Separator
           orientation="vertical"
           className="mx-2 data-[orientation=vertical]:h-4"
@@ -221,8 +222,8 @@ export function AppHeader() {
                       </span>
                     )}
                   </div>
-                  <ChevronDown 
-                    className="size-4 ml-1 transition-transform duration-200" 
+                  <ChevronDown
+                    className="size-4 ml-1 transition-transform duration-200"
                     style={{
                       transform: isLeagueSwitcherOpen ? 'rotate(180deg)' : 'rotate(0deg)'
                     }}

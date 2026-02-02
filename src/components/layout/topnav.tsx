@@ -12,8 +12,11 @@ export function TopNav({ user, onSignOut }: { user: UserInfo; onSignOut: () => v
     <nav className="h-14 bg-white border-b" style={{ borderColor: "#E6E9EE" }}>
       <div className="max-w-[1200px] mx-auto px-6 h-full flex items-center justify-between">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-extrabold"
-               style={{ background: "#0B365F" }}>MFL</div>
+          <img
+            src="/img/mfl-logo.jpg"
+            alt="My Fitness League"
+            className="w-9 h-9 rounded-lg object-cover"
+          />
           <span className="text-sm md:text-base font-semibold" style={{ color: "#0B365F" }}>My Fitness League</span>
         </Link>
         <div className="flex items-center gap-3">

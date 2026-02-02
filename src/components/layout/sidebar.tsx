@@ -75,7 +75,14 @@ export function Sidebar() {
     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
       {/* Logo/Brand */}
       <div className="p-6 border-b border-gray-200">
-        <h2 className="text-xl font-bold text-[#0B365F]">MFL</h2>
+        <Link href="/dashboard" className="flex items-center gap-2">
+          <img
+            src="/img/mfl-logo.jpg"
+            alt="My Fitness League"
+            className="size-10 rounded-lg object-cover"
+          />
+          <h2 className="text-xl font-bold text-[#0B365F]">MFL</h2>
+        </Link>
       </div>
 
       {/* Role Switcher */}

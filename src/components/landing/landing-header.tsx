@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Dumbbell, Menu, X, Zap, Users, TrendingUp, LogIn, Sparkles } from 'lucide-react';
+import { Menu, X, Zap, Users, TrendingUp, LogIn, Sparkles } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -45,9 +45,11 @@ export function LandingHeader() {
         <nav className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-lg shadow-md group-hover:shadow-primary/25 transition-all">
-              <Dumbbell className="size-5" />
-            </div>
+            <img
+              src="/img/mfl-logo.jpg"
+              alt="My Fitness League"
+              className="size-9 rounded-lg object-cover shadow-md group-hover:shadow-primary/25 transition-all"
+            />
             <span className="font-bold text-lg hidden sm:block tracking-tight text-foreground/90 group-hover:text-primary transition-colors">
               My Fitness League
             </span>
@@ -90,9 +92,11 @@ export function LandingHeader() {
                 {/* Mobile Menu Header */}
                 <div className="p-6 border-b border-border/50">
                   <Link href="/" className="flex items-center gap-2 mb-1">
-                    <div className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-lg shadow-md">
-                      <Dumbbell className="size-5" />
-                    </div>
+                    <img
+                      src="/img/mfl-logo.jpg"
+                      alt="My Fitness League"
+                      className="size-9 rounded-lg object-cover shadow-md"
+                    />
                     <SheetTitle className="font-bold text-lg tracking-tight">
                       My Fitness League
                     </SheetTitle>
