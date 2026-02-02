@@ -792,8 +792,8 @@ export default function TeamSubmissionsPage({
                       size="sm"
                       className={cn(
                         "h-8 text-xs px-3",
-                        submission.status === 'approved' 
-                          ? 'bg-gray-300 text-gray-600 hover:bg-gray-300 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400' 
+                        submission.status === 'approved'
+                          ? 'bg-gray-300 text-gray-600 hover:bg-gray-300 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
                           : 'bg-green-600 hover:bg-green-700 text-white'
                       )}
                       onClick={() => handleValidate(submission.id, 'approved', undefined)}
@@ -918,6 +918,7 @@ export default function TeamSubmissionsPage({
             notes: selectedSubmission.notes,
             created_date: selectedSubmission.created_date,
             modified_date: selectedSubmission.modified_date,
+            reupload_of: selectedSubmission.reupload_of,
           }}
           canOverride={true}
           onApprove={(id) => {

@@ -96,45 +96,78 @@ export async function POST(req: NextRequest) {
     if (type === 'rest') {
       rr_value = 1.0;
     } else {
-      // Calculate RR for each metric if present
-      let rrSteps = 0;
-      let rrHoles = 0;
-      let rrDuration = 0;
-      let rrDistance = 0;
+      // Check if this is a custom activity with measurement_type='none'
+      // First, check if workout_type is a custom activity ID (UUID format) or regular activity
+      let measurementType: string | null = null;
 
-      // Steps Calculation
-      if (typeof steps === 'number') {
-        if (steps >= minSteps) {
-          const capped = Math.min(steps, maxSteps);
-          rrSteps = Math.min(1 + (capped - minSteps) / (maxSteps - minSteps), 2.0);
+      if (workout_type) {
+        // Try to find as custom activity first
+        const { data: customActivity } = await supabase
+          .from('custom_activities')
+          .select('measurement_type')
+          .eq('custom_activity_id', workout_type)
+          .maybeSingle();
+
+        if (customActivity) {
+          measurementType = customActivity.measurement_type;
+        } else {
+          // Try regular activity
+          const { data: regularActivity } = await supabase
+            .from('activities')
+            .select('measurement_type')
+            .eq('activity_id', workout_type)
+            .maybeSingle();
+
+          if (regularActivity) {
+            measurementType = regularActivity.measurement_type;
+          }
         }
       }
 
-      // Holes Calculation
-      if (typeof holes === 'number') {
-        rrHoles = Math.min(holes / 9, 2.0);
-      }
+      // If measurement_type is 'none', auto-approve with RR 1.0
+      if (measurementType === 'none') {
+        rr_value = 1.0;
+      } else {
+        // Calculate RR for each metric if present
+        let rrSteps = 0;
+        let rrHoles = 0;
+        let rrDuration = 0;
+        let rrDistance = 0;
 
-      // Duration Calculation
-      if (typeof duration === 'number' && duration > 0) {
-        rrDuration = Math.min(duration / baseDuration, 2.0);
-      }
-
-      // Distance Calculation
-      if (typeof distance === 'number' && distance > 0) {
-        // Use activity-specific logic if available for distance scaling
-        let distanceDivisor = 4; // Default for running/walking (4km = 1 RR)
-
-        if (workout_type === 'cycling') {
-          distanceDivisor = 10; // 10km = 1 RR for cycling
+        // Steps Calculation
+        if (typeof steps === 'number') {
+          if (steps >= minSteps) {
+            const capped = Math.min(steps, maxSteps);
+            rrSteps = Math.min(1 + (capped - minSteps) / (maxSteps - minSteps), 2.0);
+          }
         }
 
-        rrDistance = Math.min(distance / distanceDivisor, 2.0);
-      }
+        // Holes Calculation
+        if (typeof holes === 'number') {
+          rrHoles = Math.min(holes / 9, 2.0);
+        }
 
-      // Take the maximum of all calculated RRs
-      // This allows users to qualify via whichever metric is strongest
-      rr_value = Math.max(rrSteps, rrHoles, rrDuration, rrDistance);
+        // Duration Calculation
+        if (typeof duration === 'number' && duration > 0) {
+          rrDuration = Math.min(duration / baseDuration, 2.0);
+        }
+
+        // Distance Calculation
+        if (typeof distance === 'number' && distance > 0) {
+          // Use activity-specific logic if available for distance scaling
+          let distanceDivisor = 4; // Default for running/walking (4km = 1 RR)
+
+          if (workout_type === 'cycling') {
+            distanceDivisor = 10; // 10km = 1 RR for cycling
+          }
+
+          rrDistance = Math.min(distance / distanceDivisor, 2.0);
+        }
+
+        // Take the maximum of all calculated RRs
+        // This allows users to qualify via whichever metric is strongest
+        rr_value = Math.max(rrSteps, rrHoles, rrDuration, rrDistance);
+      }
     }
 
     const canSubmit = type === 'rest' || rr_value >= 1.0;

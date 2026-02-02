@@ -43,7 +43,8 @@ export async function POST(request: NextRequest) {
       .from('leagueactivities')
       .select('id')
       .eq('league_id', league_id)
-      .eq('activity_id', activity_id)
+      .eq('league_id', league_id)
+      .or(`activity_id.eq.${activity_id},custom_activity_id.eq.${activity_id}`)
       .single();
 
     if (fetchError) {

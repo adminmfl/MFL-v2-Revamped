@@ -12,7 +12,9 @@ import {
   Info,
   Filter,
   Search,
+  Sparkles,
 } from 'lucide-react';
+import Link from 'next/link';
 
 import { useRole } from '@/contexts/role-context';
 import { useLeague } from '@/contexts/league-context';
@@ -85,10 +87,10 @@ export default function LeagueActivitiesPage({
   const [frequencyDrafts, setFrequencyDrafts] = React.useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = React.useState(false);
   const [resetKey, setResetKey] = React.useState(0);
-  
+
   // Track pending changes before saving
   const [pendingChanges, setPendingChanges] = React.useState<Map<string, { enabled?: boolean; frequency?: number | null; minimums?: { min_value: number | null; age_group_overrides: Record<string, any> } }>>(new Map());
-  
+
   const hasChanges = pendingChanges.size > 0;
 
   const enabledActivityIds = React.useMemo(() => {
@@ -116,14 +118,14 @@ export default function LeagueActivitiesPage({
     if (!data) return [];
     const allActivities = isAdmin ? data.allActivities || [] : data.activities;
     const categoryMap = new Map();
-    
+
     allActivities.forEach((activity) => {
       if (activity.category) {
         categoryMap.set(activity.category.category_id, activity.category);
       }
     });
 
-    return Array.from(categoryMap.values()).sort((a, b) => 
+    return Array.from(categoryMap.values()).sort((a, b) =>
       a.display_name.localeCompare(b.display_name)
     );
   }, [data, isAdmin]);
@@ -157,10 +159,10 @@ export default function LeagueActivitiesPage({
   const handleToggle = (activityId: string, enable: boolean) => {
     // Check if the new state matches the original state
     const originallyEnabled = enabledActivityIds.has(activityId);
-    
+
     setPendingChanges((prev) => {
       const next = new Map(prev);
-      
+
       // If toggling back to original state, remove the pending change
       if (enable === originallyEnabled) {
         next.delete(activityId);
@@ -225,11 +227,11 @@ export default function LeagueActivitiesPage({
       ...prev,
       [activityId]: value,
     }));
-    
+
     // Mark as pending immediately when user starts typing
     const trimmed = value.trim();
     const current = enabledActivityMap.get(activityId)?.frequency ?? null;
-    
+
     if (trimmed === '') {
       if (current !== null) {
         setPendingChanges((prev) => {
@@ -281,7 +283,7 @@ export default function LeagueActivitiesPage({
       for (const [activityId, change] of pendingChanges) {
         try {
           if (change.enabled !== undefined) {
-            const success = change.enabled 
+            const success = change.enabled
               ? await addActivities([activityId])
               : await removeActivity(activityId);
             if (success) successCount++;
@@ -422,7 +424,7 @@ export default function LeagueActivitiesPage({
                       <Dumbbell className="size-8 text-muted-foreground" />
                     </div>
                     <h2 className="text-lg font-semibold mb-2">
-                      {selectedCategory === 'all' 
+                      {selectedCategory === 'all'
                         ? 'No Activities Configured'
                         : 'No Activities in This Category'}
                     </h2>
@@ -509,6 +511,12 @@ export default function LeagueActivitiesPage({
               </Select>
             )}
             <div className="flex items-center gap-2">
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/leagues/${leagueId}/custom-activities`}>
+                  <Sparkles className="size-4 mr-2" />
+                  Custom Activities
+                </Link>
+              </Button>
               <Badge variant="outline">
                 {data?.activities.length || 0} Active
               </Badge>
@@ -628,6 +636,12 @@ export default function LeagueActivitiesPage({
                           <p className="font-medium text-sm leading-tight">
                             {activity.activity_name}
                           </p>
+                          {activity.is_custom && (
+                            <Badge variant="secondary" className="text-xs bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-500/20 dark:text-violet-300 dark:border-violet-500/30">
+                              <Sparkles className="size-3 mr-1" />
+                              Custom
+                            </Badge>
+                          )}
                           {activity.category && (
                             <Badge variant="outline" className="text-xs">
                               {activity.category.display_name}
@@ -644,7 +658,7 @@ export default function LeagueActivitiesPage({
                             {activity.description}
                           </p>
                         )}
-                        
+
                         {isEnabled && (
                           <div onClick={(e) => e.stopPropagation()}>
                             <ActivityMinimumDropdown
