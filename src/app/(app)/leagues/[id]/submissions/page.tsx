@@ -1000,6 +1000,7 @@ export default function AllSubmissionsPage({
             notes: selectedSubmission.notes,
             created_date: selectedSubmission.created_date,
             modified_date: selectedSubmission.modified_date,
+            reupload_of: selectedSubmission.reupload_of,
           }}
           canOverride={isHost || isGovernor}
           onApprove={(id) => {
