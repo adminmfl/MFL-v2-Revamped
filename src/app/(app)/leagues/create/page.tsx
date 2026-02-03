@@ -286,6 +286,21 @@ export default function CreateLeaguePage() {
     setError(null);
 
     try {
+      // Check if league name already exists
+      const checkNameRes = await fetch('/api/leagues/check-name', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ league_name: formData.league_name.trim() }),
+      });
+
+      const checkNameData = await checkNameRes.json();
+
+      if (!checkNameRes.ok || checkNameData.exists) {
+        setError('This league name is already taken. Please choose a different name.');
+        setLoading(false);
+        return;
+      }
+
       const leagueData = {
         league_name: formData.league_name.trim(),
         description: formData.description.trim() || null,
