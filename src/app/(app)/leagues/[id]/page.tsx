@@ -956,7 +956,7 @@ export default function LeagueDashboardPage({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-md border border-border/60 bg-blue-100 dark:bg-blue-950 px-3 py-2.5 text-center">
+                  <div className="rounded-md border border-[#bbda6e]/60 bg-[#bbda6e]/35 dark:bg-blue-950 px-3 py-2.5 text-center">
                     <div className="text-xs text-muted-foreground">Total Points</div>
                     <div className="text-base font-semibold text-foreground tabular-nums">
                       {mySummary?.points.toLocaleString() ?? '—'}
@@ -972,7 +972,7 @@ export default function LeagueDashboardPage({
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-md border border-border/60 bg-blue-100 dark:bg-blue-950 px-3 py-2.5 text-center">
+                  <div className="rounded-md border border-[#bbda6e]/60 bg-[#bbda6e]/35 dark:bg-blue-950 px-3 py-2.5 text-center">
                     <div className="text-[11px] text-muted-foreground">Rest Days Used</div>
                     <div className="text-sm font-semibold text-foreground tabular-nums">
                       {mySummary?.restUsed.toLocaleString() ?? '—'}
@@ -1099,7 +1099,7 @@ export default function LeagueDashboardPage({
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-md border border-border/60 bg-blue-100 dark:bg-blue-950 px-3 py-2.5 text-center">
+                  <div className="rounded-md border border-[#bbda6e]/60 bg-[#bbda6e]/35 dark:bg-blue-950 px-3 py-2.5 text-center">
                     <div className="text-xs text-muted-foreground">Total Points</div>
                     <div className="text-base font-semibold text-foreground tabular-nums">
                       {typeof mySummary?.teamPoints === 'number'
