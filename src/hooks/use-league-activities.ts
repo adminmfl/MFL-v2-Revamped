@@ -16,6 +16,7 @@ export interface LeagueActivity {
   description: string | null;
   category_id: string | null;
   frequency?: number | null;
+  frequency_type?: 'weekly' | 'monthly' | null;
   min_value?: number | null;
   age_group_overrides?: Record<string, any> | null;
   category?: {
@@ -53,7 +54,11 @@ export interface UseLeagueActivitiesReturn {
   refetch: () => Promise<void>;
   addActivities: (activityIds: string[], isCustom?: boolean) => Promise<boolean>;
   removeActivity: (activityId: string, isCustom?: boolean) => Promise<boolean>;
-  updateFrequency: (activityId: string, frequency: number | null) => Promise<boolean>;
+  updateFrequency: (
+    activityId: string,
+    frequency: number | null,
+    frequencyType?: 'weekly' | 'monthly' | null
+  ) => Promise<boolean>;
 }
 
 // ============================================================================
@@ -174,14 +179,22 @@ export function useLeagueActivities(
 
   // Update activity frequency (host only)
   const updateFrequency = useCallback(
-    async (activityId: string, frequency: number | null): Promise<boolean> => {
+    async (
+      activityId: string,
+      frequency: number | null,
+      frequencyType?: 'weekly' | 'monthly' | null
+    ): Promise<boolean> => {
       if (!leagueId) return false;
 
       try {
         const response = await fetch(`/api/leagues/${leagueId}/activities`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ activity_id: activityId, frequency }),
+          body: JSON.stringify({
+            activity_id: activityId,
+            frequency,
+            frequency_type: frequencyType,
+          }),
         });
 
         const result = await response.json();

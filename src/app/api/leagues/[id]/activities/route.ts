@@ -20,6 +20,7 @@ export interface LeagueActivity {
   description: string | null;
   category_id: string | null;
   frequency?: number | null;
+  frequency_type?: 'weekly' | 'monthly' | null;
   category?: {
     category_id: string;
     category_name: string;
@@ -73,7 +74,11 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { activity_id, frequency } = body as { activity_id?: string; frequency?: number | null };
+    const { activity_id, frequency, frequency_type } = body as {
+      activity_id?: string;
+      frequency?: number | null;
+      frequency_type?: 'weekly' | 'monthly' | null;
+    };
 
     if (!activity_id) {
       return NextResponse.json(
@@ -82,8 +87,35 @@ export async function PATCH(
       );
     }
 
-    let normalizedFrequency: number | null = null;
-    if (frequency !== null && frequency !== undefined && frequency !== '') {
+    const hasFrequency = Object.prototype.hasOwnProperty.call(body, 'frequency');
+    const hasFrequencyType = Object.prototype.hasOwnProperty.call(body, 'frequency_type');
+
+    if (!hasFrequency && !hasFrequencyType) {
+      return NextResponse.json(
+        { error: 'frequency or frequency_type is required' },
+        { status: 400 }
+      );
+    }
+
+    let normalizedFrequencyType: 'weekly' | 'monthly' | null | undefined = undefined;
+    if (hasFrequencyType) {
+      if (frequency_type === null || frequency_type === undefined || frequency_type === '') {
+        normalizedFrequencyType = null;
+      } else if (frequency_type !== 'weekly' && frequency_type !== 'monthly') {
+        return NextResponse.json(
+          { error: 'frequency_type must be weekly or monthly (or null to reset)' },
+          { status: 400 }
+        );
+      } else {
+        normalizedFrequencyType = frequency_type;
+      }
+    }
+
+    let normalizedFrequency: number | null | undefined = undefined;
+    if (hasFrequency) {
+      if (frequency === null || frequency === undefined || frequency === '') {
+        normalizedFrequency = null;
+      } else {
       const asNumber = Number(frequency);
       if (!Number.isFinite(asNumber)) {
         return NextResponse.json(
@@ -92,20 +124,51 @@ export async function PATCH(
         );
       }
 
+      let effectiveType = normalizedFrequencyType ?? 'weekly';
+      if (!hasFrequencyType) {
+        const { data: currentRow } = await supabase
+          .from('leagueactivities')
+          .select('frequency_type')
+          .eq('league_id', leagueId)
+          .or(`activity_id.eq.${activity_id},custom_activity_id.eq.${activity_id}`)
+          .maybeSingle();
+        const currentType = (currentRow as any)?.frequency_type;
+        if (currentType === 'monthly') {
+          effectiveType = 'monthly';
+        }
+      }
+
       const rounded = Math.floor(asNumber);
-      if (rounded < 0 || rounded > 7) {
+      const maxAllowed = effectiveType === 'monthly' ? 28 : 7;
+      if (rounded < 0 || rounded > maxAllowed) {
         return NextResponse.json(
-          { error: 'frequency must be between 0 and 7 (or null for unlimited)' },
+          {
+            error: `frequency must be between 0 and ${maxAllowed} (or null for unlimited)`,
+          },
           { status: 400 }
         );
       }
 
       normalizedFrequency = rounded;
+      }
+    }
+
+    const updatePayload: Record<string, any> = {
+      modified_by: userId,
+      modified_date: new Date().toISOString(),
+    };
+
+    if (hasFrequency) {
+      updatePayload.frequency = normalizedFrequency ?? null;
+    }
+
+    if (hasFrequencyType) {
+      updatePayload.frequency_type = normalizedFrequencyType ?? 'weekly';
     }
 
     const { data: updated, error: updateError } = await supabase
       .from('leagueactivities')
-      .update({ frequency: normalizedFrequency, modified_by: userId, modified_date: new Date().toISOString() })
+      .update(updatePayload)
       .eq('league_id', leagueId)
       .eq('league_id', leagueId)
       .or(`activity_id.eq.${activity_id},custom_activity_id.eq.${activity_id}`)
@@ -141,7 +204,13 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
-      data: { activity_id, frequency: normalizedFrequency },
+      data: {
+        activity_id,
+        frequency: hasFrequency ? normalizedFrequency ?? null : (updated as any)?.frequency ?? null,
+        frequency_type: hasFrequencyType
+          ? normalizedFrequencyType ?? 'weekly'
+          : (updated as any)?.frequency_type ?? 'weekly',
+      },
     });
   } catch (error) {
     console.error('Error in league activities PATCH:', error);
@@ -218,6 +287,7 @@ export async function GET(
         activity_id,
         custom_activity_id,
         frequency,
+        frequency_type,
         min_value,
         age_group_overrides,
         activities(
@@ -244,15 +314,16 @@ export async function GET(
     leagueActivities = withFrequency.data as any[] | null;
     activitiesError = withFrequency.error;
 
-    // Fallback if frequency column is not present yet
+    // Fallback if frequency/frequency_type columns are not present yet
     if (activitiesError && typeof activitiesError?.message === 'string') {
       const msg = activitiesError.message.toLowerCase();
-      if (msg.includes('frequency') && msg.includes('column')) {
-        supportsFrequency = false;
-        const withoutFrequency = await supabase
+      if (msg.includes('frequency_type') && msg.includes('column')) {
+        const withoutFrequencyType = await supabase
           .from('leagueactivities')
           .select(`
             activity_id,
+            custom_activity_id,
+            frequency,
             min_value,
             age_group_overrides,
             activities(
@@ -264,6 +335,46 @@ export async function GET(
               settings,
               admin_info,
               activity_categories(category_id, category_name, display_name)
+            ),
+            custom_activities(
+              custom_activity_id,
+              activity_name,
+              description,
+              measurement_type,
+              requires_proof,
+              requires_notes
+            )
+          `)
+          .eq('league_id', leagueId);
+
+        leagueActivities = withoutFrequencyType.data as any[] | null;
+        activitiesError = withoutFrequencyType.error;
+      } else if (msg.includes('frequency') && msg.includes('column')) {
+        supportsFrequency = false;
+        const withoutFrequency = await supabase
+          .from('leagueactivities')
+          .select(`
+            activity_id,
+            custom_activity_id,
+            min_value,
+            age_group_overrides,
+            activities(
+              activity_id, 
+              activity_name, 
+              description,
+              category_id,
+              measurement_type,
+              settings,
+              admin_info,
+              activity_categories(category_id, category_name, display_name)
+            ),
+            custom_activities(
+              custom_activity_id,
+              activity_name,
+              description,
+              measurement_type,
+              requires_proof,
+              requires_notes
             )
           `)
           .eq('league_id', leagueId);
@@ -295,6 +406,7 @@ export async function GET(
             description: customAct.description,
             category_id: null,
             frequency: (la as any).frequency ?? null,
+            frequency_type: (la as any).frequency_type ?? 'weekly',
             min_value: (la as any).min_value ?? null,
             age_group_overrides: (la as any).age_group_overrides ?? null,
             category: null,
@@ -316,6 +428,7 @@ export async function GET(
           description: activity.description,
           category_id: activity.category_id,
           frequency: (la as any).frequency ?? null,
+          frequency_type: (la as any).frequency_type ?? 'weekly',
           min_value: (la as any).min_value ?? null,
           age_group_overrides: (la as any).age_group_overrides ?? null,
           category: activity.activity_categories,
@@ -351,6 +464,7 @@ export async function GET(
           description: a.description,
           category_id: a.category_id,
           frequency: null,
+          frequency_type: 'weekly',
           category: a.activity_categories,
           value: a.activity_name,
           measurement_type: a.measurement_type,

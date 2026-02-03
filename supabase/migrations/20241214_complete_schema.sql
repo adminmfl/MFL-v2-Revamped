@@ -308,7 +308,19 @@ CREATE TABLE IF NOT EXISTS public.leagueactivities (
   activity_id uuid REFERENCES public.activities(activity_id) ON DELETE CASCADE,
   custom_activity_id uuid REFERENCES public.custom_activities(custom_activity_id) ON DELETE CASCADE,
   min_value numeric CHECK (min_value IS NULL OR min_value > 0),
-  frequency integer DEFAULT NULL CHECK (frequency IS NULL OR (frequency >= 0 AND frequency <= 7)),
+  frequency integer DEFAULT NULL,
+  frequency_type text DEFAULT 'weekly' CHECK (frequency_type IN ('weekly', 'monthly')),
+  CONSTRAINT leagueactivities_frequency_range CHECK (
+    frequency IS NULL
+    OR (
+      frequency_type = 'weekly'
+      AND frequency >= 0 AND frequency <= 7
+    )
+    OR (
+      frequency_type = 'monthly'
+      AND frequency >= 0 AND frequency <= 28
+    )
+  ),
   age_group_overrides jsonb DEFAULT '{}'::jsonb,
   modified_by uuid REFERENCES public.users(user_id) ON DELETE SET NULL,
   modified_date timestamptz DEFAULT CURRENT_TIMESTAMP,
@@ -335,7 +347,8 @@ WHERE custom_activity_id IS NOT NULL;
 
 COMMENT ON TABLE public.leagueactivities IS 'Defines which activities are allowed in each league';
 COMMENT ON COLUMN public.leagueactivities.min_value IS 'Base minimum requirement (applies to all ages unless overridden by age_group_overrides)';
-COMMENT ON COLUMN public.leagueactivities.frequency IS 'Max submissions allowed per week per user (0-7, or NULL for unlimited)';
+COMMENT ON COLUMN public.leagueactivities.frequency IS 'Max submissions allowed per period per user (weekly: 0-7, monthly: 0-28, or NULL for unlimited)';
+COMMENT ON COLUMN public.leagueactivities.frequency_type IS 'Period type for frequency limit (weekly or monthly)';
 COMMENT ON COLUMN public.leagueactivities.age_group_overrides IS 'JSONB structure for age-based overrides: {tier0: {ageRange: {min, max}, minValue}, tier1: {...}}';
 
 -- =====================================================================================

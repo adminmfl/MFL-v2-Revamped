@@ -190,7 +190,7 @@ export async function POST(req: NextRequest) {
     if (type === 'workout' && workout_type && !reupload_of) {
       const { data: leagueActivity, error: leagueActivityError } = await supabase
         .from('leagueactivities')
-        .select('frequency, activities!inner(activity_name)')
+        .select('frequency, frequency_type, activities!inner(activity_name)')
         .eq('league_id', league_id)
         .eq('activities.activity_name', workout_type)
         .maybeSingle();
@@ -201,6 +201,8 @@ export async function POST(req: NextRequest) {
       }
 
       const rawFrequency = (leagueActivity as any)?.frequency ?? null;
+      const rawFrequencyType = (leagueActivity as any)?.frequency_type ?? 'weekly';
+      const frequencyType = rawFrequencyType === 'monthly' ? 'monthly' : 'weekly';
       const frequency = typeof rawFrequency === 'number' && Number.isFinite(rawFrequency)
         ? Math.floor(rawFrequency)
         : null;
@@ -209,13 +211,15 @@ export async function POST(req: NextRequest) {
       if (typeof frequency === 'number' && frequency >= 0) {
         if (frequency === 0) {
           return NextResponse.json(
-            { error: 'This activity is disabled for weekly submissions.' },
+            { error: `This activity is disabled for ${frequencyType} submissions.` },
             { status: 409 }
           );
         }
 
-        const weekRange = getWeekRangeYmd(normalizedDate);
-        if (!weekRange) {
+        const dateRange = frequencyType === 'monthly'
+          ? getMonthRangeYmd(normalizedDate)
+          : getWeekRangeYmd(normalizedDate);
+        if (!dateRange) {
           return NextResponse.json({ error: 'Invalid date format for submission' }, { status: 400 });
         }
 
@@ -225,8 +229,8 @@ export async function POST(req: NextRequest) {
           .eq('league_member_id', membership.league_member_id)
           .eq('type', 'workout')
           .eq('workout_type', workout_type)
-          .gte('date', weekRange.start)
-          .lte('date', weekRange.end);
+          .gte('date', dateRange.start)
+          .lte('date', dateRange.end);
 
         if (weeklyError) {
           console.error('Weekly entries lookup error:', weeklyError);
@@ -254,7 +258,7 @@ export async function POST(req: NextRequest) {
         if (usedDates.size >= frequency) {
           return NextResponse.json(
             {
-              error: `This activity is limited to ${frequency} day${frequency === 1 ? '' : 's'} per week. You have already used ${usedDates.size} day${usedDates.size === 1 ? '' : 's'} this week.`,
+              error: `This activity is limited to ${frequency} day${frequency === 1 ? '' : 's'} per ${frequencyType}. You have already used ${usedDates.size} day${usedDates.size === 1 ? '' : 's'} this ${frequencyType}.`,
             },
             { status: 409 }
           );
@@ -602,6 +606,23 @@ function getWeekRangeYmd(dateYmd: string): { start: string; end: string } | null
 
   const end = new Date(start);
   end.setUTCDate(start.getUTCDate() + 6);
+
+  return {
+    start: start.toISOString().slice(0, 10),
+    end: end.toISOString().slice(0, 10),
+  };
+}
+
+function getMonthRangeYmd(dateYmd: string): { start: string; end: string } | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateYmd)) return null;
+
+  const [y, m] = dateYmd.split('-').map(Number);
+  if (!y || !m) return null;
+
+  const start = new Date(Date.UTC(y, m - 1, 1));
+  if (Number.isNaN(start.getTime())) return null;
+
+  const end = new Date(Date.UTC(y, m, 0));
 
   return {
     start: start.toISOString().slice(0, 10),
