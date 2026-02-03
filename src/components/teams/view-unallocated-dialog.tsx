@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Users, Search, Loader2, UserPlus } from "lucide-react";
+import { Users, Search, Loader2, Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -10,11 +10,13 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -41,13 +43,15 @@ export function ViewUnallocatedDialog({
 }: ViewUnallocatedDialogProps) {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [selectedTeam, setSelectedTeam] = React.useState<string>("");
-  const [addingMemberId, setAddingMemberId] = React.useState<string | null>(null);
+  const [selectedMembers, setSelectedMembers] = React.useState<string[]>([]);
+  const [isLoading, setIsLoading] = React.useState(false);
 
   // Reset when dialog opens
   React.useEffect(() => {
     if (open) {
       setSearchQuery("");
       setSelectedTeam("");
+      setSelectedMembers([]);
     }
   }, [open]);
 
@@ -63,17 +67,27 @@ export function ViewUnallocatedDialog({
     );
   }, [members, searchQuery]);
 
-  const handleAddToTeam = async (memberId: string) => {
-    if (!selectedTeam || !onAddMember) return;
+  const toggleMember = (memberId: string) => {
+    setSelectedMembers((prev) =>
+      prev.includes(memberId)
+        ? prev.filter((id) => id !== memberId)
+        : [...prev, memberId]
+    );
+  };
 
-    setAddingMemberId(memberId);
+  const handleAddSelected = async () => {
+    if (selectedMembers.length === 0) return;
+    if (!selectedTeam) return;
+    if (!onAddMember) return;
+
+    setIsLoading(true);
     try {
-      const success = await onAddMember(selectedTeam, memberId);
-      if (!success) {
-        console.error("Failed to add member to team");
+      for (const memberId of selectedMembers) {
+        await onAddMember(selectedTeam, memberId);
       }
+      onOpenChange(false);
     } finally {
-      setAddingMemberId(null);
+      setIsLoading(false);
     }
   };
 
@@ -139,13 +153,18 @@ export function ViewUnallocatedDialog({
             ) : (
               <div className="p-2 space-y-1">
                 {filteredMembers.map((member) => {
-                  const isAdding = addingMemberId === member.league_member_id;
+                  const isSelected = selectedMembers.includes(member.league_member_id);
 
                   return (
                     <div
                       key={member.league_member_id}
                       className="flex items-center gap-2 p-2 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
                     >
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleMember(member.league_member_id)}
+                        className="border-2 border-black dark:border-white"
+                      />
                       <Avatar className="size-8 shrink-0">
                         <AvatarFallback className="text-xs">
                           {member.username
@@ -183,22 +202,6 @@ export function ViewUnallocatedDialog({
                             </Badge>
                           ))}
                       </div>
-                      {selectedTeam && onAddMember && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleAddToTeam(member.league_member_id)}
-                          disabled={isAdding}
-                          className="h-8 w-8 p-0 shrink-0"
-                          title="Add to team"
-                        >
-                          {isAdding ? (
-                            <Loader2 className="size-4 animate-spin" />
-                          ) : (
-                            <UserPlus className="size-4" />
-                          )}
-                        </Button>
-                      )}
                     </div>
                   );
                 })}
@@ -206,6 +209,41 @@ export function ViewUnallocatedDialog({
             )}
           </ScrollArea>
         </div>
+
+        <DialogFooter>
+          <div className="flex items-center justify-between w-full">
+            <p className="text-sm text-muted-foreground">
+              {selectedMembers.length} selected
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAddSelected}
+                disabled={
+                  isLoading || selectedMembers.length === 0 || !selectedTeam
+                }
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <Check className="mr-2 size-4" />
+                    Add Members
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
