@@ -841,7 +841,7 @@ export default function LeagueDashboardPage({
               >
                 <Link href={`/leagues/${id}/submit?type=rest`}>
                   <Moon className="mr-2 size-4" />
-                  Add Rest Day
+                  Take Rest
                 </Link>
               </Button>
             </div>
@@ -934,7 +934,7 @@ export default function LeagueDashboardPage({
               >
                 <Link href={`/leagues/${id}/submit?type=rest`}>
                   <Moon className="mr-2 size-4" />
-                  Add Rest Day
+                  Take Rest
                 </Link>
               </Button>
             </div>
