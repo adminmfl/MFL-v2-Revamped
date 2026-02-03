@@ -6,48 +6,19 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import Confetti from 'react-confetti';
 import {
-  Trophy,
   ArrowRight,
   Loader2,
-  Calendar as CalendarIcon,
-  Users,
-  Lock,
-  Globe,
+  Sparkles,
+  PartyPopper,
+  Trophy,
   CreditCard,
   IndianRupee,
-  CheckCircle2,
-  ArrowLeft,
-  Sparkles,
   Info,
-  PartyPopper,
-  Share2,
-  Crown,
-  Plus,
-  Check,
 } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import {
   Dialog,
   DialogContent,
@@ -55,16 +26,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-import { cn } from '@/lib/utils';
-import { TierConfig, PriceBreakdown, TierValidationResult } from '@/lib/services/tier-helpers';
-
-// ============================================================================
-// Types
-// ============================================================================
+import { 
+  TierConfig, 
+  PriceBreakdown, 
+  TierValidationResult,
+  recommendTier,
+  TierRecommendation,
+} from '@/lib/services/tier-helpers';
+import { LeagueFormSection } from '@/components/league/league-form-section';
+import { TierRecommendationCard } from '@/components/league/tier-recommendation-card';
+import { TiersModal } from '@/components/league/tiers-modal';
 
 declare global {
   interface Window {
@@ -72,58 +45,32 @@ declare global {
   }
 }
 
-// ============================================================================
-// Create League Page
-// ============================================================================
-
-function FieldInfoButton({ text }: { text: string }) {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex size-5 items-center justify-center rounded-full border border-muted-foreground/30 text-muted-foreground hover:text-foreground hover:border-muted-foreground/60 active:scale-95 transition-transform"
-          aria-label="Field information"
-        >
-          <Info className="size-3" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent side="top" className="max-w-[200px] text-xs p-2 bg-popover border shadow-lg">
-        <p className="text-muted-foreground leading-relaxed">{text}</p>
-      </PopoverContent>
-    </Popover>
-  );
-}
+type FormData = {
+  league_name: string;
+  description: string;
+  num_teams: string;
+  max_participants: string;
+  rest_days: string;
+  is_public: boolean;
+  is_exclusive: boolean;
+};
 
 export default function CreateLeaguePage() {
   const router = useRouter();
   const { refetch } = useLeague();
 
-  const [step, setStep] = React.useState<'form' | 'payment' | 'success'>('form');
+  // UI State
+  const [step, setStep] = React.useState<'form' | 'success'>('form');
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [pricing, setPricing] = React.useState<PriceBreakdown | null>(null);
-  const [pricingLoading, setPricingLoading] = React.useState(true);
-  const [createdLeagueId, setCreatedLeagueId] = React.useState<string | null>(null);
   const [showConfetti, setShowConfetti] = React.useState(false);
   const [windowSize, setWindowSize] = React.useState({ width: 0, height: 0 });
+  const [tiersModalOpen, setTiersModalOpen] = React.useState(false);
+  const [createdLeagueId, setCreatedLeagueId] = React.useState<string | null>(null);
 
-  // Date state
-  const [startDate, setStartDate] = React.useState<Date | undefined>();
-  const [duration, setDuration] = React.useState(30);
-  const [endDate, setEndDate] = React.useState<Date | undefined>();
-
-  // Tier state
+  // Data State
   const [tiers, setTiers] = React.useState<TierConfig[]>([]);
-  const [selectedTierId, setSelectedTierId] = React.useState<string | null>(null);
-
-  // Price preview state
-  const [pricePreview, setPricePreview] = React.useState<PriceBreakdown | null>(null);
-  const [validation, setValidation] = React.useState<TierValidationResult | null>(null);
-  const [previewLoading, setPreviewLoading] = React.useState(false);
-
-  // Form state
-  const [formData, setFormData] = React.useState({
+  const [formData, setFormData] = React.useState<FormData>({
     league_name: '',
     description: '',
     num_teams: '4',
@@ -132,6 +79,18 @@ export default function CreateLeaguePage() {
     is_public: false,
     is_exclusive: true,
   });
+
+  // Date/Duration State
+  const [startDate, setStartDate] = React.useState<Date | undefined>();
+  const [duration, setDuration] = React.useState(30);
+  const [endDate, setEndDate] = React.useState<Date | undefined>();
+
+  // Tier & Pricing State
+  const [selectedTierId, setSelectedTierId] = React.useState<string | null>(null);
+  const [recommendation, setRecommendation] = React.useState<TierRecommendation | null>(null);
+  const [pricePreview, setPricePreview] = React.useState<PriceBreakdown | null>(null);
+  const [validation, setValidation] = React.useState<TierValidationResult | null>(null);
+  const [loadingPrice, setLoadingPrice] = React.useState(false);
 
   // Window size for confetti
   React.useEffect(() => {
@@ -143,35 +102,29 @@ export default function CreateLeaguePage() {
     return () => window.removeEventListener('resize', updateWindowSize);
   }, []);
 
-  // Trigger confetti on success after 2 seconds
+  // Confetti on success
   React.useEffect(() => {
     if (step === 'success') {
       const timer = setTimeout(() => {
         setShowConfetti(true);
-        // Stop confetti after 5 seconds
         setTimeout(() => setShowConfetti(false), 5000);
       }, 500);
       return () => clearTimeout(timer);
     }
   }, [step]);
 
+  // Initialize start date
   const startOfTodayLocal = React.useCallback(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return d;
   }, []);
 
-  // Ensure start date is always set (mandatory) defaulting to today
   React.useEffect(() => {
     if (!startDate) {
       setStartDate(startOfTodayLocal());
     }
   }, [startDate, startOfTodayLocal]);
-
-  const selectedTier = React.useMemo(
-    () => tiers.find((t) => t.tier_id === selectedTierId) || null,
-    [tiers, selectedTierId]
-  );
 
   // Update end date when start date or duration changes
   React.useEffect(() => {
@@ -183,9 +136,8 @@ export default function CreateLeaguePage() {
     }
   }, [startDate, duration]);
 
-  // Update rest days when duration changes (Default: 20% of duration)
+  // Auto-calculate rest days (20% of duration)
   React.useEffect(() => {
-    // Default rest days is 20% of duration, rounded to nearest integer
     const calculatedRestDays = Math.round(duration * 0.20);
     setFormData(prev => ({
       ...prev,
@@ -199,37 +151,32 @@ export default function CreateLeaguePage() {
       try {
         const res = await fetch('/api/leagues/tiers');
         const json = await res.json();
-
         if (!res.ok || !json.success) {
           console.error('Failed to fetch tiers:', json.error);
           return;
         }
-
         const tierList: TierConfig[] = json.data?.tiers || [];
         setTiers(tierList);
-
-        // Select first tier by default (sorted by display_order from API)
-        if (tierList.length > 0 && !selectedTierId) {
-          setSelectedTierId(tierList[0].tier_id);
-          // Set default duration based on tier max
-          const defaultDays = Math.min(30, tierList[0].max_days);
-          setDuration(defaultDays);
-          // Set default max participants
-          setFormData(prev => ({
-            ...prev,
-            max_participants: tierList[0].max_participants.toString()
-          }));
-        }
       } catch (err) {
         console.error('Failed to fetch tiers:', err);
-      } finally {
-        setPricingLoading(false);
       }
     };
     fetchTiers();
   }, []);
 
-  // Fetch price preview when tier, duration, or estimated participants change
+  // Recommend tier when form data changes (shows recommendation but doesn't auto-select)
+  React.useEffect(() => {
+    if (tiers.length === 0) return;
+    
+    const estimatedParticipants = parseInt(formData.max_participants) || parseInt(formData.num_teams) * 5;
+    const rec = recommendTier(tiers, duration, estimatedParticipants);
+    setRecommendation(rec);
+    
+    // Clear selected tier when form changes so user must confirm new recommendation
+    setSelectedTierId(null);
+  }, [tiers, duration, formData]);
+
+  // Fetch price preview when tier or form changes
   React.useEffect(() => {
     if (!selectedTierId || !duration) {
       setPricePreview(null);
@@ -237,10 +184,33 @@ export default function CreateLeaguePage() {
       return;
     }
 
+    const tier = tiers.find(t => t.tier_id === selectedTierId);
+    if (!tier) return;
+
+    // For fixed price tiers, use the fixed price directly
+    if (tier.pricing.pricing_type === 'fixed' && tier.pricing.fixed_price) {
+      const fixedTotal = tier.pricing.fixed_price;
+      const gstAmount = (fixedTotal * (tier.pricing.gst_percentage || 18)) / 100;
+      setPricePreview({
+        total: fixedTotal + gstAmount,
+        subtotal: fixedTotal,
+        gst_amount: gstAmount,
+        pricing_type: 'fixed',
+        duration_days: duration,
+        breakdown_details: [
+          `Base Price: ₹${fixedTotal.toFixed(2)}`,
+          `GST (${tier.pricing.gst_percentage || 18}%): ₹${gstAmount.toFixed(2)}`,
+        ],
+      });
+      setValidation({ valid: true, errors: [], warnings: [] });
+      return;
+    }
+
+    // For dynamic pricing, fetch preview
     const estimatedParticipants = parseInt(formData.max_participants) || parseInt(formData.num_teams) * 5;
 
     const fetchPreview = async () => {
-      setPreviewLoading(true);
+      setLoadingPrice(true);
       try {
         const res = await fetch('/api/tiers/preview-price', {
           method: 'POST',
@@ -253,18 +223,11 @@ export default function CreateLeaguePage() {
         });
 
         const json = await res.json();
-
         if (res.ok && json.success) {
           setPricePreview(json.price_breakdown);
           setValidation(json.validation);
         } else {
-          // If servers sends validation details even on failure, use them
-          if (json.validation) {
-            setValidation(json.validation);
-          } else {
-            console.error('Price preview failed:', json.error);
-            setValidation(null);
-          }
+          setValidation(json.validation || null);
           setPricePreview(null);
         }
       } catch (err) {
@@ -272,11 +235,10 @@ export default function CreateLeaguePage() {
         setPricePreview(null);
         setValidation(null);
       } finally {
-        setPreviewLoading(false);
+        setLoadingPrice(false);
       }
     };
 
-    // Debounce price preview requests
     const timeout = setTimeout(fetchPreview, 500);
     return () => clearTimeout(timeout);
   }, [selectedTierId, duration, formData.num_teams, formData.max_participants]);
@@ -292,23 +254,17 @@ export default function CreateLeaguePage() {
     };
   }, []);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSwitchChange = (name: string, checked: boolean) => {
-    setFormData((prev) => ({ ...prev, [name]: checked }));
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  const selectedTier = React.useMemo(
+    () => tiers.find((t) => t.tier_id === selectedTierId) || null,
+    [tiers, selectedTierId]
+  );
 
   const handleCreateLeague = async () => {
-    // Validation
     if (!formData.league_name.trim()) {
       setError('Please enter a league name');
       return;
@@ -330,7 +286,6 @@ export default function CreateLeaguePage() {
     setError(null);
 
     try {
-      // Prepare league data for payment
       const leagueData = {
         league_name: formData.league_name.trim(),
         description: formData.description.trim() || null,
@@ -344,7 +299,6 @@ export default function CreateLeaguePage() {
         is_exclusive: formData.is_exclusive,
       };
 
-      // Create Razorpay order with league data
       const orderRes = await fetch('/api/payments/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -357,7 +311,6 @@ export default function CreateLeaguePage() {
         throw new Error(orderData.error || 'Failed to create payment order');
       }
 
-      // Open Razorpay checkout
       const options = {
         key: orderData.keyId,
         amount: orderData.amount,
@@ -367,7 +320,6 @@ export default function CreateLeaguePage() {
         order_id: orderData.orderId,
         handler: async function (response: any) {
           try {
-            // Verify payment
             const verifyRes = await fetch('/api/payments/verify', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -384,12 +336,10 @@ export default function CreateLeaguePage() {
               throw new Error(verifyData.error || 'Payment verification failed');
             }
 
-            // Set league ID from verification response
             if (verifyData.payment?.league_id) {
               setCreatedLeagueId(verifyData.payment.league_id);
             }
 
-            // Success!
             setStep('success');
             await refetch();
           } catch (err) {
@@ -417,60 +367,7 @@ export default function CreateLeaguePage() {
     }
   };
 
-  const tierCapacity = parseInt(formData.max_participants) || Number(selectedTier?.max_participants) || 0;
-  const totalMembers = tierCapacity;
-
-  /**
-   * Get valid team options based on tier capacity
-   * Min = 2, Max = tier's league_capacity
-   * Basic: 10, Medium: 30, Pro: 60
-   */
-  const getValidTeamOptions = React.useCallback((capacity: number): number[] => {
-    const minTeams = 2;
-    // Extended standard options to support up to 60 teams
-    const standardOptions = [2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20, 24, 30, 32, 40, 48, 50, 60];
-
-    // If no tier selected yet, show options up to 10 (basic tier default)
-    if (capacity <= 0) {
-      return standardOptions.filter(n => n <= 10);
-    }
-
-    const maxTeams = capacity; // Max teams = tier capacity
-    const options: number[] = [];
-
-    for (const n of standardOptions) {
-      if (n >= minTeams && n <= maxTeams) {
-        options.push(n);
-      }
-    }
-
-    // If no standard options fit, at least include minTeams
-    if (options.length === 0) {
-      options.push(minTeams);
-    }
-
-    return options;
-  }, []);
-
-  const teamOptions = React.useMemo(
-    () => getValidTeamOptions(tierCapacity),
-    [tierCapacity, getValidTeamOptions]
-  );
-
-  // Reset num_teams if current value exceeds tier capacity
-  React.useEffect(() => {
-    if (teamOptions.length === 0) return;
-    const currentTeams = parseInt(formData.num_teams, 10);
-    const maxAvailable = Math.max(...teamOptions);
-    if (currentTeams > maxAvailable) {
-      setFormData((prev) => ({
-        ...prev,
-        num_teams: maxAvailable.toString(),
-      }));
-    }
-  }, [teamOptions, formData.num_teams]);
-
-  // Success State - Show Dialog with Confetti
+  // Success State
   if (step === 'success') {
     return (
       <>
@@ -493,9 +390,7 @@ export default function CreateLeaguePage() {
                   <PartyPopper className="size-10 text-white" />
                 </div>
               </div>
-              <DialogTitle className="text-2xl">
-                League Created!
-              </DialogTitle>
+              <DialogTitle className="text-2xl">League Created!</DialogTitle>
               <DialogDescription className="text-base">
                 <span className="font-semibold text-primary">{formData.league_name}</span> has been created successfully.
               </DialogDescription>
@@ -507,7 +402,7 @@ export default function CreateLeaguePage() {
                 <p className="text-xs text-muted-foreground">Teams</p>
               </div>
               <div className="p-3 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 text-center border">
-                <p className="text-2xl font-bold text-primary">{totalMembers}</p>
+                <p className="text-2xl font-bold text-primary">{parseInt(formData.max_participants)}</p>
                 <p className="text-xs text-muted-foreground">Capacity</p>
               </div>
               <div className="p-3 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 text-center border">
@@ -535,12 +430,12 @@ export default function CreateLeaguePage() {
           </DialogContent>
         </Dialog>
 
-        {/* Empty background while dialog is open */}
         <div className="flex flex-1 flex-col items-center justify-center p-4" />
       </>
     );
   }
 
+  // Main Form State
   return (
     <div className="flex flex-col gap-6 py-4 md:py-6">
       {/* Header */}
@@ -556,561 +451,159 @@ export default function CreateLeaguePage() {
         </div>
       </div>
 
-      {/* Form */}
+      {/* Content */}
       <div className="px-4 lg:px-6">
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Main Form - 2 columns */}
+          {/* Main Form Area - 2 columns on desktop */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Tier Selector */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Sparkles className="size-5 text-primary" />
-                  Choose Tier
-                  <FieldInfoButton text="Select a plan to set maximum duration, participants, and pricing." />
-                </CardTitle>
-                <CardDescription>
-                  Pick a plan for your league. Pricing and duration update automatically.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {tiers.map((tier) => {
-                    const isSelected = selectedTierId === tier.tier_id;
-                    const isFeatured = tier.is_featured;
-
-                    return (
-                      <button
-                        key={tier.tier_id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedTierId(tier.tier_id);
-                          // Update duration if current exceeds tier max
-                          if (duration > tier.max_days) {
-                            setDuration(tier.max_days);
-                          }
-                        }}
-                        className={cn(
-                          'relative flex flex-col items-start gap-2 p-4 rounded-xl border-2 transition-all duration-200',
-                          'hover:border-primary/50 hover:bg-primary/5',
-                          isSelected
-                            ? 'border-primary bg-primary/10 shadow-md shadow-primary/20'
-                            : 'border-border bg-card'
-                        )}
-                      >
-                        {isFeatured && (
-                          <Badge className="absolute -top-2 -right-2" variant="default">
-                            Featured
-                          </Badge>
-                        )}
-                        {isSelected && (
-                          <div className="absolute -top-2 -left-2 size-5 rounded-full bg-primary flex items-center justify-center">
-                            <Check className="size-3 text-primary-foreground" />
-                          </div>
-                        )}
-
-                        <div className="flex flex-col gap-1 w-full">
-                          <span className={cn(
-                            'text-base font-semibold',
-                            isSelected && 'text-primary'
-                          )}>
-                            {tier.display_name}
-                          </span>
-
-                          {tier.pricing.pricing_type === 'fixed' && tier.pricing.fixed_price && (
-                            <span className={cn(
-                              'text-lg font-bold',
-                              isSelected ? 'text-primary' : 'text-foreground'
-                            )}>
-                              ₹{Math.round(tier.pricing.fixed_price)}
-                            </span>
-                          )}
-
-                          {tier.pricing.pricing_type === 'dynamic' && (
-                            <span className="text-sm text-muted-foreground">
-                              Custom pricing
-                            </span>
-                          )}
-
-                          <span className="text-xs text-muted-foreground">
-                            Up to {tier.max_days} days
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {tier.max_participants} participants
-                          </span>
-                        </div>
-
-                        {tier.description && (
-                          <p className="text-xs text-muted-foreground line-clamp-2">
-                            {tier.description}
-                          </p>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Basic Info Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Trophy className="size-5 text-primary" />
-                  League Details
-                </CardTitle>
-                <CardDescription>
-                  Basic information about your fitness league
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* League Name */}
-                <div className="space-y-2">
-                  <Label htmlFor="league_name" className="flex items-center gap-2">
-                    League Name *
-                    <FieldInfoButton text="Name shown to participants and in invites." />
-                  </Label>
-                  <Input
-                    id="league_name"
-                    name="league_name"
-                    placeholder="e.g., Summer Fitness Challenge 2025"
-                    value={formData.league_name}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-
-                {/* Description */}
-                <div className="space-y-2">
-                  <Label htmlFor="description" className="flex items-center gap-2">
-                    Description
-                    <FieldInfoButton text="Optional overview of goals, rules, and expectations." />
-                  </Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    placeholder="Describe your league goals, rules, and what participants can expect..."
-                    value={formData.description}
-                    onChange={handleChange}
-                    rows={4}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Schedule Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <CalendarIcon className="size-5 text-primary" />
-                  Schedule
-                </CardTitle>
-                <CardDescription>
-                  Choose a start date (required)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Start Date */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      Start Date *
-                      <FieldInfoButton text="League starts at midnight on this date." />
-                    </Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            'w-full justify-start text-left font-normal',
-                            !startDate && 'text-muted-foreground'
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 size-4" />
-                          {startDate ? format(startDate, 'PPP') : <span>Start today</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={startDate}
-                          onSelect={setStartDate}
-                          disabled={(date) => date < startOfTodayLocal()}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  {/* Duration Selector */}
-                  <div className="space-y-2">
-                    <Label htmlFor="duration" className="flex items-center gap-2">
-                      <span>League Duration (days) *</span>
-                      <FieldInfoButton text="Total number of days for the league. End date updates automatically." />
-                      {selectedTier && (
-                        <span className="text-xs text-muted-foreground ml-2">
-                          Max: {selectedTier.max_days} days
-                        </span>
-                      )}
-                    </Label>
-                    <Input
-                      id="duration"
-                      type="number"
-                      min={1}
-                      max={selectedTier?.max_days || 365}
-                      value={duration || ''}
-                      onChange={(e) => {
-                        const val = e.target.value === '' ? 0 : parseInt(e.target.value);
-                        setDuration(val);
-                      }}
-                      required
-                    />
-                    {selectedTier && duration > selectedTier.max_days && (
-                      <p className="text-sm text-destructive mt-1">
-                        Duration cannot exceed {selectedTier.max_days} days for the {selectedTier.display_name} tier.
-                      </p>
-                    )}
-                    {validation && !validation.valid && validation.errors.some(e => e.includes('Duration')) && (
-                      <p className="text-sm text-destructive">
-                        {validation.errors.find(e => e.includes('Duration'))}
-                      </p>
-                    )}
-                    {validation && validation.warnings.some(w => w.includes('Duration')) && (
-                      <p className="text-sm text-yellow-600">
-                        {validation.warnings.find(w => w.includes('Duration'))}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      End Date
-                      <FieldInfoButton text="Calculated from start date and duration." />
-                    </Label>
-                    <div className="h-10 px-3 flex items-center rounded-md border bg-muted text-sm">
-                      {endDate ? format(endDate, 'PPP') : '—'}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      Total Days
-                      <FieldInfoButton text="Calculated duration in days." />
-                    </Label>
-                    <div className="h-10 px-3 flex items-center rounded-md border bg-muted text-sm">
-                      {duration > 0 ? `${duration} days` : '—'}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Team Configuration Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Users className="size-5 text-primary" />
-                  Team Configuration
-                </CardTitle>
-                <CardDescription>
-                  Configure the team structure for your league
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      Number of Teams
-                      <FieldInfoButton text="How many teams will be created in the league." />
-                    </Label>
-                    <Select
-                      value={formData.num_teams}
-                      onValueChange={(v) => handleSelectChange('num_teams', v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {teamOptions.map((n) => (
-                          <SelectItem key={n} value={n.toString()}>
-                            {n} teams
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="max_participants" className="flex items-center gap-2">
-                      <span>Max Participants *</span>
-                      <FieldInfoButton text="Total participants allowed across all teams." />
-                      {selectedTier && (
-                        <span className="text-xs text-muted-foreground ml-2">
-                          Limit: {selectedTier.max_participants}
-                        </span>
-                      )}
-                    </Label>
-                    <Input
-                      id="max_participants"
-                      type="number"
-                      min={parseInt(formData.num_teams) || 2}
-                      max={selectedTier?.max_participants || 1000}
-                      value={formData.max_participants}
-                      onChange={handleChange}
-                      name="max_participants"
-                      required
-                    />
-                    {validation && !validation.valid && validation.errors.some(e => e.includes('Participants')) && (
-                      <p className="text-sm text-destructive">
-                        {validation.errors.find(e => e.includes('Participants'))}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="rest_days" className="flex items-center gap-2">
-                      Total Rest Days
-                      <FieldInfoButton text="Days without scoring. Default is 20% of duration." />
-                    </Label>
-                    <Input
-                      id="rest_days"
-                      type="number"
-                      min="0"
-                      value={formData.rest_days}
-                      onChange={handleChange}
-                      name="rest_days"
-                      placeholder="e.g. 18"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      Avg Team Size
-                      <FieldInfoButton text="Estimated participants per team based on capacity." />
-                    </Label>
-                    <div className="h-10 px-3 flex items-center rounded-md border bg-muted text-sm">
-                      {Math.round(tierCapacity / parseInt(formData.num_teams))} players/team
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 p-3 rounded-lg bg-muted">
-                  <p className="text-sm text-muted-foreground">
-                    Total capacity:{' '}
-                    <span className="font-semibold text-foreground">
-                      {tierCapacity} players
-                    </span>{' '}
-                    across {formData.num_teams} teams
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Visibility Settings Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Visibility & Access</CardTitle>
-                <CardDescription>
-                  Control who can see and join your league
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-lg border">
-                  <div className="space-y-0.5">
-                    <Label className="flex items-center gap-2">
-                      <Globe className="size-4 text-muted-foreground" />
-                      Public League
-                      <FieldInfoButton text="Anyone can discover and view this league." />
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      Allow anyone to discover and view this league
-                    </p>
-                  </div>
-                  <Switch
-                    checked={formData.is_public}
-                    onCheckedChange={(checked) => handleSwitchChange('is_public', checked)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between p-4 rounded-lg border">
-                  <div className="space-y-0.5">
-                    <Label className="flex items-center gap-2">
-                      <Lock className="size-4 text-muted-foreground" />
-                      Invite Only
-                      <FieldInfoButton text="Only invited members can join the league." />
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      Only invited members can join the league
-                    </p>
-                  </div>
-                  <Switch
-                    checked={formData.is_exclusive}
-                    onCheckedChange={(checked) => handleSwitchChange('is_exclusive', checked)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            <LeagueFormSection
+              formData={formData}
+              startDate={startDate}
+              endDate={endDate}
+              duration={duration}
+              onFormChange={handleFormChange}
+              onStartDateChange={setStartDate}
+              onDurationChange={setDuration}
+              maxDuration={365}
+              error={error}
+            />
           </div>
 
-          {/* Sidebar - 1 column */}
+          {/* Sidebar - Tier Recommendation & Summary */}
           <div className="space-y-6">
-            {/* Summary Card */}
-            <Card className="sticky top-6">
-              <CardHeader>
-                <CardTitle className="text-lg">Summary</CardTitle>
-                <CardDescription>Review your league settings</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Tier</span>
-                    <span className="font-medium">
-                      {selectedTier?.display_name || '—'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">League Name</span>
-                    <span className="font-medium truncate max-w-[150px]">
-                      {formData.league_name || '—'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Duration</span>
-                    <span className="font-medium">
-                      {duration > 0 ? `${duration} days` : '—'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Teams</span>
-                    <span className="font-medium">{formData.num_teams}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Total Capacity</span>
-                    <span className="font-medium">{tierCapacity} players</span>
-                  </div>
-                </div>
+            {/* Tier Recommendation Card - Always shows when recommendation exists */}
+            {recommendation && (
+              <>
+                <TierRecommendationCard
+                  recommendation={recommendation}
+                  tier={tiers.find(t => t.tier_id === recommendation.tier_id) || null}
+                  priceBreakdown={pricePreview}
+                  isLoading={loadingPrice}
+                  onViewAllTiers={() => setTiersModalOpen(true)}
+                  onChangeTier={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                />
 
-                <Separator />
+                {/* Confirm Button - Shows if no tier selected OR if recommendation changed */}
+                {(!selectedTierId || selectedTierId !== recommendation.tier_id) && (
+                  <Button
+                    onClick={() => setSelectedTierId(recommendation.tier_id)}
+                    size="lg"
+                    className="w-full"
+                  >
+                    Confirm Recommendation
+                  </Button>
+                )}
 
-                {/* Pricing Section */}
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <CreditCard className="size-4 text-primary" />
-                    <span className="font-medium">Payment Details</span>
-                  </div>
-                  {previewLoading ? (
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="size-4 animate-spin" />
-                      <span className="text-sm text-muted-foreground">Calculating...</span>
-                    </div>
+                {/* Tiers Modal */}
+                <TiersModal
+                  open={tiersModalOpen}
+                  onOpenChange={setTiersModalOpen}
+                  tiers={tiers}
+                  selectedTierId={selectedTierId}
+                  recommendedTierId={recommendation?.tier_id}
+                  onSelectTier={(tierId) => {
+                    setSelectedTierId(tierId);
+                    setTiersModalOpen(false);
+                  }}
+                />
+              </>
+            )}
+
+            {/* Validation & Price Summary Card - Shows only after tier selected */}
+            {selectedTier && (
+              <Card className="sticky top-6">
+                <CardHeader>
+                  <CardTitle className="text-lg">Summary</CardTitle>
+                  <CardDescription>Review pricing & details</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Pricing */}
+                  {loadingPrice ? (
+                    <div className="text-sm text-muted-foreground">Calculating price...</div>
                   ) : pricePreview ? (
-                    <div className="space-y-2">
-                      {pricePreview.pricing_type === 'dynamic' && pricePreview.breakdown_details && (
-                        <div className="space-y-1 text-xs text-muted-foreground mb-2">
+                    <div className="space-y-3">
+                      {pricePreview.breakdown_details && (
+                        <div className="text-xs space-y-1 text-muted-foreground">
                           {pricePreview.breakdown_details.map((detail, idx) => (
                             <p key={idx}>{detail}</p>
                           ))}
                         </div>
                       )}
-
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Subtotal:</span>
-                        <span>₹{pricePreview.subtotal.toFixed(2)}</span>
-                      </div>
-
-                      <div className="flex justify-between text-sm text-muted-foreground">
-                        <span>GST ({pricePreview.pricing_type === 'fixed' && selectedTier?.pricing.gst_percentage ? selectedTier.pricing.gst_percentage : 18}%):</span>
-                        <span>₹{pricePreview.gst_amount.toFixed(2)}</span>
-                      </div>
-
                       <Separator />
-
-                      <div className="flex justify-between text-base font-bold">
-                        <span>Total:</span>
+                      <div className="flex justify-between font-bold text-lg">
+                        <span>Total</span>
                         <span className="text-primary flex items-center">
-                          <IndianRupee className="size-3 mr-0.5" />
-                          {pricePreview.total.toFixed(2)}
+                          <IndianRupee className="size-4" />
+                          {pricePreview.total.toFixed(0)}
                         </span>
                       </div>
                     </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Select tier and duration to see pricing
-                    </p>
+                  ) : null}
+
+                  {/* Validation Errors */}
+                  {validation && !validation.valid && (
+                    <div className="rounded-lg bg-destructive/10 p-3 border border-destructive/20 text-sm">
+                      <h4 className="font-semibold text-destructive mb-1">Errors</h4>
+                      <ul className="text-xs text-destructive space-y-1">
+                        {validation.errors.map((err, idx) => (
+                          <li key={idx}>• {err}</li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
-                </div>
 
-                {validation && !validation.valid && (
-                  <div className="rounded-lg bg-destructive/10 p-3 border border-destructive/20">
-                    <h4 className="text-sm font-semibold text-destructive mb-1">Validation Errors</h4>
-                    <ul className="text-xs text-destructive space-y-1">
-                      {validation.errors.map((error, idx) => (
-                        <li key={idx}>• {error}</li>
-                      ))}
-                    </ul>
+                  {/* Warnings */}
+                  {validation?.warnings.length > 0 && (
+                    <div className="rounded-lg bg-yellow-50 dark:bg-yellow-900/20 p-3 border border-yellow-200 dark:border-yellow-800 text-sm">
+                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-200 mb-1">Warnings</h4>
+                      <ul className="text-xs text-yellow-700 dark:text-yellow-300 space-y-1">
+                        {validation.warnings.map((warn, idx) => (
+                          <li key={idx}>• {warn}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Error */}
+                  {error && (
+                    <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+                      {error}
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="pt-2 space-y-3">
+                    <Button
+                      onClick={handleCreateLeague}
+                      disabled={loading || !pricePreview || !validation?.valid}
+                      className="w-full"
+                    >
+                      {loading ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <>
+                          <CreditCard className="mr-2 size-4" />
+                          Pay & Create
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => router.back()}
+                    >
+                      Cancel
+                    </Button>
                   </div>
-                )}
 
-                {validation && validation.valid && validation.warnings.length > 0 && (
-                  <div className="rounded-lg bg-yellow-50 dark:bg-yellow-900/20 p-3 border border-yellow-200 dark:border-yellow-800">
-                    <h4 className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 mb-1">Warnings</h4>
-                    <ul className="text-xs text-yellow-700 dark:text-yellow-300 space-y-1">
-                      {validation.warnings.map((warning, idx) => (
-                        <li key={idx}>• {warning}</li>
-                      ))}
-                    </ul>
+                  <div className="pt-2 border-t text-xs text-muted-foreground flex gap-2">
+                    <Info className="size-3 flex-shrink-0 mt-0.5" />
+                    <p>Payment required to create. Modify settings after creation.</p>
                   </div>
-                )}
-
-                {/* Error */}
-                {error && (
-                  <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-                    {error}
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="pt-4 space-y-3">
-                  <Button
-                    onClick={handleCreateLeague}
-                    disabled={loading || !pricePreview || !validation?.valid}
-                    className="w-full"
-                  >
-                    {loading ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <>
-                        <CreditCard className="mr-2 size-4" />
-                        Pay & Create League
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => router.back()}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-
-                {/* Info */}
-                <div className="pt-4 border-t">
-                  <div className="flex gap-2 text-xs text-muted-foreground">
-                    <Info className="size-4 shrink-0 mt-0.5" />
-                    <p>
-                      Payment is required to create a league. You can modify settings
-                      after creation.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
