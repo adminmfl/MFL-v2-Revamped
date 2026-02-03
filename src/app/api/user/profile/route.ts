@@ -50,9 +50,9 @@ export async function PATCH(req: Request) {
         const { name, phone, profile_picture_url } = body;
 
         // Validate inputs
-        if (!name || name.trim().length < 2) {
+        if (!name || name.trim().length < 3) {
             return NextResponse.json(
-                { error: 'Name must be at least 2 characters' },
+                { error: 'Name must be at least 3 characters' },
                 { status: 400 }
             );
         }
