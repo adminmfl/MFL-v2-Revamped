@@ -99,6 +99,7 @@ export async function GET(
         league: {
           league_id: league.league_id,
           league_name: league.league_name,
+          invite_code: (league as any).invite_code || null,
           num_teams: league.num_teams,
           league_capacity: league.league_capacity || 20,
           status: league.status,
