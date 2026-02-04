@@ -95,8 +95,8 @@ function ActivityCard({ activity, isEnabled, onToggle, onUpdateFrequency, isLoad
     if (!isEnabled) return;
     const trimmed = localFrequency.trim();
     const next = trimmed === '' ? null : Number(trimmed);
-    if (trimmed !== '' && (!Number.isFinite(next) || next < 0 || next > 7)) {
-      toast.error('Frequency must be between 0 and 7 (or empty for unlimited)');
+    if (trimmed !== '' && (!Number.isFinite(next) || next < 1 || next > 7)) {
+      toast.error('Frequency must be between 1 and 7 (or empty for unlimited)');
       return;
     }
     onUpdateFrequency(activity.activity_id, trimmed === '' ? null : Math.floor(next as number));
@@ -132,7 +132,7 @@ function ActivityCard({ activity, isEnabled, onToggle, onUpdateFrequency, isLoad
             <span className="text-xs text-muted-foreground">Weekly limit</span>
             <Input
               type="number"
-              min={0}
+              min={1}
               max={7}
               step={1}
               value={localFrequency}

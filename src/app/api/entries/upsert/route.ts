@@ -203,18 +203,15 @@ export async function POST(req: NextRequest) {
       const rawFrequency = (leagueActivity as any)?.frequency ?? null;
       const rawFrequencyType = (leagueActivity as any)?.frequency_type ?? 'weekly';
       const frequencyType = rawFrequencyType === 'monthly' ? 'monthly' : 'weekly';
-      const frequency = typeof rawFrequency === 'number' && Number.isFinite(rawFrequency)
+      const normalizedFrequency = typeof rawFrequency === 'number' && Number.isFinite(rawFrequency)
         ? Math.floor(rawFrequency)
         : null;
+      const frequency = typeof normalizedFrequency === 'number' && normalizedFrequency > 0
+        ? normalizedFrequency
+        : null;
 
-      // Null means unlimited. Otherwise, enforce max submissions per week.
-      if (typeof frequency === 'number' && frequency >= 0) {
-        if (frequency === 0) {
-          return NextResponse.json(
-            { error: `This activity is disabled for ${frequencyType} submissions.` },
-            { status: 409 }
-          );
-        }
+      // Null means unlimited. Otherwise, enforce max submissions per period.
+      if (typeof frequency === 'number' && frequency >= 1) {
 
         const dateRange = frequencyType === 'monthly'
           ? getMonthRangeYmd(normalizedDate)
@@ -234,7 +231,7 @@ export async function POST(req: NextRequest) {
 
         if (weeklyError) {
           console.error('Weekly entries lookup error:', weeklyError);
-          return NextResponse.json({ error: 'Failed to validate weekly activity limit' }, { status: 500 });
+          return NextResponse.json({ error: 'Failed to validate activity limit' }, { status: 500 });
         }
 
         const usedDates = new Set(

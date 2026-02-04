@@ -110,7 +110,9 @@ export default function LeagueActivitiesPage({
     const nextTypes: Record<string, 'weekly' | 'monthly'> = {};
     for (const activity of data.activities) {
       next[activity.activity_id] =
-        typeof activity.frequency === 'number' ? String(activity.frequency) : '';
+        typeof activity.frequency === 'number' && activity.frequency > 0
+          ? String(activity.frequency)
+          : '';
       nextTypes[activity.activity_id] = activity.frequency_type === 'monthly' ? 'monthly' : 'weekly';
     }
     setFrequencyDrafts(next);
@@ -194,7 +196,7 @@ export default function LeagueActivitiesPage({
     const currentType = frequencyTypeDrafts[activityId]
       ?? enabledActivityMap.get(activityId)?.frequency_type
       ?? 'weekly';
-    const maxAllowed = currentType === 'monthly' ? 28 : 7;
+    const maxAllowed = currentType === 'monthly' ? 10 : 7;
 
     if (raw === '') {
       if (current === null) return;
@@ -209,8 +211,8 @@ export default function LeagueActivitiesPage({
     }
 
     const parsed = Number(raw);
-    if (!Number.isFinite(parsed) || parsed < 0 || parsed > maxAllowed) {
-      toast.error(`Frequency must be between 0 and ${maxAllowed}`);
+    if (!Number.isFinite(parsed) || parsed < 1 || parsed > maxAllowed) {
+      toast.error(`Frequency must be between 1 and ${maxAllowed}`);
       setFrequencyDrafts((prev) => ({
         ...prev,
         [activityId]: typeof current === 'number' ? String(current) : '',
@@ -242,7 +244,7 @@ export default function LeagueActivitiesPage({
     const currentType = frequencyTypeDrafts[activityId]
       ?? enabledActivityMap.get(activityId)?.frequency_type
       ?? 'weekly';
-    const maxAllowed = currentType === 'monthly' ? 28 : 7;
+    const maxAllowed = currentType === 'monthly' ? 10 : 7;
 
     if (trimmed === '') {
       if (current !== null) {
@@ -255,7 +257,7 @@ export default function LeagueActivitiesPage({
       }
     } else {
       const parsed = Number(trimmed);
-      if (Number.isFinite(parsed) && parsed >= 0 && parsed <= maxAllowed) {
+      if (Number.isFinite(parsed) && parsed >= 1 && parsed <= maxAllowed) {
         const numVal = Math.floor(parsed);
         if (current !== numVal) {
           setPendingChanges((prev) => {
@@ -278,7 +280,7 @@ export default function LeagueActivitiesPage({
     const currentType = enabledActivityMap.get(activityId)?.frequency_type ?? 'weekly';
     const draftFrequencyRaw = (frequencyDrafts[activityId] ?? '').trim();
     const draftFrequency = draftFrequencyRaw === '' ? null : Number(draftFrequencyRaw);
-    const maxAllowed = value === 'monthly' ? 28 : 7;
+    const maxAllowed = value === 'monthly' ? 10 : 7;
 
     setPendingChanges((prev) => {
       const next = new Map(prev);
@@ -404,7 +406,9 @@ export default function LeagueActivitiesPage({
       const nextTypes: Record<string, 'weekly' | 'monthly'> = {};
       for (const activity of data.activities) {
         next[activity.activity_id] =
-          typeof activity.frequency === 'number' ? String(activity.frequency) : '';
+          typeof activity.frequency === 'number' && activity.frequency > 0
+            ? String(activity.frequency)
+            : '';
         nextTypes[activity.activity_id] = activity.frequency_type === 'monthly' ? 'monthly' : 'weekly';
       }
       setFrequencyDrafts(next);

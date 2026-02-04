@@ -139,17 +139,19 @@ export async function PATCH(
       }
 
       const rounded = Math.floor(asNumber);
-      const maxAllowed = effectiveType === 'monthly' ? 28 : 7;
-      if (rounded < 0 || rounded > maxAllowed) {
+      const maxAllowed = effectiveType === 'monthly' ? 10 : 7;
+      if (rounded === 0) {
+        normalizedFrequency = null;
+      } else if (rounded < 1 || rounded > maxAllowed) {
         return NextResponse.json(
           {
-            error: `frequency must be between 0 and ${maxAllowed} (or null for unlimited)`,
+            error: `frequency must be between 1 and ${maxAllowed} (or null for unlimited)`,
           },
           { status: 400 }
         );
+      } else {
+        normalizedFrequency = rounded;
       }
-
-      normalizedFrequency = rounded;
       }
     }
 

@@ -89,7 +89,7 @@ export function ActivityMinimumDropdown({
     parseAgeOverrides(initialConfig?.age_group_overrides || {})
   );
   const [frequencyDraft, setFrequencyDraft] = useState<string>(
-    typeof frequency === 'number' ? String(frequency) : ''
+    typeof frequency === 'number' && frequency > 0 ? String(frequency) : ''
   );
   const [frequencyTypeDraft, setFrequencyTypeDraft] = useState<'weekly' | 'monthly'>(
     frequencyType ?? 'weekly'
@@ -105,7 +105,7 @@ export function ActivityMinimumDropdown({
   }, [initialConfig?.age_group_overrides]);
 
   useEffect(() => {
-    setFrequencyDraft(typeof frequency === 'number' ? String(frequency) : '');
+    setFrequencyDraft(typeof frequency === 'number' && frequency > 0 ? String(frequency) : '');
   }, [frequency]);
 
   useEffect(() => {
@@ -114,7 +114,7 @@ export function ActivityMinimumDropdown({
 
   useEffect(() => {
     if (frequencyDraft === '') return;
-    const maxAllowed = frequencyTypeDraft === 'monthly' ? 28 : 7;
+    const maxAllowed = frequencyTypeDraft === 'monthly' ? 10 : 7;
     const current = Number(frequencyDraft);
     if (Number.isFinite(current) && current > maxAllowed) {
       const nextValue = String(maxAllowed);
@@ -247,8 +247,8 @@ export function ActivityMinimumDropdown({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="unlimited">Unlimited</SelectItem>
-                    {Array.from({ length: (frequencyTypeDraft === 'monthly' ? 28 : 7) + 1 }, (_, idx) => {
-                      const value = String(idx);
+                    {Array.from({ length: frequencyTypeDraft === 'monthly' ? 10 : 7 }, (_, idx) => {
+                      const value = String(idx + 1);
                       return (
                         <SelectItem key={value} value={value}>
                           {value}
