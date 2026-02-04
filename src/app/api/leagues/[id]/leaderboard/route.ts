@@ -282,9 +282,14 @@ export async function GET(
       .select('id, league_member_id, date, type, rr_value, status')
       .in('league_member_id', memberIds);
 
-    // Apply start bound only when explicitly provided.
-    if (hasDateFilter && startDate) {
+    // Apply start bound:
+    // 1. If user provided a startDate in params, use that.
+    // 2. Otherwise (default view), use league.start_date to EXCLUDE trial submissions (dates < start_date).
+    if (startDate) {
       entriesQuery = entriesQuery.gte('date', startDate);
+    } else {
+      // DEFAULT: Filter out entries before league start date
+      entriesQuery = entriesQuery.gte('date', league.start_date);
     }
 
     // Always apply the delayed end bound.

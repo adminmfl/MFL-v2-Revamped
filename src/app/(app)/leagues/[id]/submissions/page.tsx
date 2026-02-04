@@ -581,13 +581,22 @@ export default function AllSubmissionsPage({
       ),
     },
     {
-      accessorKey: 'date',
       header: 'Date',
-      cell: ({ row }) => (
-        <span className="text-sm">
-          {format(parseISO(row.original.date), 'MMM d, yyyy')}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const isTrial = activeLeague?.start_date && row.original.date < activeLeague.start_date;
+        return (
+          <div className="flex flex-col">
+            <span className="text-sm">
+              {format(parseISO(row.original.date), 'MMM d, yyyy')}
+            </span>
+            {isTrial && (
+              <span className="text-[10px] font-medium text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded w-fit mt-0.5 border border-blue-200">
+                Trial
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       accessorKey: 'type',

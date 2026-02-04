@@ -243,11 +243,18 @@ export default function SubmitActivityPage({
   }, [activeLeague, today]);
 
   // Clamp minimum to yesterday, but if the league ended before that, allow only up to the end date.
+  // Exception: If league hasn't started, allow back to 3 days before start (Trial Window).
   const minActivityDate = React.useMemo(() => {
+    // Trial Mode check:
+    if (leagueStartLocal && isBefore(today, leagueStartLocal)) {
+      const trialStart = subDays(leagueStartLocal, 3);
+      return trialStart;
+    }
+
     if (!maxActivityDate) return yesterday;
     if (isBefore(maxActivityDate, yesterday)) return maxActivityDate;
     return yesterday;
-  }, [maxActivityDate, yesterday]);
+  }, [maxActivityDate, yesterday, leagueStartLocal, today]);
 
   // Effect to clamp activityDate into the allowed window (yesterday through maxActivityDate)
   React.useEffect(() => {
@@ -255,6 +262,8 @@ export default function SubmitActivityPage({
 
     const current = startOfDay(activityDate);
 
+    // If current is wildly out of range vs max, clamp it.
+    // Specially handle the "Trial" case where current might be < start_date but valid.
     if (isAfter(current, maxActivityDate)) {
       setActivityDate(maxActivityDate);
       toast.info(`Date adjusted to latest allowed (${format(maxActivityDate, 'yyyy-MM-dd')})`);
@@ -263,6 +272,27 @@ export default function SubmitActivityPage({
       toast.info(`Date adjusted to earliest allowed (${format(minActivityDate, 'yyyy-MM-dd')})`);
     }
   }, [maxActivityDate, minActivityDate, activityDate]);
+
+  // Check for trial mode (before league start)
+  const isTrialMode = React.useMemo(() => {
+    if (!leagueStartLocal) return false;
+    return isBefore(activityDate, leagueStartLocal);
+  }, [activityDate, leagueStartLocal]);
+
+  // Trial Mode Banner
+  const TrialBanner = () => (
+    isTrialMode ? (
+      <div className="mb-4">
+        <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+          <Info className="size-4 text-blue-600 dark:text-blue-400" />
+          <AlertTitle className="text-blue-800 dark:text-blue-300">Trial Submission Mode</AlertTitle>
+          <AlertDescription className="text-blue-700 dark:text-blue-400">
+            This submission is before the league start date. It will be saved to your history but <strong>will not count</strong> towards the official league leaderboard.
+          </AlertDescription>
+        </Alert>
+      </div>
+    ) : null
+  );
 
   // Rest day stats
   const [restDayStats, setRestDayStats] = React.useState<RestDayStats | null>(null);
@@ -685,11 +715,18 @@ export default function SubmitActivityPage({
   };
 
   const handleSubmissionFlow = async (overwrite: boolean) => {
-    if (leagueStartLocal && isBefore(startOfDay(new Date()), leagueStartLocal)) {
-      toast.error(
-        `Failed to submit, League starts from ${format(leagueStartLocal, 'MMM d, yyyy')}, Please try again after league is active`
-      );
-      return;
+    // START CHECK: Allow submissions 3 days before league start (Trial Period)
+    if (leagueStartLocal) {
+      const trialStartDate = subDays(leagueStartLocal, 3);
+      const today = startOfDay(new Date());
+
+      // If we are BEFORE the trial window (earlier than 3 days before start)
+      if (isBefore(today, trialStartDate)) {
+        toast.error(
+          `Submissions open on ${format(trialStartDate, 'MMM d, yyyy')} (3 days before league start).`
+        );
+        return;
+      }
     }
 
     if (!formData.activity_type) {
@@ -887,11 +924,18 @@ export default function SubmitActivityPage({
   const handleRestDaySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (leagueStartLocal && isBefore(startOfDay(new Date()), leagueStartLocal)) {
-      toast.error(
-        `Failed to submit, League starts from ${format(leagueStartLocal, 'MMM d, yyyy')}, Please try again after league is active`
-      );
-      return;
+    // START CHECK: Allow submissions 3 days before league start (Trial Period)
+    if (leagueStartLocal) {
+      const trialStartDate = subDays(leagueStartLocal, 3);
+      const today = startOfDay(new Date());
+
+      // If we are BEFORE the trial window (earlier than 3 days before start)
+      if (isBefore(today, trialStartDate)) {
+        toast.error(
+          `Submissions open on ${format(trialStartDate, 'MMM d, yyyy')} (3 days before league start).`
+        );
+        return;
+      }
     }
 
     setLoading(true);
@@ -1072,6 +1116,8 @@ export default function SubmitActivityPage({
           </p>
         </div>
       </div>
+
+      <TrialBanner />
 
       {/* Team Assignment Required Check */}
       {activeLeague && !activeLeague.team_id && (

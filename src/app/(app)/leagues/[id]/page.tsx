@@ -372,13 +372,28 @@ export default function LeagueDashboardPage({
             year: 'numeric',
           });
 
-          const outOfRange = (leagueStart && ymd < leagueStart) || (leagueEnd && ymd > leagueEnd);
-          if (outOfRange) {
+          const entry = byDate.get(ymd) || null;
+
+          // Strict range check:
+          // - If AFTER league end, definitely out of range.
+          // - If BEFORE league start, consider it "Trial Mode". Only show if there's an actual submission.
+          const isAfterEnd = leagueEnd && ymd > leagueEnd;
+          const isBeforeStart = leagueStart && ymd < leagueStart;
+
+          if (isAfterEnd) {
             rows.push({ date: ymd, label, subtitle: '—', pointsLabel: '—', submission: null });
             continue;
           }
 
-          const entry = byDate.get(ymd) || null;
+          if (isBeforeStart && !entry) {
+            // If before start and NO submission, show '—' instead of 'Missed day'
+            rows.push({ date: ymd, label, subtitle: '—', pointsLabel: '—', submission: null });
+            continue;
+          }
+
+          // If before start AND has entry, we proceed to render it (Trial Submission)
+          // If in normal range, we proceed to render (Entry or Missed Day)
+
           if (!entry) {
             if (ymd > todayStr) {
               rows.push({ date: ymd, label, subtitle: 'Upcoming', pointsLabel: '—', submission: null });
@@ -398,7 +413,13 @@ export default function LeagueDashboardPage({
           const workoutType = isWorkout && entry.workout_type ? String(entry.workout_type).replace(/_/g, ' ') : '';
           const typeLabel = isWorkout ? (workoutType ? workoutType : 'Workout') : 'Rest Day';
           const statusLabel = entry.status ? String(entry.status) : '';
-          const subtitle = statusLabel ? `${typeLabel} • ${statusLabel}` : typeLabel;
+
+          let subtitle = statusLabel ? `${typeLabel} • ${statusLabel}` : typeLabel;
+
+          // Add Trial indication
+          if (isBeforeStart) {
+            subtitle = `(Trial) ${subtitle}`;
+          }
 
           const rr = typeof entry.rr_value === 'number' ? entry.rr_value : null;
           const pointsLabel = rr === null ? '0 pt' : `${rr.toFixed(1)} RR`;
