@@ -15,7 +15,6 @@ import {
   Dumbbell,
   ChevronRight,
   Calendar,
-  CreditCard,
 } from 'lucide-react';
 
 import { useLeague, LeagueWithRoles } from '@/contexts/league-context';
@@ -184,14 +183,7 @@ export default function DashboardPage() {
           <SectionCards stats={stats} />
         )}
 
-        <div className="px-4 lg:px-6">
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/payments">
-              <CreditCard className="mr-2 size-4" />
-              Payments
-            </Link>
-          </Button>
-        </div>
+        <div className="px-4 lg:px-6" />
       </div>
     </div>
   );
