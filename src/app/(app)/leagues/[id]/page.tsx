@@ -1221,9 +1221,11 @@ export default function LeagueDashboardPage({
                             ? 'text-emerald-600 dark:text-emerald-400'
                             : normalized === 'pending'
                               ? 'text-yellow-600 dark:text-yellow-400'
-                              : normalized === 'rejected'
-                                ? 'text-red-600 dark:text-red-400'
-                                : 'text-muted-foreground';
+                              : normalized === 'rejected_resubmit'
+                                ? 'text-orange-600 dark:text-orange-400'
+                                : normalized.startsWith('rejected')
+                                  ? 'text-red-600 dark:text-red-400'
+                                  : 'text-muted-foreground';
 
                         if (!rawStatus || !row.subtitle.includes('•')) {
                           return <span className="text-sm text-muted-foreground">{row.subtitle}</span>;
@@ -1231,7 +1233,11 @@ export default function LeagueDashboardPage({
 
                         const [left] = row.subtitle.split('•');
                         const leftText = left ? left.trim() : '';
-                        const statusText = rawStatus;
+
+                        let statusText = rawStatus;
+                        if (normalized === 'rejected_resubmit') statusText = 'Rejected (Retry)';
+                        else if (normalized === 'rejected_permanent') statusText = 'Rejected (Final)';
+                        else if (normalized === 'rejected') statusText = 'Rejected';
 
                         return (
                           <span className="text-sm text-muted-foreground">
