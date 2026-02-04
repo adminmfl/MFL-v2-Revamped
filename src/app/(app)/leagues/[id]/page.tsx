@@ -53,6 +53,7 @@ import { getClientCache, setClientCache, invalidateClientCache } from '@/lib/cli
 import { DownloadReportButton, DownloadCertificateButton } from '@/components/leagues/download-report-button';
 import { DynamicReportDialog } from '@/components/leagues/dynamic-report-dialog';
 import { SubmissionDetailDialog } from '@/components/submissions';
+import { WhatsAppReminderButton } from '@/components/league/whatsapp-reminder-button';
 import { useRouter } from 'next/navigation';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -157,7 +158,7 @@ export default function LeagueDashboardPage({
 }) {
   const { id } = React.use(params);
   const { activeLeague, setActiveLeague, userLeagues } = useLeague();
-  const { isHost } = useRole();
+  const { isHost, isCaptain, activeRole } = useRole();
   const router = useRouter();
 
   const [league, setLeague] = React.useState<LeagueDetails | null>(null);
@@ -838,6 +839,11 @@ export default function LeagueDashboardPage({
               />
             </>
           )}
+
+
+
+
+
         </div>
       </div>
 
@@ -965,14 +971,34 @@ export default function LeagueDashboardPage({
               <CardHeader className="pb-0">
                 <div className="flex items-start justify-between gap-3">
                   <CardTitle className="text-base pt-1">My Summary</CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => fetchLeagueData(true)}
-                    aria-label="Refresh summary"
-                  >
-                    <RefreshCw className="size-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    {/* WhatsApp Reminders */}
+                    {(isHost || (activeRole === 'governor')) && league && (
+                      <WhatsAppReminderButton
+                        type="league"
+                        leagueName={league.league_name}
+                        variant="ghost"
+                        size="sm"
+                      />
+                    )}
+
+                    {isCaptain && league && (
+                      <WhatsAppReminderButton
+                        type="team"
+                        leagueName={league.league_name}
+                        variant="ghost"
+                        size="sm"
+                      />
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => fetchLeagueData(true)}
+                      aria-label="Refresh summary"
+                    >
+                      <RefreshCw className="size-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
