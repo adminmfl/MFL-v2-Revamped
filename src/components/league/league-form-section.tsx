@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Calendar, Users, AlertCircle, Info } from 'lucide-react';
+import { Calendar, Users, AlertCircle, Info, HelpCircle, FileText, Clock, UserPlus, UsersRound, Bed, Trophy } from 'lucide-react';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
@@ -50,9 +50,7 @@ export function LeagueFormSection({
       {/* League Details Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            📋 League Details
-          </CardTitle>
+          <CardTitle>📋 League Details</CardTitle>
           <CardDescription>
             Tell us about your fitness league
           </CardDescription>
@@ -60,7 +58,8 @@ export function LeagueFormSection({
         <CardContent className="space-y-4">
           {/* League Name */}
           <div className="space-y-2">
-            <Label htmlFor="league_name" className="font-semibold">
+            <Label htmlFor="league_name" className="font-semibold flex items-center gap-2">
+              <Trophy className="size-4 text-primary" />
               League Name *
             </Label>
             <Input
@@ -72,14 +71,16 @@ export function LeagueFormSection({
               required
               className="h-10"
             />
-            <p className="text-xs text-muted-foreground">
-              This name will be shown to participants
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Info className="size-3" />
+              Must be unique - this name will be shown to participants
             </p>
           </div>
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description" className="font-semibold">
+            <Label htmlFor="description" className="font-semibold flex items-center gap-2">
+              <FileText className="size-4 text-primary" />
               Description
             </Label>
             <Textarea
@@ -91,7 +92,8 @@ export function LeagueFormSection({
               rows={3}
               className="resize-none"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Info className="size-3" />
               Optional - helps participants understand your league
             </p>
           </div>
@@ -101,9 +103,7 @@ export function LeagueFormSection({
       {/* Schedule Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            📅 Schedule
-          </CardTitle>
+          <CardTitle>📅 Schedule</CardTitle>
           <CardDescription>
             Set when your league runs
           </CardDescription>
@@ -111,7 +111,8 @@ export function LeagueFormSection({
         <CardContent className="space-y-4">
           {/* Start Date */}
           <div className="space-y-2">
-            <Label className="font-semibold">
+            <Label className="font-semibold flex items-center gap-2">
+              <Calendar className="size-4 text-primary" />
               Start Date *
             </Label>
             <Popover>
@@ -137,21 +138,25 @@ export function LeagueFormSection({
                 />
               </PopoverContent>
             </Popover>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="size-3" />
               League starts at midnight on this date
             </p>
           </div>
 
           {/* Duration */}
           <div className="space-y-2">
-            <Label htmlFor="duration" className="font-semibold flex items-center justify-between">
-              <span>Duration *</span>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="duration" className="font-semibold flex items-center gap-2">
+                <Clock className="size-4 text-primary" />
+                Duration *
+              </Label>
               {maxDuration && (
                 <span className="text-xs font-normal text-muted-foreground">
                   Max: {maxDuration} days
                 </span>
               )}
-            </Label>
+            </div>
             <Input
               id="duration"
               type="number"
@@ -171,8 +176,9 @@ export function LeagueFormSection({
                 <span>Duration cannot exceed {maxDuration} days</span>
               </div>
             )}
-            <p className="text-xs text-muted-foreground">
-              Total number of days your league will run
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Info className="size-3" />
+              End date calculated automatically
             </p>
           </div>
 
@@ -180,11 +186,17 @@ export function LeagueFormSection({
           {endDate && (
             <div className="bg-muted/50 rounded-lg p-3 space-y-2">
               <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">End Date</span>
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <Calendar className="size-3.5" />
+                  End Date
+                </span>
                 <span className="font-semibold">{format(endDate, 'EEE, MMM d, yyyy')}</span>
               </div>
               <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">Total Duration</span>
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <Clock className="size-3.5" />
+                  Total Duration
+                </span>
                 <span className="font-semibold">{duration} days</span>
               </div>
             </div>
@@ -195,9 +207,7 @@ export function LeagueFormSection({
       {/* League Size Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            👥 League Size
-          </CardTitle>
+          <CardTitle>👥 League Size</CardTitle>
           <CardDescription>
             Configure teams and participants
           </CardDescription>
@@ -205,7 +215,8 @@ export function LeagueFormSection({
         <CardContent className="space-y-4">
           {/* Number of Teams */}
           <div className="space-y-2">
-            <Label htmlFor="num_teams" className="font-semibold">
+            <Label htmlFor="num_teams" className="font-semibold flex items-center gap-2">
+              <UsersRound className="size-4 text-primary" />
               Number of Teams *
             </Label>
             <Input
@@ -218,14 +229,16 @@ export function LeagueFormSection({
               required
               className="h-10"
             />
-            <p className="text-xs text-muted-foreground">
-              Minimum 2 teams for fair competition
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Info className="size-3" />
+              Minimum 2 teams required
             </p>
           </div>
 
           {/* Max Participants */}
           <div className="space-y-2">
-            <Label htmlFor="max_participants" className="font-semibold">
+            <Label htmlFor="max_participants" className="font-semibold flex items-center gap-2">
+              <UserPlus className="size-4 text-primary" />
               Total Participants (Max) *
             </Label>
             <Input
@@ -238,14 +251,16 @@ export function LeagueFormSection({
               required
               className="h-10"
             />
-            <p className="text-xs text-muted-foreground">
-              Maximum number of people who can join
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Users className="size-3" />
+              Maximum number of people who can join (divided evenly across teams)
             </p>
           </div>
 
           {/* Rest Days */}
           <div className="space-y-2">
-            <Label htmlFor="rest_days" className="font-semibold">
+            <Label htmlFor="rest_days" className="font-semibold flex items-center gap-2">
+              <Bed className="size-4 text-primary" />
               Rest Days *
             </Label>
             <Input
@@ -258,21 +273,28 @@ export function LeagueFormSection({
               required
               className="h-10"
             />
-            <p className="text-xs text-muted-foreground">
-              Rest days are auto-calculated as 20% of duration
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="size-3" />
+              Days without workout submissions (auto-calculated as 20% of duration, can be adjusted)
             </p>
           </div>
 
           {/* Summary */}
           {formData.num_teams && formData.max_participants && (
             <div className="bg-primary/5 rounded-lg p-3 border border-primary/10">
-              <div className="text-sm space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Teams:</span>
+              <div className="text-sm space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground flex items-center gap-1.5">
+                    <UsersRound className="size-3.5" />
+                    Teams:
+                  </span>
                   <span className="font-semibold">{formData.num_teams}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Avg per team:</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground flex items-center gap-1.5">
+                    <Users className="size-3.5" />
+                    Avg per team:
+                  </span>
                   <span className="font-semibold">
                     {Math.round(parseInt(formData.max_participants) / parseInt(formData.num_teams))} participants
                   </span>

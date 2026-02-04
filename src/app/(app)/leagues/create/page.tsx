@@ -14,6 +14,9 @@ import {
   CreditCard,
   IndianRupee,
   Info,
+  HelpCircle,
+  Layers,
+  FileText,
 } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
@@ -27,6 +30,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 import { 
   TierConfig, 
@@ -486,6 +490,40 @@ export default function CreateLeaguePage() {
 
           {/* Sidebar - Tier Recommendation & Summary */}
           <div className="space-y-6">
+            {/* Step 4: Tier Selection Info */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Layers className="size-4 text-primary" />
+                    Select Tier
+                  </CardTitle>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" className="size-5 h-5 w-5 rounded-full">
+                        <HelpCircle className="size-4 text-muted-foreground" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[calc(100vw-2rem)] max-w-xs sm:max-w-xs" side="bottom" align="start" sideOffset={8}>
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold">What is a Tier?</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          Tiers determine your league's pricing and features. Each tier has different pricing models (fixed price or per-participant) and may include features like custom activities or advanced analytics.
+                        </p>
+                        <p className="text-xs text-muted-foreground pt-1 border-t">
+                          <strong>Important:</strong> Tier selection cannot be changed after creation. Review all options before selecting.
+                        </p>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <CardDescription className="text-xs flex items-center gap-1">
+                  <Info className="size-3" />
+                  Choose a pricing tier for your league
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
             {/* Tier Recommendation Card - Always shows when recommendation exists */}
             {recommendation && (
               <>
@@ -528,8 +566,14 @@ export default function CreateLeaguePage() {
             {selectedTier && (
               <Card className="sticky top-6">
                 <CardHeader>
-                  <CardTitle className="text-lg">Summary</CardTitle>
-                  <CardDescription>Review pricing & details</CardDescription>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="size-5 text-primary" />
+                    Summary
+                  </CardTitle>
+                  <CardDescription className="flex items-center gap-1">
+                    <Info className="size-3" />
+                    Review pricing & details
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Pricing */}
@@ -588,6 +632,30 @@ export default function CreateLeaguePage() {
 
                   {/* Actions */}
                   <div className="pt-2 space-y-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm font-semibold flex items-center gap-2">
+                        <CreditCard className="size-4 text-primary" />
+                        Payment & Create
+                      </span>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="ghost" size="icon" className="size-4 h-4 w-4 rounded-full p-0">
+                            <Info className="size-3 text-muted-foreground" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[calc(100vw-2rem)] max-w-xs sm:max-w-xs" side="bottom" align="start" sideOffset={8}>
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold">Payment Process</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              Clicking "Pay & Create" redirects you to Razorpay's secure payment gateway. Once payment is verified, your league will be created automatically.
+                            </p>
+                            <p className="text-xs text-muted-foreground pt-1 border-t">
+                              <strong>Note:</strong> Make sure all errors are fixed before proceeding. The button is disabled if there are validation errors.
+                            </p>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                     <Button
                       onClick={handleCreateLeague}
                       disabled={loading || !pricePreview || !validation?.valid}
