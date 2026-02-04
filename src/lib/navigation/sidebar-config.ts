@@ -61,11 +61,7 @@ const baseNavItems: NavItem[] = [
     url: '/leagues/join',
     icon: Search,
   },
-  {
-    title: 'Create a League',
-    url: '/leagues/create',
-    icon: Plus,
-  },
+
 ];
 
 // ============================================================================
@@ -260,11 +256,7 @@ export function getMobileTabItems(
         url: '/leagues/join',
         icon: Search,
       },
-      {
-        title: 'Create',
-        url: '/leagues/create',
-        icon: Plus,
-      },
+
     ];
   }
 
