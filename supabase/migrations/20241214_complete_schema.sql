@@ -13,7 +13,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ENUMS & CUSTOM TYPES
 -- =====================================================================================
 
-CREATE TYPE effort_status AS ENUM ('pending', 'approved', 'rejected');
+CREATE TYPE effort_status AS ENUM ('pending', 'approved', 'rejected', 'rejected_resubmit', 'rejected_permanent');
 CREATE TYPE platform_role AS ENUM ('admin', 'user');
 CREATE TYPE payment_status AS ENUM ('pending', 'completed', 'failed', 'refunded');
 CREATE TYPE payment_purpose AS ENUM ('league_creation', 'subscription', 'other', 'challenge_creation');

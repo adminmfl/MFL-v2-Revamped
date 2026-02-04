@@ -15,7 +15,7 @@ import { z } from 'zod';
 // ============================================================================
 
 const validateSchema = z.object({
-  status: z.enum(['approved', 'rejected']),
+  status: z.enum(['approved', 'rejected', 'rejected_resubmit', 'rejected_permanent']),
   rejection_reason: z.string().optional(),
   awarded_points: z.number().optional(),
 });
@@ -37,7 +37,12 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { status, rejection_reason } = validateSchema.parse(body);
+    let { status, rejection_reason, awarded_points } = validateSchema.parse(body);
+
+    // Map legacy 'rejected' to 'rejected_resubmit'
+    if (status === 'rejected') {
+      status = 'rejected_resubmit';
+    }
 
     const supabase = getSupabaseServiceRole();
     const userId = session.user.id;
@@ -130,6 +135,14 @@ export async function POST(
       );
     }
 
+    // Role-specific restrictions
+    if (status === 'rejected_permanent' && !canOverride) {
+      return NextResponse.json(
+        { error: 'Only Hosts and Governors can permanently reject submissions' },
+        { status: 403 }
+      );
+    }
+
     // Captains have a 2-day window to approve/reject workout submissions
     if (isCaptainOfTeam && !canOverride && submission.type === 'workout') {
       const createdAt = submission.created_date ? new Date(submission.created_date) : null;
@@ -166,8 +179,12 @@ export async function POST(
     };
 
     // Store rejection reason if provided
-    if (status === 'rejected' && rejection_reason) {
+    if ((status === 'rejected' || status === 'rejected_resubmit' || status === 'rejected_permanent') && rejection_reason) {
       updateData.rejection_reason = rejection_reason;
+    }
+
+    if (awarded_points !== undefined) {
+      updateData.rr_value = awarded_points;
     }
 
     const { data: updatedSubmission, error: updateError } = await supabase

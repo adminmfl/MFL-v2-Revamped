@@ -23,7 +23,7 @@ export interface TeamSubmission {
   steps: number | null;
   holes: number | null;
   rr_value: number | null;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'rejected_resubmit' | 'rejected_permanent';
   proof_url: string | null;
   notes: string | null;
   created_date: string;
@@ -125,7 +125,7 @@ export async function GET(
 
     // Get optional query params for filtering
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status') as 'pending' | 'approved' | 'rejected' | null;
+    const status = searchParams.get('status') as 'pending' | 'approved' | 'rejected' | 'rejected_resubmit' | 'rejected_permanent' | null;
 
     // Get all team members
     const { data: teamMembers, error: membersError } = await supabase
@@ -269,7 +269,7 @@ export async function GET(
       total: visibleSubmissions.length,
       pending: visibleSubmissions.filter((s) => s.status === 'pending').length,
       approved: visibleSubmissions.filter((s) => s.status === 'approved').length,
-      rejected: visibleSubmissions.filter((s) => s.status === 'rejected').length,
+      rejected: visibleSubmissions.filter((s) => ['rejected', 'rejected_resubmit', 'rejected_permanent'].includes(s.status)).length,
     };
 
     return NextResponse.json({
