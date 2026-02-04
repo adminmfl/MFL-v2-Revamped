@@ -850,5 +850,6 @@ export default function TeamSubmissionsPage({
           isValidating={!!validatingId}
         />
       </div>
-      );
+    </div>
+  );
 }
