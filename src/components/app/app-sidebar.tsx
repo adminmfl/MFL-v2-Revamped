@@ -10,6 +10,7 @@ import {
   HelpCircle,
   ChevronRight,
   MoreVertical,
+  CreditCard,
 } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
@@ -178,6 +179,12 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                     <Link href="/help" onClick={() => setOpenMobile(false)}>
                       <HelpCircle className="mr-2 size-4" />
                       Help & Support
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link href="/payments" onClick={() => setOpenMobile(false)}>
+                      <CreditCard className="mr-2 size-4" />
+                      Payments
                     </Link>
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
