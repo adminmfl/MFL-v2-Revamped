@@ -20,18 +20,24 @@ export interface LeagueActivity {
   description: string | null;
   category_id: string | null;
   frequency?: number | null;
+  frequency_type?: 'weekly' | 'monthly' | null;
   category?: {
     category_id: string;
     category_name: string;
     display_name: string;
   } | null;
   value: string; // Normalized name for workout_type (e.g., "run", "cycling")
-  measurement_type?: 'duration' | 'distance' | 'hole' | 'steps';
+  measurement_type?: 'duration' | 'distance' | 'hole' | 'steps' | 'none';
   settings?: {
     secondary_measurement_type?: 'duration' | 'distance' | 'hole' | 'steps';
     [key: string]: any;
   } | null;
   admin_info?: string | null;
+  // Custom activity fields
+  is_custom?: boolean;
+  custom_activity_id?: string;
+  requires_proof?: boolean;
+  requires_notes?: boolean;
 }
 
 // ============================================================================
@@ -68,7 +74,11 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { activity_id, frequency } = body as { activity_id?: string; frequency?: number | null };
+    const { activity_id, frequency, frequency_type } = body as {
+      activity_id?: string;
+      frequency?: number | null;
+      frequency_type?: 'weekly' | 'monthly' | null;
+    };
 
     if (!activity_id) {
       return NextResponse.json(
@@ -77,8 +87,35 @@ export async function PATCH(
       );
     }
 
-    let normalizedFrequency: number | null = null;
-    if (frequency !== null && frequency !== undefined && frequency !== '') {
+    const hasFrequency = Object.prototype.hasOwnProperty.call(body, 'frequency');
+    const hasFrequencyType = Object.prototype.hasOwnProperty.call(body, 'frequency_type');
+
+    if (!hasFrequency && !hasFrequencyType) {
+      return NextResponse.json(
+        { error: 'frequency or frequency_type is required' },
+        { status: 400 }
+      );
+    }
+
+    let normalizedFrequencyType: 'weekly' | 'monthly' | null | undefined = undefined;
+    if (hasFrequencyType) {
+      if (frequency_type === null || frequency_type === undefined || frequency_type === '') {
+        normalizedFrequencyType = null;
+      } else if (frequency_type !== 'weekly' && frequency_type !== 'monthly') {
+        return NextResponse.json(
+          { error: 'frequency_type must be weekly or monthly (or null to reset)' },
+          { status: 400 }
+        );
+      } else {
+        normalizedFrequencyType = frequency_type;
+      }
+    }
+
+    let normalizedFrequency: number | null | undefined = undefined;
+    if (hasFrequency) {
+      if (frequency === null || frequency === undefined || frequency === '') {
+        normalizedFrequency = null;
+      } else {
       const asNumber = Number(frequency);
       if (!Number.isFinite(asNumber)) {
         return NextResponse.json(
@@ -87,22 +124,56 @@ export async function PATCH(
         );
       }
 
-      const rounded = Math.floor(asNumber);
-      if (rounded < 0 || rounded > 7) {
-        return NextResponse.json(
-          { error: 'frequency must be between 0 and 7 (or null for unlimited)' },
-          { status: 400 }
-        );
+      let effectiveType = normalizedFrequencyType ?? 'weekly';
+      if (!hasFrequencyType) {
+        const { data: currentRow } = await supabase
+          .from('leagueactivities')
+          .select('frequency_type')
+          .eq('league_id', leagueId)
+          .or(`activity_id.eq.${activity_id},custom_activity_id.eq.${activity_id}`)
+          .maybeSingle();
+        const currentType = (currentRow as any)?.frequency_type;
+        if (currentType === 'monthly') {
+          effectiveType = 'monthly';
+        }
       }
 
-      normalizedFrequency = rounded;
+      const rounded = Math.floor(asNumber);
+      const maxAllowed = effectiveType === 'monthly' ? 10 : 7;
+      if (rounded === 0) {
+        normalizedFrequency = null;
+      } else if (rounded < 1 || rounded > maxAllowed) {
+        return NextResponse.json(
+          {
+            error: `frequency must be between 1 and ${maxAllowed} (or null for unlimited)`,
+          },
+          { status: 400 }
+        );
+      } else {
+        normalizedFrequency = rounded;
+      }
+      }
+    }
+
+    const updatePayload: Record<string, any> = {
+      modified_by: userId,
+      modified_date: new Date().toISOString(),
+    };
+
+    if (hasFrequency) {
+      updatePayload.frequency = normalizedFrequency ?? null;
+    }
+
+    if (hasFrequencyType) {
+      updatePayload.frequency_type = normalizedFrequencyType ?? 'weekly';
     }
 
     const { data: updated, error: updateError } = await supabase
       .from('leagueactivities')
-      .update({ frequency: normalizedFrequency, modified_by: userId, modified_date: new Date().toISOString() })
+      .update(updatePayload)
       .eq('league_id', leagueId)
-      .eq('activity_id', activity_id)
+      .eq('league_id', leagueId)
+      .or(`activity_id.eq.${activity_id},custom_activity_id.eq.${activity_id}`)
       .select()
       .maybeSingle();
 
@@ -135,7 +206,13 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
-      data: { activity_id, frequency: normalizedFrequency },
+      data: {
+        activity_id,
+        frequency: hasFrequency ? normalizedFrequency ?? null : (updated as any)?.frequency ?? null,
+        frequency_type: hasFrequencyType
+          ? normalizedFrequencyType ?? 'weekly'
+          : (updated as any)?.frequency_type ?? 'weekly',
+      },
     });
   } catch (error) {
     console.error('Error in league activities PATCH:', error);
@@ -210,7 +287,9 @@ export async function GET(
       .from('leagueactivities')
       .select(`
         activity_id,
+        custom_activity_id,
         frequency,
+        frequency_type,
         min_value,
         age_group_overrides,
         activities(
@@ -222,6 +301,14 @@ export async function GET(
           settings,
           admin_info,
           activity_categories(category_id, category_name, display_name)
+        ),
+        custom_activities(
+          custom_activity_id,
+          activity_name,
+          description,
+          measurement_type,
+          requires_proof,
+          requires_notes
         )
       `)
       .eq('league_id', leagueId);
@@ -229,15 +316,16 @@ export async function GET(
     leagueActivities = withFrequency.data as any[] | null;
     activitiesError = withFrequency.error;
 
-    // Fallback if frequency column is not present yet
+    // Fallback if frequency/frequency_type columns are not present yet
     if (activitiesError && typeof activitiesError?.message === 'string') {
       const msg = activitiesError.message.toLowerCase();
-      if (msg.includes('frequency') && msg.includes('column')) {
-        supportsFrequency = false;
-        const withoutFrequency = await supabase
+      if (msg.includes('frequency_type') && msg.includes('column')) {
+        const withoutFrequencyType = await supabase
           .from('leagueactivities')
           .select(`
             activity_id,
+            custom_activity_id,
+            frequency,
             min_value,
             age_group_overrides,
             activities(
@@ -249,6 +337,46 @@ export async function GET(
               settings,
               admin_info,
               activity_categories(category_id, category_name, display_name)
+            ),
+            custom_activities(
+              custom_activity_id,
+              activity_name,
+              description,
+              measurement_type,
+              requires_proof,
+              requires_notes
+            )
+          `)
+          .eq('league_id', leagueId);
+
+        leagueActivities = withoutFrequencyType.data as any[] | null;
+        activitiesError = withoutFrequencyType.error;
+      } else if (msg.includes('frequency') && msg.includes('column')) {
+        supportsFrequency = false;
+        const withoutFrequency = await supabase
+          .from('leagueactivities')
+          .select(`
+            activity_id,
+            custom_activity_id,
+            min_value,
+            age_group_overrides,
+            activities(
+              activity_id, 
+              activity_name, 
+              description,
+              category_id,
+              measurement_type,
+              settings,
+              admin_info,
+              activity_categories(category_id, category_name, display_name)
+            ),
+            custom_activities(
+              custom_activity_id,
+              activity_name,
+              description,
+              measurement_type,
+              requires_proof,
+              requires_notes
             )
           `)
           .eq('league_id', leagueId);
@@ -268,8 +396,33 @@ export async function GET(
 
     // Transform enabled activities to LeagueActivity format
     const enabledActivities: LeagueActivity[] = (leagueActivities || [])
-      .filter((la) => la.activities) // Filter out any null activities
+      .filter((la) => la.activities || la.custom_activities) // Filter out any null activities
       .map((la) => {
+        // Check if this is a custom activity
+        if (la.custom_activities) {
+          const customAct = la.custom_activities as any;
+          return {
+            activity_id: customAct.custom_activity_id,
+            custom_activity_id: customAct.custom_activity_id,
+            activity_name: customAct.activity_name,
+            description: customAct.description,
+            category_id: null,
+            frequency: (la as any).frequency ?? null,
+            frequency_type: (la as any).frequency_type ?? 'weekly',
+            min_value: (la as any).min_value ?? null,
+            age_group_overrides: (la as any).age_group_overrides ?? null,
+            category: null,
+            value: customAct.custom_activity_id, // Use ID as value for custom activities to ensure correct lookup
+            measurement_type: customAct.measurement_type,
+            settings: null,
+            admin_info: null,
+            is_custom: true,
+            requires_proof: customAct.requires_proof,
+            requires_notes: customAct.requires_notes,
+          };
+        }
+
+        // Global activity
         const activity = la.activities as any;
         return {
           activity_id: activity.activity_id,
@@ -277,6 +430,7 @@ export async function GET(
           description: activity.description,
           category_id: activity.category_id,
           frequency: (la as any).frequency ?? null,
+          frequency_type: (la as any).frequency_type ?? 'weekly',
           min_value: (la as any).min_value ?? null,
           age_group_overrides: (la as any).age_group_overrides ?? null,
           category: activity.activity_categories,
@@ -284,6 +438,7 @@ export async function GET(
           measurement_type: activity.measurement_type,
           settings: activity.settings,
           admin_info: activity.admin_info,
+          is_custom: false,
         };
       });
 
@@ -311,12 +466,42 @@ export async function GET(
           description: a.description,
           category_id: a.category_id,
           frequency: null,
+          frequency_type: 'weekly',
           category: a.activity_categories,
           value: a.activity_name,
           measurement_type: a.measurement_type,
           settings: a.settings,
           admin_info: a.admin_info,
+          is_custom: false,
         }));
+      }
+
+      // Also fetch host's custom activities for configuration
+      const { data: customActs } = await supabase
+        .from('custom_activities')
+        .select('*')
+        .eq('created_by', session.user.id)
+        .eq('is_active', true)
+        .order('activity_name');
+
+      if (customActs) {
+        const customActivitiesForConfig: LeagueActivity[] = customActs.map((ca: any) => ({
+          activity_id: ca.custom_activity_id,
+          custom_activity_id: ca.custom_activity_id,
+          activity_name: ca.activity_name,
+          description: ca.description,
+          category_id: null,
+          frequency: null,
+          category: null,
+          value: ca.activity_name,
+          measurement_type: ca.measurement_type,
+          settings: null,
+          admin_info: null,
+          is_custom: true,
+          requires_proof: ca.requires_proof,
+          requires_notes: ca.requires_notes,
+        }));
+        allActivities = [...allActivities, ...customActivitiesForConfig];
       }
     }
 
@@ -383,81 +568,170 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { activity_ids } = body;
+    let { activity_ids, custom_activity_ids } = body;
 
-    if (!activity_ids || !Array.isArray(activity_ids) || activity_ids.length === 0) {
+    // Ensure arrays
+    if (!activity_ids) activity_ids = [];
+    if (!custom_activity_ids) custom_activity_ids = [];
+
+    // Smart detection: Check if any activity_ids are actually custom activities
+    if (activity_ids.length > 0) {
+      // 1. Check which ones are valid global activities
+      const { data: existingActivities, error: verifyError } = await supabase
+        .from('activities')
+        .select('activity_id')
+        .in('activity_id', activity_ids);
+
+      if (verifyError) {
+        return NextResponse.json(
+          { error: 'Failed to verify activities' },
+          { status: 500 }
+        );
+      }
+
+      const validActivityIds = (existingActivities || []).map((a) => a.activity_id);
+      const potentialCustomIds = activity_ids.filter((id: string) => !validActivityIds.includes(id));
+
+      // 2. If there are invalid global IDs, check if they are custom activities
+      if (potentialCustomIds.length > 0) {
+        const { data: foundCustom } = await supabase
+          .from('custom_activities')
+          .select('custom_activity_id')
+          .in('custom_activity_id', potentialCustomIds)
+          .eq('created_by', userId)
+          .eq('is_active', true);
+
+        const validCustomIdsFromMixed = (foundCustom || []).map(c => c.custom_activity_id);
+
+        if (validCustomIdsFromMixed.length > 0) {
+          // Move them to custom_activity_ids
+          custom_activity_ids = [...custom_activity_ids, ...validCustomIdsFromMixed];
+
+          // Update activity_ids to only contain valid global IDs
+          activity_ids = validActivityIds;
+        } else {
+          // No valid custom activities found among the invalid IDs
+          return NextResponse.json(
+            { error: `Invalid activity IDs: ${potentialCustomIds.join(', ')}` },
+            { status: 400 }
+          );
+        }
+      } else {
+        // All provided IDs were valid global activities
+        // activity_ids remains as is (or explicit filtering to be safe)
+        activity_ids = validActivityIds;
+      }
+    }
+
+    // Handle global activities
+    if (activity_ids.length > 0) {
+      // Verify all activity IDs exist (already did this above, but we need existingActivities data?)
+      // Actually we already have verified them. We can skip re-verification or just proceed with activity_ids which are now clean.
+
+      // Check for duplicates - get existing league activities
+      const { data: existing } = await supabase
+        .from('leagueactivities')
+        .select('activity_id')
+        .eq('league_id', leagueId)
+        .not('activity_id', 'is', null);
+
+      const existingActivityIds = (existing || []).map((e) => e.activity_id);
+      const newActivityIds = activity_ids.filter(
+        (id: string) => !existingActivityIds.includes(id)
+      );
+
+      if (newActivityIds.length > 0) {
+        // Insert new league activities
+        const insertData = newActivityIds.map((activity_id: string) => ({
+          league_id: leagueId,
+          activity_id,
+          created_by: userId,
+        }));
+
+        const { error: insertError } = await supabase
+          .from('leagueactivities')
+          .insert(insertData);
+
+        if (insertError) {
+          console.error('Error adding activities to league:', insertError);
+          return NextResponse.json(
+            { error: 'Failed to add activities' },
+            { status: 500 }
+          );
+        }
+      }
+    }
+
+    // Handle custom activities
+    if (custom_activity_ids && Array.isArray(custom_activity_ids) && custom_activity_ids.length > 0) {
+      // Verify ownership of custom activities
+      const { data: customActivities, error: customVerifyError } = await supabase
+        .from('custom_activities')
+        .select('custom_activity_id')
+        .in('custom_activity_id', custom_activity_ids)
+        .eq('created_by', userId)
+        .eq('is_active', true);
+
+      if (customVerifyError) {
+        return NextResponse.json(
+          { error: 'Failed to verify custom activities' },
+          { status: 500 }
+        );
+      }
+
+      const validCustomIds = (customActivities || []).map((ca) => ca.custom_activity_id);
+      const invalidCustomIds = custom_activity_ids.filter((id: string) => !validCustomIds.includes(id));
+
+      if (invalidCustomIds.length > 0) {
+        return NextResponse.json(
+          { error: `Invalid or unauthorized custom activity IDs: ${invalidCustomIds.join(', ')}` },
+          { status: 400 }
+        );
+      }
+
+      // Check for duplicates
+      const { data: existingCustom } = await supabase
+        .from('leagueactivities')
+        .select('custom_activity_id')
+        .eq('league_id', leagueId)
+        .not('custom_activity_id', 'is', null);
+
+      const existingCustomIds = (existingCustom || []).map((e) => e.custom_activity_id);
+      const newCustomIds = custom_activity_ids.filter(
+        (id: string) => !existingCustomIds.includes(id)
+      );
+
+      if (newCustomIds.length > 0) {
+        const customInsertData = newCustomIds.map((custom_activity_id: string) => ({
+          league_id: leagueId,
+          custom_activity_id,
+          created_by: userId,
+        }));
+
+        const { error: customInsertError } = await supabase
+          .from('leagueactivities')
+          .insert(customInsertData);
+
+        if (customInsertError) {
+          console.error('Error adding custom activities to league:', customInsertError);
+          return NextResponse.json(
+            { error: 'Failed to add custom activities' },
+            { status: 500 }
+          );
+        }
+      }
+    }
+
+    if ((!activity_ids || activity_ids.length === 0) && (!custom_activity_ids || custom_activity_ids.length === 0)) {
       return NextResponse.json(
-        { error: 'activity_ids array is required' },
+        { error: 'activity_ids or custom_activity_ids array is required' },
         { status: 400 }
-      );
-    }
-
-    // Verify all activity IDs exist
-    const { data: existingActivities, error: verifyError } = await supabase
-      .from('activities')
-      .select('activity_id')
-      .in('activity_id', activity_ids);
-
-    if (verifyError || !existingActivities) {
-      return NextResponse.json(
-        { error: 'Failed to verify activities' },
-        { status: 500 }
-      );
-    }
-
-    const validActivityIds = existingActivities.map((a) => a.activity_id);
-    const invalidIds = activity_ids.filter((id: string) => !validActivityIds.includes(id));
-
-    if (invalidIds.length > 0) {
-      return NextResponse.json(
-        { error: `Invalid activity IDs: ${invalidIds.join(', ')}` },
-        { status: 400 }
-      );
-    }
-
-    // Check for duplicates - get existing league activities
-    const { data: existing } = await supabase
-      .from('leagueactivities')
-      .select('activity_id')
-      .eq('league_id', leagueId);
-
-    const existingActivityIds = (existing || []).map((e) => e.activity_id);
-    const newActivityIds = activity_ids.filter(
-      (id: string) => !existingActivityIds.includes(id)
-    );
-
-    if (newActivityIds.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: 'All activities are already configured for this league',
-        data: { added: 0 },
-      });
-    }
-
-    // Insert new league activities
-    const insertData = newActivityIds.map((activity_id: string) => ({
-      league_id: leagueId,
-      activity_id,
-      created_by: userId,
-    }));
-
-    const { data: inserted, error: insertError } = await supabase
-      .from('leagueactivities')
-      .insert(insertData)
-      .select();
-
-    if (insertError) {
-      console.error('Error adding activities to league:', insertError);
-      return NextResponse.json(
-        { error: 'Failed to add activities' },
-        { status: 500 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: `Added ${inserted?.length || 0} activities to the league`,
-      data: { added: inserted?.length || 0 },
+      message: 'Activities added to the league',
     });
   } catch (error) {
     console.error('Error in league activities POST:', error);
@@ -467,6 +741,8 @@ export async function POST(
     );
   }
 }
+
+
 
 // ============================================================================
 // DELETE Handler - Remove activity from league (host only)
@@ -502,21 +778,28 @@ export async function DELETE(
     }
 
     const body = await request.json();
-    const { activity_id } = body;
+    const { activity_id, custom_activity_id } = body;
 
-    if (!activity_id) {
+    if (!activity_id && !custom_activity_id) {
       return NextResponse.json(
-        { error: 'activity_id is required' },
+        { error: 'activity_id or custom_activity_id is required' },
         { status: 400 }
       );
     }
 
     // Remove activity from league
-    const { error: deleteError } = await supabase
+    let deleteQuery = supabase
       .from('leagueactivities')
       .delete()
-      .eq('league_id', leagueId)
-      .eq('activity_id', activity_id);
+      .eq('league_id', leagueId);
+
+    if (activity_id) {
+      deleteQuery = deleteQuery.eq('activity_id', activity_id);
+    } else if (custom_activity_id) {
+      deleteQuery = deleteQuery.eq('custom_activity_id', custom_activity_id);
+    }
+
+    const { error: deleteError } = await deleteQuery;
 
     if (deleteError) {
       console.error('Error removing activity from league:', deleteError);

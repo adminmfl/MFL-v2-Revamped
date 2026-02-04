@@ -256,7 +256,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
               )}
               <Popover open={filterOpen} onOpenChange={setFilterOpen}>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 text-xs font-normal">
+                  <Button variant="outline" size="sm" className="h-8 text-xs font-normal shadow-sm hover:shadow">
                     <Calendar className="size-3.5 mr-1.5" />
                     <span className="truncate max-w-[80px] sm:max-w-none">
                       {selectedWeek === 'all'
@@ -270,13 +270,13 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
                     <ChevronDown className="size-3.5 ml-1.5 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-56 p-2" align="end">
-                  <div className="flex flex-col gap-1">
+                <PopoverContent className="w-72 p-0 shadow-lg border-muted" align="end">
+                  <div className="flex flex-col gap-1 p-2">
                     {/* All Time Option */}
                     <Button
                       variant={selectedWeek === 'all' ? 'secondary' : 'ghost'}
                       size="sm"
-                      className="justify-start"
+                      className="justify-start shadow-sm"
                       onClick={() => handleWeekSelect('all')}
                     >
                       All Time
@@ -285,39 +285,41 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
                     {/* Week Presets */}
                     {weekPresets.length > 0 && (
                       <>
-                        <div className="text-xs font-medium text-muted-foreground px-2 py-1 mt-1">
+                        <div className="text-xs font-medium text-muted-foreground px-2 py-2 mt-1">
                           Weeks
                         </div>
-                        {[...weekPresets].reverse().map((week) => (
-                          <Button
-                            key={week.weekNumber}
-                            variant={selectedWeek === week.weekNumber ? 'secondary' : 'ghost'}
-                            size="sm"
-                            className="justify-start"
-                            onClick={() => handleWeekSelect(week.weekNumber)}
-                          >
-                            {week.label}
-                            <span className="ml-auto text-xs text-muted-foreground">
-                              {format(parseISO(week.startDate), 'MMM d')} – {format(parseISO(week.endDate), 'MMM d')}
-                            </span>
-                          </Button>
-                        ))}
+                        <div className="max-h-[240px] overflow-y-auto pr-1 space-y-1">
+                          {[...weekPresets].reverse().map((week) => (
+                            <Button
+                              key={week.weekNumber}
+                              variant={selectedWeek === week.weekNumber ? 'secondary' : 'ghost'}
+                              size="sm"
+                              className="justify-start w-full shadow-sm"
+                              onClick={() => handleWeekSelect(week.weekNumber)}
+                            >
+                              <span className="font-medium">{week.label}</span>
+                              <span className="ml-auto text-xs text-muted-foreground pl-2">
+                                {format(parseISO(week.startDate), 'MMM d')} – {format(parseISO(week.endDate), 'MMM d')}
+                              </span>
+                            </Button>
+                          ))}
+                        </div>
                       </>
                     )}
 
                     {/* Custom Date Range */}
-                    <div className="text-xs font-medium text-muted-foreground px-2 py-1 mt-1">
+                    <div className="text-xs font-medium text-muted-foreground px-2 py-2 mt-2">
                       Custom Range
                     </div>
-                    <div className="flex flex-col gap-2 p-2 rounded border bg-muted/30">
+                    <div className="flex flex-col gap-2.5 p-3 rounded-md border bg-muted/20 shadow-inner">
                       <div className="flex items-center gap-2">
                         <Popover>
                           <PopoverTrigger asChild>
-                            <Button variant="outline" size="sm" className={cn('flex-1 text-xs', !startDate && 'text-muted-foreground')}>
+                            <Button variant="outline" size="sm" className={cn('flex-1 text-xs shadow-sm hover:shadow', !startDate && 'text-muted-foreground')}>
                               {startDate ? format(startDate, 'MMM d') : 'Start'}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
+                          <PopoverContent className="w-auto p-0 shadow-lg" align="start">
                             <CalendarComponent
                               mode="single"
                               selected={startDate}
@@ -330,11 +332,11 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
                         <span className="text-xs text-muted-foreground">–</span>
                         <Popover>
                           <PopoverTrigger asChild>
-                            <Button variant="outline" size="sm" className={cn('flex-1 text-xs', !endDate && 'text-muted-foreground')}>
+                            <Button variant="outline" size="sm" className={cn('flex-1 text-xs shadow-sm hover:shadow', !endDate && 'text-muted-foreground')}>
                               {endDate ? format(endDate, 'MMM d') : 'End'}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
+                          <PopoverContent className="w-auto p-0 shadow-lg" align="start">
                             <CalendarComponent
                               mode="single"
                               selected={endDate}
@@ -345,9 +347,9 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
                           </PopoverContent>
                         </Popover>
                       </div>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={handleResetDateRange}>Reset</Button>
-                        <Button size="sm" className="flex-1 text-xs" onClick={handleApplyDateRange}>Apply</Button>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" className="flex-1 text-xs shadow-sm hover:shadow" onClick={handleResetDateRange}>Reset</Button>
+                        <Button size="sm" className="flex-1 text-xs shadow-sm hover:shadow-md" onClick={handleApplyDateRange}>Apply</Button>
                       </div>
                     </div>
                   </div>
@@ -368,7 +370,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
 
           {/* Teams Leaderboard (Overall) */}
           <TabsContent value="teams" className="mt-0">
-            <div className="rounded-lg border p-3 sm:p-4">
+            <div className="rounded-lg border bg-card shadow-sm p-3 sm:p-4">
               <div className="mb-3">
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="text-base sm:text-lg font-semibold">Overall standings</h2>
@@ -453,7 +455,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
       {/* Real-time Scoreboard - Always Visible Below Tabs */}
       {pendingWindow?.dates?.length ? (
         <div className="px-4 lg:px-6">
-          <div className="rounded-lg border p-3 sm:p-4">
+          <div className="rounded-lg border bg-card shadow-sm p-3 sm:p-4">
             <div className="mb-3">
               <h2 className="text-base sm:text-lg font-semibold">Real-time Scoreboard</h2>
               <p className="text-xs sm:text-sm text-muted-foreground">Today's and yesterday's scores (subject to change)</p>
@@ -467,7 +469,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
 
       {/* Individual Leaderboard - Always Visible Below Real-time */}
       <div className="px-4 lg:px-6">
-        <div className="rounded-lg border p-3 sm:p-4">
+        <div className="rounded-lg border bg-card shadow-sm p-3 sm:p-4">
           <div className="mb-3">
             <h2 className="text-base sm:text-lg font-semibold">Individual Rankings</h2>
             <p className="text-xs sm:text-sm text-muted-foreground">Personal standings</p>

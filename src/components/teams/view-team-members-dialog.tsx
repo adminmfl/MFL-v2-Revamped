@@ -274,11 +274,6 @@ export function ViewTeamMembersDialog({
                           <span className="text-amber-600 ml-1">(Captain)</span>
                         )}
                       </p>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground truncate">
-                        <span>Points: {(member as any).points ?? 0}</span>
-                        <span>•</span>
-                        <span>Rest Days: {(member as any).rest_days_used ?? 0}</span>
-                      </div>
                     </div>
                     <div className="flex items-center gap-1">
                       {member.roles

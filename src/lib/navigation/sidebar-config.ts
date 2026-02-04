@@ -12,7 +12,6 @@ import {
   Dumbbell,
   Plus,
   Search,
-  CreditCard,
   Activity,
   UserCheck,
   HeartHandshake,
@@ -58,11 +57,6 @@ const baseNavItems: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
-    title: 'Payments',
-    url: '/payments',
-    icon: CreditCard,
-  },
-  {
     title: 'Join a League',
     url: '/leagues/join',
     icon: Search,
@@ -82,7 +76,7 @@ const baseNavItems: NavItem[] = [
  * Get sidebar configuration based on user's role in the league
  *
  * Hierarchy:
- * - Main: Dashboard, Payments (always visible)
+ * - Main: Dashboard (always visible)
  * - League: Role-appropriate league features
  * - Oversight: Host/Governor submission validation
  * - My Team: Captain's team management
@@ -310,8 +304,8 @@ export function getMobileTabItems(
   // Role-specific tabs
   if (role === 'host' || role === 'governor') {
     tabs.push({
-      title: 'Teams',
-      url: leagueUrl('/team'),
+      title: 'My Team',
+      url: leagueUrl('/my-team-view'),
       icon: Users,
     });
     tabs.push({

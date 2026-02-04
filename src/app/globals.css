@@ -15,12 +15,12 @@
   --font-mono: var(--font-geist-mono);
 
   /* MFL Brand Colors */
-  --color-mfl-dark: #0A1628;
-  --color-mfl-navy: #1E3A5F;
-  --color-mfl-coral: #FF6B35;
-  --color-mfl-teal: #00C9A7;
-  --color-mfl-gold: #FFB800;
-  --color-mfl-purple: #7C3AED;
+  --color-mfl-dark: #2E3C16;
+  --color-mfl-navy: #488617;
+  --color-mfl-coral: #e56b00;
+  --color-mfl-teal: #bbda6e;
+  --color-mfl-gold: #e56b00;
+  --color-mfl-purple: #488617;
 
   /* Sidebar */
   --color-sidebar-ring: var(--sidebar-ring);
@@ -80,46 +80,46 @@
   --popover: #FFFFFF;
   --popover-foreground: #0F172A;
 
-  /* Primary - Deep Navy Blue (Strength & Trust) */
-  --primary: #1E3A5F;
+  /* Primary - Dark Green (Logo) */
+  --primary: #488617;
   --primary-foreground: #FFFFFF;
 
-  /* Secondary - Light slate */
-  --secondary: #F1F5F9;
-  --secondary-foreground: #1E293B;
+  /* Secondary - Light green tint (Logo) */
+  --secondary: #EAF4D1;
+  --secondary-foreground: #2C3E12;
 
   /* Muted */
-  --muted: #F1F5F9;
-  --muted-foreground: #64748B;
+  --muted: #F4F9E7;
+  --muted-foreground: #5B6B4A;
 
-  /* Accent - Energetic Coral (Motivation & Energy) */
-  --accent: #FF6B35;
+  /* Accent - Orange (Logo) */
+  --accent: #e56b00;
   --accent-foreground: #FFFFFF;
 
   /* Destructive */
   --destructive: #EF4444;
 
   /* Borders & Inputs */
-  --border: #E2E8F0;
-  --input: #E2E8F0;
-  --ring: #1E3A5F;
+  --border: #D9E7B8;
+  --input: #D9E7B8;
+  --ring: #488617;
 
-  /* Charts - Vibrant fitness palette */
-  --chart-1: #FF6B35;
-  --chart-2: #00C9A7;
-  --chart-3: #7C3AED;
-  --chart-4: #FFB800;
-  --chart-5: #1E3A5F;
+  /* Charts - Logo palette */
+  --chart-1: #e56b00;
+  --chart-2: #bbda6e;
+  --chart-3: #488617;
+  --chart-4: #e56b00;
+  --chart-5: #488617;
 
   /* Sidebar */
   --sidebar: #FFFFFF;
   --sidebar-foreground: #0F172A;
-  --sidebar-primary: #1E3A5F;
+  --sidebar-primary: #488617;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #F1F5F9;
-  --sidebar-accent-foreground: #1E293B;
+  --sidebar-accent: #F4F9E7;
+  --sidebar-accent-foreground: #2C3E12;
   --sidebar-border: #E2E8F0;
-  --sidebar-ring: #1E3A5F;
+  --sidebar-ring: #488617;
 }
 
 /* ============================================================================
@@ -194,7 +194,7 @@
 
   /* Light mode subtle gradient */
   :root body {
-    background: linear-gradient(135deg, #F1F5FB 0%, #EAF2FF 50%, #ECFDF5 100%);
+    background: linear-gradient(135deg, #FFF7EF 0%, #F4FBE7 50%, #EEF7E7 100%);
     background-attachment: fixed;
   }
 
@@ -211,28 +211,28 @@
 
 /* Gradient backgrounds for cards/sections */
 .gradient-primary {
-  background: linear-gradient(135deg, #1E3A5F 0%, #3B82F6 100%);
+  background: linear-gradient(135deg, #488617 0%, #3E7A13 100%);
 }
 
 .gradient-accent {
-  background: linear-gradient(135deg, #FF6B35 0%, #F97316 100%);
+  background: linear-gradient(135deg, #e56b00 0%, #d65f00 100%);
 }
 
 .gradient-success {
-  background: linear-gradient(135deg, #00C9A7 0%, #10B981 100%);
+  background: linear-gradient(135deg, #bbda6e 0%, #a8cc58 100%);
 }
 
 .gradient-premium {
-  background: linear-gradient(135deg, #7C3AED 0%, #A855F7 100%);
+  background: linear-gradient(135deg, #488617 0%, #bbda6e 100%);
 }
 
 .gradient-gold {
-  background: linear-gradient(135deg, #FFB800 0%, #F59E0B 100%);
+  background: linear-gradient(135deg, #e56b00 0%, #f08a2b 100%);
 }
 
 /* Soft tinted stat tile background (used in league dashboard summary cards) */
 .gradient-box {
-  background: color-mix(in oklab, var(--card) 88%, var(--chart-2) 12%);
+  background: color-mix(in oklab, var(--card) 86%, #bbda6e 14%);
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
@@ -335,7 +335,7 @@
    Focus & Selection Styles
    ============================================================================ */
 ::selection {
-  background: #FF6B35;
+  background: #e56b00;
   color: white;
 }
 
@@ -354,7 +354,7 @@
    Typography Enhancements
    ============================================================================ */
 .text-gradient {
-  background: linear-gradient(135deg, #1E3A5F 0%, #3B82F6 100%);
+  background: linear-gradient(135deg, #488617 0%, #bbda6e 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -368,7 +368,7 @@
 }
 
 .text-gradient-accent {
-  background: linear-gradient(135deg, #FF6B35 0%, #F97316 100%);
+  background: linear-gradient(135deg, #e56b00 0%, #f08a2b 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

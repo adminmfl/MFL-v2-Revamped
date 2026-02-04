@@ -26,6 +26,7 @@ import { toast } from 'sonner';
 
 import { useLeague } from '@/contexts/league-context';
 import { useRole } from '@/contexts/role-context';
+import { useLeagueTeams } from '@/hooks/use-league-teams';
 import {
   Card,
   CardContent,
@@ -59,8 +60,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 
 import type { TeamMember } from '@/hooks/use-league-teams';
 
@@ -104,6 +113,7 @@ export default function MyTeamPage({
   const { id: leagueId } = use(params);
   const { activeLeague } = useLeague();
   const { isCaptain } = useRole();
+  const { data: teamsData, isLoading: teamsLoading, assignMember, refetch: refetchTeams } = useLeagueTeams(leagueId);
 
   console.debug('[MyTeamPage] render', { leagueId, activeLeague });
 
@@ -112,6 +122,12 @@ export default function MyTeamPage({
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isUnallocatedDialogOpen, setIsUnallocatedDialogOpen] = useState(false);
+  const [selectedTeamForAssignment, setSelectedTeamForAssignment] = useState<string>('');
+  const [unallocatedSearchQuery, setUnallocatedSearchQuery] = useState('');
+  const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
+  const [assigningMembers, setAssigningMembers] = useState<Set<string>>(new Set());
+  const [isBulkAssigning, setIsBulkAssigning] = useState(false);
 
   const [teamRank, setTeamRank] = useState<string>('#--');
   const [teamPoints, setTeamPoints] = useState<string>('--');
@@ -223,6 +239,94 @@ export default function MyTeamPage({
 
   // Get captain info
   const captain = members.find((m) => m.is_captain);
+
+  // Handle bulk assigning selected members to team
+  const handleBulkAssignMembers = async () => {
+    const teamId = selectedTeamForAssignment;
+    if (!teamId) {
+      toast.error('Please select a team first');
+      return;
+    }
+
+    if (selectedMemberIds.size === 0) {
+      toast.error('Please select at least one member');
+      return;
+    }
+
+    const teamName = teamsData?.teams.find(t => t.team_id === teamId)?.team_name;
+    const memberCount = selectedMemberIds.size;
+    
+    setIsBulkAssigning(true);
+    
+    try {
+      let successCount = 0;
+      let failCount = 0;
+
+      // Assign all selected members
+      for (const memberId of selectedMemberIds) {
+        try {
+          const success = await assignMember(teamId, memberId);
+          if (success) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (err) {
+          console.error('Error assigning member:', err);
+          failCount++;
+        }
+      }
+
+      // Show results
+      if (successCount > 0) {
+        toast.success(`${successCount} member${successCount !== 1 ? 's' : ''} assigned to ${teamName}`);
+      }
+      if (failCount > 0) {
+        toast.error(`Failed to assign ${failCount} member${failCount !== 1 ? 's' : ''}`);
+      }
+
+      // Clear selections and refetch
+      setSelectedMemberIds(new Set());
+      await refetchTeams();
+    } catch (err) {
+      console.error('Error in bulk assignment:', err);
+      toast.error('Failed to assign members');
+    } finally {
+      setIsBulkAssigning(false);
+    }
+  };
+
+  // Toggle member selection
+  const toggleMemberSelection = (memberId: string) => {
+    setSelectedMemberIds(prev => {
+      const next = new Set(prev);
+      if (next.has(memberId)) {
+        next.delete(memberId);
+      } else {
+        next.add(memberId);
+      }
+      return next;
+    });
+  };
+
+  // Select/deselect all filtered members
+  const toggleSelectAll = () => {
+    if (selectedMemberIds.size === filteredUnallocatedMembers.length && filteredUnallocatedMembers.length > 0) {
+      setSelectedMemberIds(new Set());
+    } else {
+      setSelectedMemberIds(new Set(filteredUnallocatedMembers.map(m => m.league_member_id)));
+    }
+  };
+
+  // Filter unallocated members based on search
+  const filteredUnallocatedMembers = useMemo(() => {
+    if (!teamsData?.members?.unallocated) return [];
+    return teamsData.members.unallocated.filter(
+      (member) =>
+        member.username.toLowerCase().includes(unallocatedSearchQuery.toLowerCase()) ||
+        member.email.toLowerCase().includes(unallocatedSearchQuery.toLowerCase())
+    );
+  }, [teamsData?.members?.unallocated, unallocatedSearchQuery]);
 
   // Stats cards data
   const stats = [
@@ -355,13 +459,25 @@ export default function MyTeamPage({
           </div>
         </div>
 
-        <Badge
-          variant="outline"
-          className="w-fit bg-amber-500/10 text-amber-600 border-amber-200"
-        >
-          <Crown className="size-3 mr-1" />
-          Team Captain
-        </Badge>
+        <div className="flex items-center gap-2">
+          {teamsData?.members?.unallocated && teamsData.members.unallocated.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => setIsUnallocatedDialogOpen(true)}
+              className="gap-2"
+            >
+              <Users className="size-4" />
+              Unallocated Members ({teamsData.members.unallocated.length})
+            </Button>
+          )}
+          <Badge
+            variant="outline"
+            className="bg-amber-500/10 text-amber-600 border-amber-200"
+          >
+            <Crown className="size-3 mr-1" />
+            Team Captain
+          </Badge>
+        </div>
       </div>
 
       {/* Error State */}
@@ -435,8 +551,6 @@ export default function MyTeamPage({
                 <TableHead className="w-12">#</TableHead>
                 <TableHead>Member</TableHead>
                 <TableHead>Role</TableHead>
-                <TableHead className="text-center">Rest Days</TableHead>
-                <TableHead className="text-center">Points</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -480,17 +594,11 @@ export default function MyTeamPage({
                         <Badge variant="outline">Player</Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-center text-muted-foreground text-sm">
-                      {(member as any).rest_days_used ?? 0}
-                    </TableCell>
-                    <TableCell className="text-center text-muted-foreground text-sm">
-                      {(member as any).points ?? 0}
-                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={3} className="h-24 text-center">
                     {searchQuery
                       ? 'No members found matching your search.'
                       : 'No members in this team yet.'}
@@ -591,6 +699,135 @@ export default function MyTeamPage({
           </div>
         )}
       </div>
+
+      {/* Unallocated Members Dialog */}
+      <Dialog open={isUnallocatedDialogOpen} onOpenChange={setIsUnallocatedDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="size-5" />
+              Unallocated Members
+            </DialogTitle>
+            <DialogDescription>
+              These members have joined the league but are not yet assigned to any team. ({teamsData?.members?.unallocated?.length || 0} total)
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-4 flex-1 overflow-hidden">
+            {/* Team Selector and Actions */}
+            <div className="space-y-2">
+              <Label>Select Team to Add To</Label>
+              <div className="flex gap-2">
+                <Select
+                  value={selectedTeamForAssignment}
+                  onValueChange={setSelectedTeamForAssignment}
+                  disabled={isBulkAssigning}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Choose a team..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teamsData?.teams.map((team) => (
+                      <SelectItem key={team.team_id} value={team.team_id}>
+                        {team.team_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={handleBulkAssignMembers}
+                  disabled={!selectedTeamForAssignment || selectedMemberIds.size === 0 || isBulkAssigning}
+                  className="shrink-0"
+                >
+                  {isBulkAssigning ? (
+                    <>
+                      <Loader2 className="size-4 mr-2 animate-spin" />
+                      Assigning...
+                    </>
+                  ) : (
+                    <>
+                      <Users className="size-4 mr-2" />
+                      Add Selected ({selectedMemberIds.size})
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Search and Select All */}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search members..."
+                  value={unallocatedSearchQuery}
+                  onChange={(e) => setUnallocatedSearchQuery(e.target.value)}
+                  className="pl-9"
+                  disabled={isBulkAssigning}
+                />
+              </div>
+              {filteredUnallocatedMembers.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleSelectAll}
+                  disabled={isBulkAssigning}
+                >
+                  {selectedMemberIds.size === filteredUnallocatedMembers.length && filteredUnallocatedMembers.length > 0 ? 'Deselect All' : 'Select All'}
+                </Button>
+              )}
+            </div>
+
+            {/* Members List */}
+            <div className="flex-1 overflow-y-auto space-y-2">
+              {filteredUnallocatedMembers.length > 0 ? (
+                filteredUnallocatedMembers.map((member) => {
+                  const isHost = member.roles?.includes('host');
+                  const isSelected = selectedMemberIds.has(member.league_member_id);
+                  return (
+                    <div
+                      key={member.league_member_id}
+                      className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors overflow-hidden cursor-pointer"
+                      onClick={() => !isBulkAssigning && toggleMemberSelection(member.league_member_id)}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleMemberSelection(member.league_member_id)}
+                        disabled={isBulkAssigning}
+                        className="shrink-0"
+                      />
+                      <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <span className="text-sm font-medium text-primary">
+                          {member.username
+                            .split(' ')
+                            .map((n) => n[0])
+                            .join('')
+                            .toUpperCase()
+                            .slice(0, 2)}
+                        </span>
+                      </div>
+                      <div className="min-w-0 flex-1 overflow-hidden">
+                        <div className="font-medium truncate">{member.username}</div>
+                      </div>
+                      {isHost && (
+                        <Badge variant="secondary" className="text-xs shrink-0">
+                          host
+                        </Badge>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  {unallocatedSearchQuery
+                    ? 'No members found matching your search.'
+                    : 'No unallocated members.'}
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

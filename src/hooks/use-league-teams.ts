@@ -58,6 +58,7 @@ export interface LeagueTeamsData {
   league: {
     league_id: string;
     league_name: string;
+    invite_code?: string | null;
     num_teams: number;
     league_capacity: number;
     status: string;

@@ -841,7 +841,7 @@ export default function LeagueDashboardPage({
               >
                 <Link href={`/leagues/${id}/submit?type=rest`}>
                   <Moon className="mr-2 size-4" />
-                  Add Rest Day
+                  Take Rest
                 </Link>
               </Button>
             </div>
@@ -934,7 +934,7 @@ export default function LeagueDashboardPage({
               >
                 <Link href={`/leagues/${id}/submit?type=rest`}>
                   <Moon className="mr-2 size-4" />
-                  Add Rest Day
+                  Take Rest
                 </Link>
               </Button>
             </div>
@@ -956,7 +956,7 @@ export default function LeagueDashboardPage({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-md border border-border/60 bg-blue-100 dark:bg-blue-950 px-3 py-2.5 text-center">
+                  <div className="rounded-md border border-[#bbda6e]/60 bg-[#bbda6e]/35 dark:bg-blue-950 px-3 py-2.5 text-center">
                     <div className="text-xs text-muted-foreground">Total Points</div>
                     <div className="text-base font-semibold text-foreground tabular-nums">
                       {mySummary?.points.toLocaleString() ?? '—'}
@@ -972,7 +972,7 @@ export default function LeagueDashboardPage({
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-md border border-border/60 bg-blue-100 dark:bg-blue-950 px-3 py-2.5 text-center">
+                  <div className="rounded-md border border-[#bbda6e]/60 bg-[#bbda6e]/35 dark:bg-blue-950 px-3 py-2.5 text-center">
                     <div className="text-[11px] text-muted-foreground">Rest Days Used</div>
                     <div className="text-sm font-semibold text-foreground tabular-nums">
                       {mySummary?.restUsed.toLocaleString() ?? '—'}
@@ -1099,7 +1099,7 @@ export default function LeagueDashboardPage({
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-md border border-border/60 bg-blue-100 dark:bg-blue-950 px-3 py-2.5 text-center">
+                  <div className="rounded-md border border-[#bbda6e]/60 bg-[#bbda6e]/35 dark:bg-blue-950 px-3 py-2.5 text-center">
                     <div className="text-xs text-muted-foreground">Total Points</div>
                     <div className="text-base font-semibold text-foreground tabular-nums">
                       {typeof mySummary?.teamPoints === 'number'
@@ -1221,9 +1221,11 @@ export default function LeagueDashboardPage({
                             ? 'text-emerald-600 dark:text-emerald-400'
                             : normalized === 'pending'
                               ? 'text-yellow-600 dark:text-yellow-400'
-                              : normalized === 'rejected'
-                                ? 'text-red-600 dark:text-red-400'
-                                : 'text-muted-foreground';
+                              : normalized === 'rejected_resubmit'
+                                ? 'text-orange-600 dark:text-orange-400'
+                                : normalized.startsWith('rejected')
+                                  ? 'text-red-600 dark:text-red-400'
+                                  : 'text-muted-foreground';
 
                         if (!rawStatus || !row.subtitle.includes('•')) {
                           return <span className="text-sm text-muted-foreground">{row.subtitle}</span>;
@@ -1231,7 +1233,11 @@ export default function LeagueDashboardPage({
 
                         const [left] = row.subtitle.split('•');
                         const leftText = left ? left.trim() : '';
-                        const statusText = rawStatus;
+
+                        let statusText = rawStatus;
+                        if (normalized === 'rejected_resubmit') statusText = 'Rejected (Retry)';
+                        else if (normalized === 'rejected_permanent') statusText = 'Rejected (Final)';
+                        else if (normalized === 'rejected') statusText = 'Rejected';
 
                         return (
                           <span className="text-sm text-muted-foreground">

@@ -20,7 +20,7 @@ export interface MySubmission {
   steps: number | null;
   holes: number | null;
   rr_value: number | null;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'rejected_resubmit' | 'rejected_permanent';
   proof_url: string | null;
   notes: string | null;
   created_date: string;
@@ -34,7 +34,7 @@ export interface MySubmission {
  */
 export function isExemptionRequest(submission: MySubmission): boolean {
   return submission.type === 'rest' &&
-         submission.notes?.includes('[EXEMPTION_REQUEST]') || false;
+    submission.notes?.includes('[EXEMPTION_REQUEST]') || false;
 }
 
 export interface SubmissionStats {
