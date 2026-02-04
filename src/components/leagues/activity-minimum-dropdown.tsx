@@ -51,6 +51,7 @@ interface ActivityMinimumProps {
   symbol: string;
   measurementType: string;
   frequency?: number | null;
+  frequencyType?: 'weekly' | 'monthly' | null;
   supportsFrequency?: boolean;
   initialConfig?: {
     min_value: number | null;
@@ -63,6 +64,7 @@ interface ActivityMinimumProps {
     age_group_overrides: Record<string, any>;
   }) => void;
   onFrequencyChange?: (activityId: string, frequency: string) => void;
+  onFrequencyTypeChange?: (activityId: string, frequencyType: 'weekly' | 'monthly') => void;
   onFrequencyBlur?: (activityId: string) => void;
 }
 
@@ -72,10 +74,12 @@ export function ActivityMinimumDropdown({
   symbol,
   measurementType,
   frequency,
+  frequencyType,
   supportsFrequency = true,
   initialConfig,
   onMinimumChange,
   onFrequencyChange,
+  onFrequencyTypeChange,
 }: ActivityMinimumProps) {
   const unit = getUnitLabel(measurementType);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -85,7 +89,10 @@ export function ActivityMinimumDropdown({
     parseAgeOverrides(initialConfig?.age_group_overrides || {})
   );
   const [frequencyDraft, setFrequencyDraft] = useState<string>(
-    typeof frequency === 'number' ? String(frequency) : ''
+    typeof frequency === 'number' && frequency > 0 ? String(frequency) : ''
+  );
+  const [frequencyTypeDraft, setFrequencyTypeDraft] = useState<'weekly' | 'monthly'>(
+    frequencyType ?? 'weekly'
   );
 
   // Sync state with initialConfig when it changes
@@ -98,8 +105,23 @@ export function ActivityMinimumDropdown({
   }, [initialConfig?.age_group_overrides]);
 
   useEffect(() => {
-    setFrequencyDraft(typeof frequency === 'number' ? String(frequency) : '');
+    setFrequencyDraft(typeof frequency === 'number' && frequency > 0 ? String(frequency) : '');
   }, [frequency]);
+
+  useEffect(() => {
+    setFrequencyTypeDraft(frequencyType ?? 'weekly');
+  }, [frequencyType]);
+
+  useEffect(() => {
+    if (frequencyDraft === '') return;
+    const maxAllowed = frequencyTypeDraft === 'monthly' ? 10 : 7;
+    const current = Number(frequencyDraft);
+    if (Number.isFinite(current) && current > maxAllowed) {
+      const nextValue = String(maxAllowed);
+      setFrequencyDraft(nextValue);
+      onFrequencyChange?.(activityId, nextValue);
+    }
+  }, [frequencyDraft, frequencyTypeDraft, activityId, onFrequencyChange]);
 
   function parseAgeOverrides(overrides: Record<string, any>): AgeOverride[] {
     const result: AgeOverride[] = [];
@@ -191,23 +213,41 @@ export function ActivityMinimumDropdown({
 
       {isExpanded && (
         <div className="mt-3 space-y-3 p-3 bg-muted/30 rounded-lg border border-border/60">
-          {/* Weekly Frequency */}
+          {/* Frequency */}
           {supportsFrequency && (
             <div className="space-y-2 pb-3 border-b">
-              <h4 className="text-xs font-semibold">Weekly Frequency</h4>
+              <h4 className="text-xs font-semibold">Frequency</h4>
               <div className="flex items-center gap-2">
                 <Select
-                  value={frequencyDraft || undefined}
+                  value={frequencyTypeDraft}
                   onValueChange={(value) => {
-                    setFrequencyDraft(value);
-                    onFrequencyChange?.(activityId, value);
+                    const nextType = value as 'weekly' | 'monthly';
+                    setFrequencyTypeDraft(nextType);
+                    onFrequencyTypeChange?.(activityId, nextType);
+                  }}
+                >
+                  <SelectTrigger className="h-7 w-28 text-xs">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={frequencyDraft === '' ? 'unlimited' : frequencyDraft}
+                  onValueChange={(value) => {
+                    const nextValue = value === 'unlimited' ? '' : value;
+                    setFrequencyDraft(nextValue);
+                    onFrequencyChange?.(activityId, nextValue);
                   }}
                 >
                   <SelectTrigger className="h-7 w-24 text-xs">
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Array.from({ length: 7 }, (_, idx) => {
+                    <SelectItem value="unlimited">Unlimited</SelectItem>
+                    {Array.from({ length: frequencyTypeDraft === 'monthly' ? 10 : 7 }, (_, idx) => {
                       const value = String(idx + 1);
                       return (
                         <SelectItem key={value} value={value}>
@@ -217,7 +257,9 @@ export function ActivityMinimumDropdown({
                     })}
                   </SelectContent>
                 </Select>
-                <span className="text-xs text-muted-foreground">submissions per week</span>
+                <span className="text-xs text-muted-foreground">
+                  submissions per {frequencyTypeDraft === 'monthly' ? 'month' : 'week'}
+                </span>
               </div>
             </div>
           )}

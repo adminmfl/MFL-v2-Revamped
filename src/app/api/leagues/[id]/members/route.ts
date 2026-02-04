@@ -287,6 +287,14 @@ export async function DELETE(
       );
     }
 
+    // Prevent host from removing themselves
+    if (member.user_id === session.user.id) {
+      return NextResponse.json(
+        { error: 'You cannot remove yourself from the league' },
+        { status: 400 }
+      );
+    }
+
     // Delete the league member record
     const { error: deleteError } = await supabase
       .from('leaguemembers')

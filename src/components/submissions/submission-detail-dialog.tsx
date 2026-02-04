@@ -26,6 +26,7 @@ import {
   Upload,
   AlertCircle,
   RefreshCw,
+  Ban,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
@@ -90,9 +91,19 @@ function StatusBadge({ status }: { status: MySubmission['status'] }) {
       icon: XCircle,
       className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
     },
+    rejected_resubmit: {
+      label: 'Rejected (Retry)',
+      icon: RefreshCw,
+      className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+    },
+    rejected_permanent: {
+      label: 'Rejected (Final)',
+      icon: Ban,
+      className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+    },
   };
 
-  const { label, icon: Icon, className } = config[status];
+  const { label, icon: Icon, className } = config[status] || config.rejected;
 
   return (
     <Badge variant="outline" className={cn('gap-1.5 px-3 py-1', className)}>
@@ -214,17 +225,20 @@ export function SubmissionDetailDialog({
   if (!submission) return null;
 
   const isPending = submission.status === 'pending';
-  const isRejected = submission.status === 'rejected';
+  const isRejected = ['rejected', 'rejected_resubmit', 'rejected_permanent'].includes(submission.status);
+  const isSoftRejected = ['rejected', 'rejected_resubmit'].includes(submission.status);
+  const isPermanentRejected = submission.status === 'rejected_permanent';
+
   const showApprove = isPending || (canOverride && submission.status !== 'approved');
-  const showReject = isPending || (canOverride && submission.status !== 'rejected');
+  const showReject = isPending || (canOverride && !isRejected);
   const showActions = (showApprove || showReject) && (onApprove || onReject);
   const tzOffsetMinutes = React.useMemo(() => new Date().getTimezoneOffset(), []);
   const canReuploadNow = React.useMemo(() => {
     const rejectionTime = submission.modified_date || submission.created_date;
     return isReuploadWindowOpen(rejectionTime, tzOffsetMinutes);
   }, [submission.created_date, submission.modified_date, tzOffsetMinutes]);
-  const showReupload = isOwner && isRejected && onReupload && canReuploadNow;
-  const windowExpired = isOwner && isRejected && !canReuploadNow;
+  const showReupload = isOwner && isSoftRejected && onReupload && canReuploadNow;
+  const windowExpired = isOwner && isSoftRejected && !canReuploadNow;
   const isReupload = Boolean(submission.reupload_of);
 
   const isWorkout = submission.type === 'workout';
@@ -252,233 +266,251 @@ export function SubmissionDetailDialog({
       <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col p-0">
         {/* Scrollable content area */}
         <div className="overflow-y-auto flex-1 p-6">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
-              {isWorkout ? (
-                <Dumbbell className="size-5 text-primary" />
-              ) : (
-                <Moon className="size-5 text-blue-500" />
-              )}
-              {isWorkout ? 'Workout Submission' : 'Rest Day'}
-            </DialogTitle>
-            <div className="flex items-center gap-2">
-              {isReupload && (
-                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800">
-                  <RefreshCw className="size-3 mr-1" />
-                  Re-submitted
-                </Badge>
-              )}
-              <StatusBadge status={submission.status} />
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2">
+                {isWorkout ? (
+                  <Dumbbell className="size-5 text-primary" />
+                ) : (
+                  <Moon className="size-5 text-blue-500" />
+                )}
+                {isWorkout ? 'Workout Submission' : 'Rest Day'}
+              </DialogTitle>
+              <div className="flex items-center gap-2">
+                {isReupload && (
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800">
+                    <RefreshCw className="size-3 mr-1" />
+                    Re-submitted
+                  </Badge>
+                )}
+                <StatusBadge status={submission.status} />
+              </div>
             </div>
-          </div>
-          <DialogDescription className="flex items-center gap-1.5 text-sm">
-            <Calendar className="size-3.5" />
-            {formattedDate}
-          </DialogDescription>
-        </DialogHeader>
+            <DialogDescription className="flex items-center gap-1.5 text-sm">
+              <Calendar className="size-3.5" />
+              {formattedDate}
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Rejection Alert for Owner */}
-          {isOwner && isRejected && (
-            <Alert className="border-red-200 bg-red-50 dark:bg-red-950/20">
-              <AlertCircle className="size-4 text-red-600" />
-              <AlertTitle className="text-red-800 dark:text-red-400">
-                Submission Rejected
-              </AlertTitle>
-              <AlertDescription className="text-red-700 dark:text-red-300">
-                {showReupload && (
-                  <div className="mt-1 flex items-center gap-2">
-                    <p className="text-sm flex-1">
-                      You can resubmit this workout with updated proof or corrections.
+          <div className="space-y-4">
+            {/* Rejection Alert for Owner */}
+            {isOwner && isRejected && (
+              <Alert className="border-red-200 bg-red-50 dark:bg-red-950/20">
+                <AlertCircle className="size-4 text-red-600" />
+                <AlertTitle className="text-red-800 dark:text-red-400">
+                  {isPermanentRejected ? 'Permanently Rejected' : 'Submission Rejected'}
+                </AlertTitle>
+                <AlertDescription className="text-red-700 dark:text-red-300">
+                  {isPermanentRejected ? (
+                    <p className="text-sm mt-1">
+                      This submission has been permanently rejected by the host/governor.
+                      You cannot resubmit this entry.
+                      {submission.rejection_reason && (
+                        <span className="block mt-2 font-medium">Reason: {submission.rejection_reason}</span>
+                      )}
                     </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200 whitespace-nowrap"
-                      onClick={() => onReupload?.(submission.id)}
-                    >
-                      Resubmit
-                    </Button>
-                  </div>
-                )}
-                {windowExpired && (
-                  <div className="mt-1 text-sm">
-                    Reupload window closed (allowed until next-day 11:59pm local time after rejection).
-                  </div>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
+                  ) : (
+                    <>
+                      {showReupload && (
+                        <div className="mt-1 flex items-center gap-2">
+                          <p className="text-sm flex-1">
+                            You can resubmit this workout with updated proof or corrections.
+                            {submission.rejection_reason && (
+                              <span className="block mt-1 font-medium italic">Reason: "{submission.rejection_reason}"</span>
+                            )}
+                          </p>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200 whitespace-nowrap"
+                            onClick={() => onReupload?.(submission.id)}
+                          >
+                            Resubmit
+                          </Button>
+                        </div>
+                      )}
+                      {windowExpired && (
+                        <div className="mt-1 text-sm">
+                          Reupload window closed (allowed until next-day 11:59pm local time after rejection).
+                          {submission.rejection_reason && (
+                            <span className="block mt-1 font-medium italic">Reason: "{submission.rejection_reason}"</span>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
 
-          {/* Reupload Info Alert for Reviewers */}
-          {!isOwner && isReupload && (
-            <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
-              <RefreshCw className="size-4 text-blue-600" />
-              <AlertTitle className="text-blue-800 dark:text-blue-400">
-                Resubmitted After Rejection
-              </AlertTitle>
-              <AlertDescription className="text-blue-700 dark:text-blue-300">
-                This submission was previously rejected and has been resubmitted by the user for review.
-              </AlertDescription>
-            </Alert>
-          )}
+            {/* Reupload Info Alert for Reviewers */}
+            {!isOwner && isReupload && (
+              <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+                <RefreshCw className="size-4 text-blue-600" />
+                <AlertTitle className="text-blue-800 dark:text-blue-400">
+                  Resubmitted After Rejection
+                </AlertTitle>
+                <AlertDescription className="text-blue-700 dark:text-blue-300">
+                  This submission was previously rejected and has been resubmitted by the user for review.
+                </AlertDescription>
+              </Alert>
+            )}
 
-          {/* Exemption Request Alert */}
-          {isExemption && (
-            <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/20">
-              <ShieldAlert className="size-4 text-amber-600" />
-              <AlertTitle className="text-amber-800 dark:text-amber-400">
-                Rest Day Exemption Request
-              </AlertTitle>
-              <AlertDescription className="text-amber-700 dark:text-amber-300">
-                This is an exemption request beyond the player's rest day limit.
-                {exemptionReason && (
-                  <div className="mt-2 pt-2 border-t border-amber-200 dark:border-amber-800">
-                    <div className="flex items-start gap-2">
-                      <MessageSquare className="size-4 mt-0.5 shrink-0" />
-                      <span className="italic">"{exemptionReason}"</span>
+            {/* Exemption Request Alert */}
+            {isExemption && (
+              <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/20">
+                <ShieldAlert className="size-4 text-amber-600" />
+                <AlertTitle className="text-amber-800 dark:text-amber-400">
+                  Rest Day Exemption Request
+                </AlertTitle>
+                <AlertDescription className="text-amber-700 dark:text-amber-300">
+                  This is an exemption request beyond the player's rest day limit.
+                  {exemptionReason && (
+                    <div className="mt-2 pt-2 border-t border-amber-200 dark:border-amber-800">
+                      <div className="flex items-start gap-2">
+                        <MessageSquare className="size-4 mt-0.5 shrink-0" />
+                        <span className="italic">"{exemptionReason}"</span>
+                      </div>
                     </div>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Workout Type */}
+            {isWorkout && submission.workout_type && (
+              <div className="p-3 rounded-lg border bg-card">
+                <p className="text-sm text-muted-foreground">Activity Type</p>
+                <p className="text-lg font-semibold">
+                  {formatWorkoutType(submission.workout_type)}
+                </p>
+              </div>
+            )}
+
+            {/* Metrics Grid */}
+            {isWorkout && (
+              <div className="grid grid-cols-2 gap-3">
+                <MetricItem
+                  icon={Clock}
+                  label="Duration"
+                  value={submission.duration}
+                  unit="min"
+                />
+                <MetricItem
+                  icon={MapPin}
+                  label="Distance"
+                  value={submission.distance?.toFixed(2)}
+                  unit="km"
+                />
+                <MetricItem
+                  icon={Footprints}
+                  label="Steps"
+                  value={submission.steps?.toLocaleString()}
+                />
+                <MetricItem
+                  icon={Target}
+                  label="Holes"
+                  value={submission.holes}
+                />
+              </div>
+            )}
+
+            {/* RR Value */}
+            {submission.rr_value !== null && submission.rr_value !== undefined && (
+              <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Points Earned</p>
+                    <p className="text-2xl font-bold text-primary">
+                      {submission.rr_value.toFixed(1)} RR
+                    </p>
                   </div>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Workout Type */}
-          {isWorkout && submission.workout_type && (
-            <div className="p-3 rounded-lg border bg-card">
-              <p className="text-sm text-muted-foreground">Activity Type</p>
-              <p className="text-lg font-semibold">
-                {formatWorkoutType(submission.workout_type)}
-              </p>
-            </div>
-          )}
-
-          {/* Metrics Grid */}
-          {isWorkout && (
-            <div className="grid grid-cols-2 gap-3">
-              <MetricItem
-                icon={Clock}
-                label="Duration"
-                value={submission.duration}
-                unit="min"
-              />
-              <MetricItem
-                icon={MapPin}
-                label="Distance"
-                value={submission.distance?.toFixed(2)}
-                unit="km"
-              />
-              <MetricItem
-                icon={Footprints}
-                label="Steps"
-                value={submission.steps?.toLocaleString()}
-              />
-              <MetricItem
-                icon={Target}
-                label="Holes"
-                value={submission.holes}
-              />
-            </div>
-          )}
-
-          {/* RR Value */}
-          {submission.rr_value !== null && submission.rr_value !== undefined && (
-            <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Points Earned</p>
-                  <p className="text-2xl font-bold text-primary">
-                    {submission.rr_value.toFixed(1)} RR
-                  </p>
+                  <Target className="size-8 text-primary/50" />
                 </div>
-                <Target className="size-8 text-primary/50" />
-              </div>
-            </div>
-          )}
-
-          <Separator />
-
-          {/* Proof Image */}
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Proof</p>
-            {submission.proof_url ? (
-              <ProofImage url={submission.proof_url} />
-            ) : (
-              <div className="flex items-center justify-center gap-2 p-6 rounded-lg border border-dashed text-muted-foreground">
-                <ImageIcon className="size-5" />
-                <span className="text-sm">No proof attached</span>
               </div>
             )}
-          </div>
 
-          {/* Notes - Only show if there are notes and it's NOT an exemption (exemptions show notes in alert) */}
-          {submission.notes && !isExemption && (
+            <Separator />
+
+            {/* Proof Image */}
             <div className="space-y-2">
-              <p className="text-sm font-medium">Notes</p>
-              <div className="p-3 rounded-lg bg-muted/50 border">
-                <p className="text-sm text-foreground whitespace-pre-wrap">{submission.notes}</p>
-              </div>
+              <p className="text-sm font-medium">Proof</p>
+              {submission.proof_url ? (
+                <ProofImage url={submission.proof_url} />
+              ) : (
+                <div className="flex items-center justify-center gap-2 p-6 rounded-lg border border-dashed text-muted-foreground">
+                  <ImageIcon className="size-5" />
+                  <span className="text-sm">No proof attached</span>
+                </div>
+              )}
             </div>
-          )}
 
-          <Separator />
-
-          {/* Submission Metadata */}
-          <div className="text-xs text-muted-foreground space-y-1">
-            <p>Submitted: {submittedAt}</p>
-            {submission.modified_date !== submission.created_date && (
-              <p>
-                Last updated:{' '}
-                {format(parseISO(submission.modified_date), "MMM d, yyyy 'at' h:mm a")}
-              </p>
+            {/* Notes - Only show if there are notes and it's NOT an exemption (exemptions show notes in alert) */}
+            {submission.notes && !isExemption && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Notes</p>
+                <div className="p-3 rounded-lg bg-muted/50 border">
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{submission.notes}</p>
+                </div>
+              </div>
             )}
+
+            <Separator />
+
+            {/* Submission Metadata */}
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>Submitted: {submittedAt}</p>
+              {submission.modified_date !== submission.created_date && (
+                <p>
+                  Last updated:{' '}
+                  {format(parseISO(submission.modified_date), "MMM d, yyyy 'at' h:mm a")}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
         </div>
 
         {/* Action Footer for Host/Governor override only */}
         {showActions && (
           <DialogFooter className="px-6 py-4 border-t bg-muted/30">
             <div className="flex w-full items-center justify-between gap-3">
-                <p className="text-sm text-muted-foreground">
-                  {isPending ? 'Review this submission' : 'Override status'}
-                </p>
-                <div className="flex gap-2">
-                  {showReject && onReject && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                      onClick={() => onReject(submission.id)}
-                      disabled={isValidating}
-                    >
-                      {isValidating ? (
-                        <Loader2 className="size-4 mr-1.5 animate-spin" />
-                      ) : (
-                        <X className="size-4 mr-1.5" />
-                      )}
-                      {isPending ? 'Reject' : 'Override Reject'}
-                    </Button>
-                  )}
-                  {showApprove && onApprove && (
-                    <Button
-                      size="sm"
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                      onClick={() => onApprove(submission.id)}
-                      disabled={isValidating}
-                    >
-                      {isValidating ? (
-                        <Loader2 className="size-4 mr-1.5 animate-spin" />
-                      ) : (
-                        <Check className="size-4 mr-1.5" />
-                      )}
-                      {isPending ? 'Approve' : 'Override Approve'}
-                    </Button>
-                  )}
-                </div>
+              <p className="text-sm text-muted-foreground">
+                {isPending ? 'Review this submission' : 'Override status'}
+              </p>
+              <div className="flex gap-2">
+                {showReject && onReject && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                    onClick={() => onReject(submission.id)}
+                    disabled={isValidating}
+                  >
+                    {isValidating ? (
+                      <Loader2 className="size-4 mr-1.5 animate-spin" />
+                    ) : (
+                      <X className="size-4 mr-1.5" />
+                    )}
+                    {isPending ? 'Reject' : 'Override Reject'}
+                  </Button>
+                )}
+                {showApprove && onApprove && (
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => onApprove(submission.id)}
+                    disabled={isValidating}
+                  >
+                    {isValidating ? (
+                      <Loader2 className="size-4 mr-1.5 animate-spin" />
+                    ) : (
+                      <Check className="size-4 mr-1.5" />
+                    )}
+                    {isPending ? 'Approve' : 'Override Approve'}
+                  </Button>
+                )}
               </div>
+            </div>
           </DialogFooter>
         )}
       </DialogContent>

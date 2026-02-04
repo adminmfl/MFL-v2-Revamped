@@ -25,7 +25,7 @@ export interface LeagueSubmission {
   steps: number | null;
   holes: number | null;
   rr_value: number | null;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'rejected_resubmit' | 'rejected_permanent';
   proof_url: string | null;
   notes: string | null;
   created_date: string;
@@ -73,7 +73,7 @@ export async function GET(
 
     // Get optional query params for filtering
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status') as 'pending' | 'approved' | 'rejected' | null;
+    const status = searchParams.get('status') as 'pending' | 'approved' | 'rejected' | 'rejected_resubmit' | 'rejected_permanent' | null;
     const teamId = searchParams.get('teamId');
 
     // Get all league members with team info
@@ -199,7 +199,7 @@ export async function GET(
       total: enrichedSubmissions.length,
       pending: enrichedSubmissions.filter((s) => s.status === 'pending').length,
       approved: enrichedSubmissions.filter((s) => s.status === 'approved').length,
-      rejected: enrichedSubmissions.filter((s) => s.status === 'rejected').length,
+      rejected: enrichedSubmissions.filter((s) => ['rejected', 'rejected_resubmit', 'rejected_permanent'].includes(s.status)).length,
     };
 
     // Get unique teams for filter dropdown

@@ -380,12 +380,12 @@ export default function SubmitActivityPage({
 
   const getMinimumRequirement = React.useCallback((measurementType: string) => {
     if (!selectedActivity) return null;
-    
+
     // Get the league activity configuration with minimums
     const leagueActivity = activitiesData?.activities.find(
       (a) => a.activity_id === selectedActivity.activity_id
     );
-    
+
     console.log('=== getMinimumRequirement Debug ===');
     console.log('Measurement Type:', measurementType);
     console.log('Activity ID:', selectedActivity.activity_id);
@@ -394,14 +394,14 @@ export default function SubmitActivityPage({
     console.log('Base min_value:', leagueActivity?.min_value);
     console.log('Age Overrides:', leagueActivity?.age_group_overrides);
     console.log('User Age:', userAge);
-    
+
     let minValue = leagueActivity?.min_value;
-    
+
     // Check for age-specific overrides
     if (userAge !== null && leagueActivity?.age_group_overrides) {
       const overrides = leagueActivity.age_group_overrides;
       console.log('Checking age overrides...');
-      
+
       // Find the matching age tier
       for (const tierKey of Object.keys(overrides)) {
         const tier = overrides[tierKey];
@@ -417,7 +417,7 @@ export default function SubmitActivityPage({
         }
       }
     }
-    
+
     // Use configured minimum if available, otherwise use system defaults
     const defaults: Record<string, number> = {
       duration: 45,
@@ -425,38 +425,38 @@ export default function SubmitActivityPage({
       steps: 10000,
       hole: 9,
     };
-    
+
     const minimum = minValue !== null && minValue !== undefined ? minValue : defaults[measurementType];
-    
+
     console.log('Final minimum value:', minimum);
     console.log('===================================');
-    
+
     if (!minimum) return null;
-    
+
     const units: Record<string, string> = {
       duration: 'min',
       distance: 'km',
       steps: 'steps',
       hole: 'holes',
     };
-    
+
     return `Minimum requirement: ${minimum} ${units[measurementType] || ''}`;
   }, [selectedActivity, activitiesData, userAge]);
 
   // Helper to get configured minimum for a measurement type
   const getConfiguredMinimum = React.useCallback((measurementType: string): number => {
     if (!selectedActivity) return 0;
-    
+
     const leagueActivity = activitiesData?.activities.find(
       (a) => a.activity_id === selectedActivity.activity_id
     );
-    
+
     let minValue = leagueActivity?.min_value;
-    
+
     // Check for age-specific overrides
     if (userAge !== null && leagueActivity?.age_group_overrides) {
       const overrides = leagueActivity.age_group_overrides;
-      
+
       for (const tierKey of Object.keys(overrides)) {
         const tier = overrides[tierKey];
         if (tier.ageRange && tier.minValue !== undefined) {
@@ -468,7 +468,7 @@ export default function SubmitActivityPage({
         }
       }
     }
-    
+
     // Use configured minimum or system defaults
     const defaults: Record<string, number> = {
       duration: 45,
@@ -476,7 +476,7 @@ export default function SubmitActivityPage({
       steps: 10000,
       hole: 9,
     };
-    
+
     return minValue !== null && minValue !== undefined ? minValue : defaults[measurementType];
   }, [selectedActivity, activitiesData, userAge]);
 
@@ -484,10 +484,15 @@ export default function SubmitActivityPage({
   const estimatedRR = React.useMemo(() => {
     if (!selectedActivity) return 0;
 
-    let maxRR = 0;
-
     // Get measurement type for the selected activity
     const measurementType = selectedActivity.measurement_type || 'duration';
+
+    // For 'none' measurement type, always show RR 1.0
+    if (measurementType === 'none') {
+      return 1.0;
+    }
+
+    let maxRR = 0;
     const secondaryType = selectedActivity.settings?.secondary_measurement_type;
 
     // Duration
@@ -696,59 +701,65 @@ export default function SubmitActivityPage({
     const primaryMetric = selectedActivity?.measurement_type || 'duration';
     const secondaryMetric = selectedActivity?.settings?.secondary_measurement_type;
 
-    // Check which fields have values
-    const hasPrimary = !!formData[primaryMetric as keyof typeof formData];
-    const hasSecondary = secondaryMetric ? !!formData[secondaryMetric as keyof typeof formData] : false;
+    // Skip metric validation for 'none' measurement type (custom activities)
+    if (primaryMetric !== 'none') {
+      // Check which fields have values
+      const hasPrimary = !!formData[primaryMetric as keyof typeof formData];
+      const hasSecondary = secondaryMetric ? !!formData[secondaryMetric as keyof typeof formData] : false;
 
-    // Validation: Exactly one must be provided
-    if (secondaryMetric) {
-      if (!hasPrimary && !hasSecondary) {
-        toast.error(`Please enter either ${primaryMetric} or ${secondaryMetric}`);
-        return;
-      }
-      if (hasPrimary && hasSecondary) {
-        toast.error(`Please enter ONLY ${primaryMetric} OR ${secondaryMetric}, not both`);
-        return;
-      }
-    } else {
-      // Single metric case
-      if (!hasPrimary) {
-        toast.error(`Please enter ${primaryMetric}`);
-        return;
+      // Validation: Exactly one must be provided
+      if (secondaryMetric) {
+        if (!hasPrimary && !hasSecondary) {
+          toast.error(`Please enter either ${primaryMetric} or ${secondaryMetric}`);
+          return;
+        }
+        if (hasPrimary && hasSecondary) {
+          toast.error(`Please enter ONLY ${primaryMetric} OR ${secondaryMetric}, not both`);
+          return;
+        }
+      } else {
+        // Single metric case
+        if (!hasPrimary) {
+          toast.error(`Please enter ${primaryMetric}`);
+          return;
+        }
       }
     }
 
-    // Existing RR Validation Logic
-    try {
-      const previewPayload: Record<string, any> = {
-        league_id: leagueId,
-        type: 'workout',
-        workout_type: formData.activity_type,
-      };
+    // Skip RR Validation for 'none' measurement type (no metrics to validate)
+    if (primaryMetric !== 'none') {
+      // Existing RR Validation Logic
+      try {
+        const previewPayload: Record<string, any> = {
+          league_id: leagueId,
+          type: 'workout',
+          workout_type: formData.activity_type,
+        };
 
-      // Only include the fields that have values (and clear 0s/empty)
-      if (formData.duration) previewPayload.duration = parseInt(formData.duration);
-      if (formData.distance) previewPayload.distance = parseFloat(formData.distance);
-      if (formData.steps) previewPayload.steps = parseInt(formData.steps);
-      if (formData.holes) previewPayload.holes = parseInt(formData.holes);
+        // Only include the fields that have values (and clear 0s/empty)
+        if (formData.duration) previewPayload.duration = parseInt(formData.duration);
+        if (formData.distance) previewPayload.distance = parseFloat(formData.distance);
+        if (formData.steps) previewPayload.steps = parseInt(formData.steps);
+        if (formData.holes) previewPayload.holes = parseInt(formData.holes);
 
-      const previewRes = await fetch('/api/entries/preview-rr', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(previewPayload),
-      });
-      const previewJson = await previewRes.json();
-      if (!previewRes.ok) {
-        throw new Error(previewJson.error || 'Failed to validate RR');
-      }
-      const canSubmit = Boolean(previewJson?.data?.canSubmit);
-      if (!canSubmit) {
-        toast.error('Workout RR must be at least 1.0 to submit. Please increase your effort.');
+        const previewRes = await fetch('/api/entries/preview-rr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(previewPayload),
+        });
+        const previewJson = await previewRes.json();
+        if (!previewRes.ok) {
+          throw new Error(previewJson.error || 'Failed to validate RR');
+        }
+        const canSubmit = Boolean(previewJson?.data?.canSubmit);
+        if (!canSubmit) {
+          toast.error('Workout RR must be at least 1.0 to submit. Please increase your effort.');
+          return;
+        }
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Failed to validate RR');
         return;
       }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to validate RR');
-      return;
     }
 
     if (!selectedFile && !overwrite && !resubmitId) {
@@ -1122,6 +1133,19 @@ export default function SubmitActivityPage({
               {formData.activity_type && (() => {
                 const primary = selectedActivity?.measurement_type || 'duration';
                 const secondary = selectedActivity?.settings?.secondary_measurement_type;
+
+                // Handle 'none' measurement type - no metrics needed
+                if (primary === 'none') {
+                  return (
+                    <div className="space-y-2">
+                      <Label>Measurement</Label>
+                      <div className="p-3 rounded-lg bg-muted/50 border text-muted-foreground text-sm flex items-center gap-2">
+                        <Info className="size-4" />
+                        None — No measurement required for this activity
+                      </div>
+                    </div>
+                  );
+                }
 
                 const renderInput = (type: string) => {
                   let label = '';

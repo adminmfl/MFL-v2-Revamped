@@ -43,7 +43,6 @@ export function AddMembersDialog({
   const [searchQuery, setSearchQuery] = React.useState("");
   const [selectedMembers, setSelectedMembers] = React.useState<string[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
-  const [addingMemberId, setAddingMemberId] = React.useState<string | null>(null);
 
   // Reset when dialog opens
   React.useEffect(() => {
@@ -65,21 +64,6 @@ export function AddMembersDialog({
 
   const remainingSlots = teamCapacity - currentMemberCount;
   const canAddMore = remainingSlots > 0;
-
-  const handleAddMember = async (memberId: string) => {
-    if (!canAddMore) return;
-
-    setAddingMemberId(memberId);
-    try {
-      const success = await onAddMember(teamId, memberId);
-      if (success) {
-        // Remove from local list immediately for better UX
-        setSelectedMembers((prev) => prev.filter((id) => id !== memberId));
-      }
-    } finally {
-      setAddingMemberId(null);
-    }
-  };
 
   const handleAddSelected = async () => {
     if (selectedMembers.length === 0) return;
@@ -147,7 +131,6 @@ export function AddMembersDialog({
               <div className="p-2 space-y-1">
                 {filteredMembers.map((member) => {
                   const isSelected = selectedMembers.includes(member.league_member_id);
-                  const isAdding = addingMemberId === member.league_member_id;
 
                   return (
                     <div
@@ -160,6 +143,7 @@ export function AddMembersDialog({
                         checked={isSelected}
                         onCheckedChange={() => toggleMember(member.league_member_id)}
                         disabled={!canAddMore && !isSelected}
+                        className="border-2 border-black dark:border-white"
                       />
                       <Avatar className="size-9">
                         <AvatarFallback>
@@ -180,23 +164,13 @@ export function AddMembersDialog({
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
-                        {member.roles.map((role) => (
-                          <Badge key={role} variant="outline" className="text-xs">
-                            {role}
-                          </Badge>
-                        ))}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleAddMember(member.league_member_id)}
-                          disabled={!canAddMore || isAdding}
-                        >
-                          {isAdding ? (
-                            <Loader2 className="size-4 animate-spin" />
-                          ) : (
-                            <UserPlus className="size-4" />
-                          )}
-                        </Button>
+                        {member.roles
+                          .filter((role) => role !== "player" && role !== "captain")
+                          .map((role) => (
+                            <Badge key={role} variant="outline" className="text-xs">
+                              {role}
+                            </Badge>
+                          ))}
                       </div>
                     </div>
                   );
@@ -233,7 +207,7 @@ export function AddMembersDialog({
                 ) : (
                   <>
                     <Check className="mr-2 size-4" />
-                    Add Selected
+                    Add Members
                   </>
                 )}
               </Button>

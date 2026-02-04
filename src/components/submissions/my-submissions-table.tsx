@@ -178,9 +178,19 @@ function StatusBadge({ status }: { status: MySubmission['status'] }) {
       icon: XCircle,
       className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
     },
+    rejected_resubmit: {
+      label: 'Rejected (Retry)',
+      icon: RefreshCw,
+      className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+    },
+    rejected_permanent: {
+      label: 'Rejected (Final)',
+      icon: XCircle,
+      className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+    },
   };
 
-  const { label, icon: Icon, className } = config[status];
+  const { label, icon: Icon, className } = config[status] || config.rejected;
 
   return (
     <Badge variant="outline" className={cn('gap-1', className)}>
@@ -269,7 +279,8 @@ export function MySubmissionsTable({
       const windowOpen = isReuploadWindowOpen(rejectionTime, tzOffsetMinutes);
       if (
         sub.reupload_of === null &&
-        sub.status === 'rejected' &&
+        sub.reupload_of === null &&
+        (sub.status === 'rejected' || sub.status === 'rejected_resubmit') &&
         !originalsWithReupload.has(sub.id) &&
         windowOpen
       ) {
@@ -483,7 +494,7 @@ export function MySubmissionsTable({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className={row.original.status === 'rejected' ? 'bg-red-50/50 dark:bg-red-950/20' : ''}
+                  className={['rejected', 'rejected_resubmit', 'rejected_permanent'].includes(row.original.status) ? 'bg-red-50/50 dark:bg-red-950/20' : ''}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>

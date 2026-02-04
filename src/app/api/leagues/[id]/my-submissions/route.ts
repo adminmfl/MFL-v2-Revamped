@@ -23,7 +23,7 @@ export interface MySubmission {
   steps: number | null;
   holes: number | null;
   rr_value: number | null;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'rejected_resubmit' | 'rejected_permanent';
   proof_url: string | null;
   notes: string | null;
   created_date: string;
@@ -76,7 +76,7 @@ export async function GET(
 
     // Get optional query params for filtering
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status') as 'pending' | 'approved' | 'rejected' | null;
+    const status = searchParams.get('status') as 'pending' | 'approved' | 'rejected' | 'rejected_resubmit' | 'rejected_permanent' | null;
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
@@ -132,7 +132,7 @@ export async function GET(
       total: submissions?.length || 0,
       pending: submissions?.filter((s) => s.status === 'pending').length || 0,
       approved: submissions?.filter((s) => s.status === 'approved').length || 0,
-      rejected: submissions?.filter((s) => s.status === 'rejected').length || 0,
+      rejected: submissions?.filter((s) => ['rejected', 'rejected_resubmit', 'rejected_permanent'].includes(s.status)).length || 0,
     };
 
     return NextResponse.json({

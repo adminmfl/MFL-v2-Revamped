@@ -16,6 +16,7 @@ export interface LeagueActivity {
   description: string | null;
   category_id: string | null;
   frequency?: number | null;
+  frequency_type?: 'weekly' | 'monthly' | null;
   min_value?: number | null;
   age_group_overrides?: Record<string, any> | null;
   category?: {
@@ -24,12 +25,17 @@ export interface LeagueActivity {
     display_name: string;
   } | null;
   value: string; // Normalized name for workout_type
-  measurement_type: 'duration' | 'distance' | 'hole' | 'steps';
+  measurement_type: 'duration' | 'distance' | 'hole' | 'steps' | 'none';
   settings?: {
     secondary_measurement_type?: 'duration' | 'distance' | 'hole' | 'steps';
     [key: string]: any;
   } | null;
   admin_info?: string | null;
+  // Custom activity fields
+  is_custom?: boolean;
+  custom_activity_id?: string;
+  requires_proof?: boolean;
+  requires_notes?: boolean;
 }
 
 export interface LeagueActivitiesData {
@@ -46,9 +52,13 @@ export interface UseLeagueActivitiesReturn {
   error: string | null;
   errorCode: string | null; // For specific error handling (e.g., 'NO_ACTIVITIES_CONFIGURED')
   refetch: () => Promise<void>;
-  addActivities: (activityIds: string[]) => Promise<boolean>;
-  removeActivity: (activityId: string) => Promise<boolean>;
-  updateFrequency: (activityId: string, frequency: number | null) => Promise<boolean>;
+  addActivities: (activityIds: string[], isCustom?: boolean) => Promise<boolean>;
+  removeActivity: (activityId: string, isCustom?: boolean) => Promise<boolean>;
+  updateFrequency: (
+    activityId: string,
+    frequency: number | null,
+    frequencyType?: 'weekly' | 'monthly' | null
+  ) => Promise<boolean>;
 }
 
 // ============================================================================
@@ -105,15 +115,19 @@ export function useLeagueActivities(
     }
   }, [leagueId, includeAll]);
 
-  // Add activities to league (host only)
-  const addActivities = useCallback(async (activityIds: string[]): Promise<boolean> => {
+  // Add activities to league (host only) - supports both global and custom activities
+  const addActivities = useCallback(async (activityIds: string[], isCustom: boolean = false): Promise<boolean> => {
     if (!leagueId) return false;
 
     try {
+      const body = isCustom
+        ? { custom_activity_ids: activityIds }
+        : { activity_ids: activityIds };
+
       const response = await fetch(`/api/leagues/${leagueId}/activities`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ activity_ids: activityIds }),
+        body: JSON.stringify(body),
       });
 
       const result = await response.json();
@@ -132,15 +146,19 @@ export function useLeagueActivities(
     }
   }, [leagueId, fetchActivities]);
 
-  // Remove activity from league (host only)
-  const removeActivity = useCallback(async (activityId: string): Promise<boolean> => {
+  // Remove activity from league (host only) - supports both global and custom activities
+  const removeActivity = useCallback(async (activityId: string, isCustom: boolean = false): Promise<boolean> => {
     if (!leagueId) return false;
 
     try {
+      const body = isCustom
+        ? { custom_activity_id: activityId }
+        : { activity_id: activityId };
+
       const response = await fetch(`/api/leagues/${leagueId}/activities`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ activity_id: activityId }),
+        body: JSON.stringify(body),
       });
 
       const result = await response.json();
@@ -161,14 +179,22 @@ export function useLeagueActivities(
 
   // Update activity frequency (host only)
   const updateFrequency = useCallback(
-    async (activityId: string, frequency: number | null): Promise<boolean> => {
+    async (
+      activityId: string,
+      frequency: number | null,
+      frequencyType?: 'weekly' | 'monthly' | null
+    ): Promise<boolean> => {
       if (!leagueId) return false;
 
       try {
         const response = await fetch(`/api/leagues/${leagueId}/activities`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ activity_id: activityId, frequency }),
+          body: JSON.stringify({
+            activity_id: activityId,
+            frequency,
+            frequency_type: frequencyType,
+          }),
         });
 
         const result = await response.json();

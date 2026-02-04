@@ -28,6 +28,7 @@ import {
   X,
   Loader2,
   ShieldAlert,
+  Ban,
 } from 'lucide-react';
 import {
   flexRender,
@@ -87,13 +88,14 @@ interface TeamSubmission {
   steps: number | null;
   holes: number | null;
   rr_value: number | null;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'rejected_resubmit' | 'rejected_permanent';
   proof_url: string | null;
   notes: string | null;
   created_date: string;
   modified_date: string;
   modified_by: string | null;
   graded_by_role: 'host' | 'governor' | 'captain' | 'player' | 'system' | null;
+  reupload_of: string | null;
   member: {
     user_id: string;
     username: string;
@@ -210,9 +212,19 @@ function StatusBadge({ status }: { status: TeamSubmission['status'] }) {
       icon: XCircle,
       className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
     },
+    rejected_resubmit: {
+      label: 'Rejected (Retry)',
+      icon: RefreshCw,
+      className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+    },
+    rejected_permanent: {
+      label: 'Rejected (Final)',
+      icon: Ban,
+      className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+    },
   };
 
-  const { label, icon: Icon, className } = config[status];
+  const { label, icon: Icon, className } = config[status] || config.rejected;
 
   return (
     <Badge variant="outline" className={cn('gap-1', className)}>
@@ -290,7 +302,11 @@ export default function TeamSubmissionsPage({
   }, [leagueId]);
 
   // Handle validation (approve/reject)
-  const handleValidate = async (submissionId: string, newStatus: 'approved' | 'rejected', awardedPoints?: number | null) => {
+  const handleValidate = async (
+    submissionId: string,
+    newStatus: 'approved' | 'rejected_resubmit',
+    awardedPoints?: number | null
+  ) => {
     try {
       setValidatingId(submissionId);
 
@@ -309,7 +325,7 @@ export default function TeamSubmissionsPage({
         throw new Error(result.error || 'Failed to validate submission');
       }
 
-      toast.success(`Submission ${newStatus}`);
+      toast.success(newStatus === 'approved' ? 'Submission Approved' : 'Submission Rejected');
 
       // Update local state
       setSubmissions((prev) =>
@@ -318,7 +334,7 @@ export default function TeamSubmissionsPage({
       setStats((prev) => ({
         ...prev,
         pending: prev.pending - 1,
-        [newStatus]: prev[newStatus] + 1,
+        [newStatus === 'rejected_resubmit' ? 'rejected' : newStatus]: prev[newStatus === 'rejected_resubmit' ? 'rejected' : newStatus] + 1,
       }));
     } catch (err) {
       console.error('Error validating submission:', err);
@@ -497,7 +513,7 @@ export default function TeamSubmissionsPage({
                   variant="ghost"
                   size="icon"
                   className="size-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                  onClick={() => handleValidate(row.original.id, 'rejected', null)}
+                  onClick={() => handleValidate(row.original.id, 'rejected_resubmit')}
                   disabled={isValidating}
                 >
                   <X className="size-4" />
@@ -611,7 +627,8 @@ export default function TeamSubmissionsPage({
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
+                {/* <SelectItem value="rejected">Rejected</SelectItem> */}
+                <SelectItem value="rejected_resubmit">Rejected</SelectItem>
               </SelectContent>
             </Select>
 
@@ -792,145 +809,47 @@ export default function TeamSubmissionsPage({
                       size="sm"
                       className={cn(
                         "h-8 text-xs px-3",
-                        submission.status === 'approved' 
-                          ? 'bg-gray-300 text-gray-600 hover:bg-gray-300 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400' 
+                        submission.status === 'approved'
+                          ? 'bg-gray-300 text-gray-600 hover:bg-gray-300 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
                           : 'bg-green-600 hover:bg-green-700 text-white'
                       )}
                       onClick={() => handleValidate(submission.id, 'approved', undefined)}
                       disabled={isValidating || submission.status === 'approved'}
                     >
-                      {isValidating ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5 mr-1.5" />}
-                      {submission.status === 'approved' ? 'Approved' : 'Approve'}
+                      <Check className="size-3.5" />
                     </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="h-8 w-10 shrink-0"
-                      onClick={() => handleValidate(submission.id, 'rejected', null)}
-                      disabled={isValidating}
-                    >
-                      <X className="size-4" />
-                    </Button>
+                    {isPending && !isOwnSubmission && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="h-8 text-xs px-3 bg-red-600 hover:bg-red-700 text-white"
+                        onClick={() => handleValidate(submission.id, 'rejected_resubmit')}
+                        disabled={isValidating}
+                      >
+                        <X className="size-3.5" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               );
             })
           ) : (
-            <div className="flex flex-col items-center justify-center gap-3 text-center p-8 border border-dashed rounded-lg text-muted-foreground">
-              <ClipboardCheck className="size-8 opacity-50" />
-              <p>No submissions found</p>
+            <div className="text-center p-8 text-muted-foreground border rounded-lg border-dashed">
+              No submissions found
             </div>
           )}
         </div>
 
-        {/* Pagination */}
-        {filteredSubmissions.length > 0 && (
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-muted-foreground">
-              {table.getFilteredRowModel().rows.length} submission(s)
-            </div>
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="rows-per-page" className="text-sm">
-                  Rows per page
-                </Label>
-                <Select
-                  value={`${pagination.pageSize}`}
-                  onValueChange={(value) =>
-                    setPagination({ ...pagination, pageSize: Number(value) })
-                  }
-                >
-                  <SelectTrigger className="w-16" id="rows-per-page">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[5, 10, 20].map((size) => (
-                      <SelectItem key={size} value={`${size}`}>
-                        {size}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="text-sm">
-                Page {pagination.pageIndex + 1} of {table.getPageCount() || 1}
-              </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="size-8"
-                  onClick={() => table.setPageIndex(0)}
-                  disabled={!table.getCanPreviousPage()}
-                >
-                  <ChevronsLeft className="size-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="size-8"
-                  onClick={() => table.previousPage()}
-                  disabled={!table.getCanPreviousPage()}
-                >
-                  <ChevronLeft className="size-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="size-8"
-                  onClick={() => table.nextPage()}
-                  disabled={!table.getCanNextPage()}
-                >
-                  <ChevronRight className="size-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="size-8"
-                  onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                  disabled={!table.getCanNextPage()}
-                >
-                  <ChevronsRight className="size-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Detail Dialog - reuse the same component, adapted for TeamSubmission */}
-      {selectedSubmission && (
         <SubmissionDetailDialog
           open={detailDialogOpen}
           onOpenChange={setDetailDialogOpen}
-          submission={{
-            id: selectedSubmission.id,
-            date: selectedSubmission.date,
-            type: selectedSubmission.type,
-            workout_type: selectedSubmission.workout_type,
-            duration: selectedSubmission.duration,
-            distance: selectedSubmission.distance,
-            steps: selectedSubmission.steps,
-            holes: selectedSubmission.holes,
-            rr_value: selectedSubmission.rr_value,
-            status: selectedSubmission.status,
-            proof_url: selectedSubmission.proof_url,
-            notes: selectedSubmission.notes,
-            created_date: selectedSubmission.created_date,
-            modified_date: selectedSubmission.modified_date,
-          }}
-          canOverride={true}
-          onApprove={(id) => {
-            handleValidate(id, 'approved');
-            setDetailDialogOpen(false);
-          }}
-          onReject={(id) => {
-            handleValidate(id, 'rejected');
-            setDetailDialogOpen(false);
-          }}
-          isValidating={validatingId === selectedSubmission.id}
+          submission={selectedSubmission as any}
+          canOverride={false} // Captains cannot override, so actions hidden in dialog? Wait, typically captains validate via table. If dialog has actions, enable them.
+          onApprove={isCaptain ? (id) => handleValidate(id, 'approved', undefined) : undefined}
+          onReject={isCaptain ? (id) => handleValidate(id, 'rejected_resubmit') : undefined}
+          isValidating={!!validatingId}
         />
-      )}
+      </div>
     </div>
   );
 }

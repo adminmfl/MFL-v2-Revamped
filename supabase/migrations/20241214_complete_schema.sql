@@ -13,12 +13,12 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ENUMS & CUSTOM TYPES
 -- =====================================================================================
 
-CREATE TYPE effort_status AS ENUM ('pending', 'approved', 'rejected');
+CREATE TYPE effort_status AS ENUM ('pending', 'approved', 'rejected', 'rejected_resubmit', 'rejected_permanent');
 CREATE TYPE platform_role AS ENUM ('admin', 'user');
 CREATE TYPE payment_status AS ENUM ('pending', 'completed', 'failed', 'refunded');
 CREATE TYPE payment_purpose AS ENUM ('league_creation', 'subscription', 'other', 'challenge_creation');
 CREATE TYPE challenge_status AS ENUM ('draft', 'scheduled', 'active', 'submission_closed', 'published', 'closed', 'upcoming');
-CREATE TYPE activity_measurement_type AS ENUM ('duration', 'distance', 'hole', 'steps');
+CREATE TYPE activity_measurement_type AS ENUM ('duration', 'distance', 'hole', 'steps', 'none');
 
 -- =====================================================================================
 -- CORE USER MANAGEMENT
@@ -238,6 +238,13 @@ CREATE INDEX IF NOT EXISTS idx_activity_categories_order ON public.activity_cate
 
 COMMENT ON TABLE public.activity_categories IS 'Master list of activity categories for filtering and organization';
 
+-- Insert 'Other' category if it doesn't exist (Seed Data)
+INSERT INTO public.activity_categories (category_name, display_name, description, display_order)
+SELECT 'other', 'Other', 'Custom activities that don''t fit other categories', 999
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.activity_categories WHERE category_name = 'other'
+);
+
 -- =====================================================================================
 
 CREATE TABLE IF NOT EXISTS public.activities (
@@ -262,25 +269,86 @@ COMMENT ON COLUMN public.activities.admin_info IS 'Admin guidance shown to users
 
 -- =====================================================================================
 
+CREATE TABLE IF NOT EXISTS public.custom_activities (
+  custom_activity_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  activity_name varchar NOT NULL,
+  description text,
+  category_id uuid REFERENCES public.activity_categories(category_id) ON DELETE SET NULL,
+  measurement_type activity_measurement_type DEFAULT 'duration' NOT NULL,
+  requires_proof boolean DEFAULT true,
+  requires_notes boolean DEFAULT false,
+  is_active boolean DEFAULT true,
+  created_by uuid NOT NULL REFERENCES public.users(user_id) ON DELETE CASCADE,
+  created_date timestamptz DEFAULT CURRENT_TIMESTAMP,
+  modified_by uuid REFERENCES public.users(user_id) ON DELETE SET NULL,
+  modified_date timestamptz DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT unique_custom_activity_per_user UNIQUE (created_by, activity_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_custom_activities_creator ON public.custom_activities(created_by);
+CREATE INDEX IF NOT EXISTS idx_custom_activities_active ON public.custom_activities(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_custom_activities_name ON public.custom_activities(activity_name);
+CREATE INDEX IF NOT EXISTS idx_custom_activities_category ON public.custom_activities(category_id);
+
+COMMENT ON TABLE public.custom_activities IS 'Host-created custom activities, reusable across multiple leagues';
+COMMENT ON COLUMN public.custom_activities.category_id IS 'Category this custom activity belongs to (from admin-defined activity_categories)';
+COMMENT ON COLUMN public.custom_activities.measurement_type IS 'Type of measurement: duration, distance, hole, steps, or none (no RR calculation)';
+COMMENT ON COLUMN public.custom_activities.requires_proof IS 'Whether proof upload is required for this activity';
+COMMENT ON COLUMN public.custom_activities.requires_notes IS 'Whether notes/description is required for this activity';
+
+-- Trigger for modified_date
+CREATE TRIGGER custom_activities_modified_date BEFORE UPDATE ON public.custom_activities
+  FOR EACH ROW EXECUTE FUNCTION update_modified_date();
+
+-- =====================================================================================
+
 CREATE TABLE IF NOT EXISTS public.leagueactivities (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   league_id uuid NOT NULL REFERENCES public.leagues(league_id) ON DELETE CASCADE,
-  activity_id uuid NOT NULL REFERENCES public.activities(activity_id) ON DELETE CASCADE,
+  activity_id uuid REFERENCES public.activities(activity_id) ON DELETE CASCADE,
+  custom_activity_id uuid REFERENCES public.custom_activities(custom_activity_id) ON DELETE CASCADE,
   min_value numeric CHECK (min_value IS NULL OR min_value > 0),
+  frequency integer DEFAULT NULL,
+  frequency_type text DEFAULT 'weekly' CHECK (frequency_type IN ('weekly', 'monthly')),
+  CONSTRAINT leagueactivities_frequency_range CHECK (
+    frequency IS NULL
+    OR (
+      frequency_type = 'weekly'
+      AND frequency >= 0 AND frequency <= 7
+    )
+    OR (
+      frequency_type = 'monthly'
+      AND frequency >= 0 AND frequency <= 28
+    )
+  ),
   age_group_overrides jsonb DEFAULT '{}'::jsonb,
   modified_by uuid REFERENCES public.users(user_id) ON DELETE SET NULL,
   modified_date timestamptz DEFAULT CURRENT_TIMESTAMP,
   created_at timestamptz DEFAULT CURRENT_TIMESTAMP,
   created_by uuid REFERENCES public.users(user_id) ON DELETE SET NULL,
-  CONSTRAINT unique_league_activity UNIQUE (league_id, activity_id)
+  CONSTRAINT check_activity_xor_custom CHECK (
+    (activity_id IS NOT NULL AND custom_activity_id IS NULL) OR 
+    (activity_id IS NULL AND custom_activity_id IS NOT NULL)
+  )
 );
 
 CREATE INDEX IF NOT EXISTS idx_leagueactivities_league ON public.leagueactivities(league_id);
 CREATE INDEX IF NOT EXISTS idx_leagueactivities_activity ON public.leagueactivities(activity_id);
+CREATE INDEX IF NOT EXISTS idx_leagueactivities_custom ON public.leagueactivities(custom_activity_id);
 CREATE INDEX IF NOT EXISTS idx_leagueactivities_age_overrides ON public.leagueactivities USING gin(age_group_overrides);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_league_activity_unique 
+ON public.leagueactivities(league_id, activity_id) 
+WHERE activity_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_league_custom_activity_unique 
+ON public.leagueactivities(league_id, custom_activity_id) 
+WHERE custom_activity_id IS NOT NULL;
 
 COMMENT ON TABLE public.leagueactivities IS 'Defines which activities are allowed in each league';
 COMMENT ON COLUMN public.leagueactivities.min_value IS 'Base minimum requirement (applies to all ages unless overridden by age_group_overrides)';
+COMMENT ON COLUMN public.leagueactivities.frequency IS 'Max submissions allowed per period per user (weekly: 0-7, monthly: 0-28, or NULL for unlimited)';
+COMMENT ON COLUMN public.leagueactivities.frequency_type IS 'Period type for frequency limit (weekly or monthly)';
 COMMENT ON COLUMN public.leagueactivities.age_group_overrides IS 'JSONB structure for age-based overrides: {tier0: {ageRange: {min, max}, minValue}, tier1: {...}}';
 
 -- =====================================================================================

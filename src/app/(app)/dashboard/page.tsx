@@ -15,6 +15,7 @@ import {
   Dumbbell,
   ChevronRight,
   Calendar,
+  CreditCard,
 } from 'lucide-react';
 
 import { useLeague, LeagueWithRoles } from '@/contexts/league-context';
@@ -58,8 +59,13 @@ interface StatCard {
 export default function DashboardPage() {
   const { data: session } = useSession();
   const { userLeagues, isLoading, setActiveLeague } = useLeague();
+  const [isMounted, setIsMounted] = React.useState(false);
 
   const userName = session?.user?.name?.split(' ')[0] || 'User';
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Calculate stats
   const stats: StatCard[] = React.useMemo(() => {
@@ -163,12 +169,30 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Stats Section Cards */}
-      {isLoading ? (
-        <SectionCardsSkeleton />
-      ) : (
-        <SectionCards stats={stats} />
-      )}
+      {/* Insights Section */}
+      <div className="flex flex-col gap-3">
+        <div className="px-4 lg:px-6">
+          <h2 className="text-lg font-semibold">Insights</h2>
+          <p className="text-sm text-muted-foreground">
+            Your activity overview and league participation stats
+          </p>
+        </div>
+
+        {!isMounted || isLoading ? (
+          <SectionCardsSkeleton />
+        ) : (
+          <SectionCards stats={stats} />
+        )}
+
+        <div className="px-4 lg:px-6">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/payments">
+              <CreditCard className="mr-2 size-4" />
+              Payments
+            </Link>
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
