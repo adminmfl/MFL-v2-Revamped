@@ -34,13 +34,14 @@ import {
 import { useRole } from '@/contexts/role-context';
 import { cn } from '@/lib/utils';
 import { SubTeamManager } from '@/components/challenges/sub-team-manager';
+import { TournamentManagerDialog } from '@/components/challenges/tournament-manager-dialog';
 
 // Types
 type Challenge = {
     id: string;
     name: string;
     description: string | null;
-    challenge_type: 'individual' | 'team' | 'sub_team';
+    challenge_type: 'individual' | 'team' | 'sub_team' | 'tournament';
     total_points: number;
     status: 'draft' | 'scheduled' | 'active' | 'submission_closed' | 'published' | 'closed';
     start_date: string | null;
@@ -116,6 +117,8 @@ const getChallengeTypeDescription = (type: Challenge['challenge_type']) => {
             return 'All members participate. You score each submission, system aggregates to team.';
         case 'sub_team':
             return 'Sub-groups participate. You assign ONE score per sub-team.';
+        case 'tournament':
+            return 'Bracket-style tournament with fixtures and standings.';
         default:
             return '';
     }
@@ -189,6 +192,10 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
     const [challengeToClose, setChallengeToClose] = React.useState<Challenge | null>(null);
     const [publishingId, setPublishingId] = React.useState<string | null>(null);
     const [closingId, setClosingId] = React.useState<string | null>(null);
+
+    // Tournament Manager state
+    const [tournamentManagerOpen, setTournamentManagerOpen] = React.useState(false);
+    const [manageChallenge, setManageChallenge] = React.useState<Challenge | null>(null);
 
     const finishDays = React.useMemo(() => {
         if (!finishStart || !finishEnd) return 0;
@@ -798,6 +805,19 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
                                         <Button size="sm" onClick={() => handleFinishClick(challenge)}>
                                             Finish Creation
                                         </Button>
+                                    ) : challenge.challenge_type === 'tournament' ? (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => {
+                                                setManageChallenge(challenge);
+                                                setTournamentManagerOpen(true);
+                                            }}
+                                            className="gap-2"
+                                        >
+                                            <Shield className="size-3" />
+                                            Manage Matches
+                                        </Button>
                                     ) : (
                                         <Button
                                             size="sm"
@@ -893,6 +913,7 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
                                         <SelectItem value="individual">Individual (Team-Aggregated)</SelectItem>
                                         <SelectItem value="team">Team (One Score)</SelectItem>
                                         <SelectItem value="sub_team">Sub-Team</SelectItem>
+                                        <SelectItem value="tournament">Tournament (Fixtures)</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <p className="text-xs text-muted-foreground">
@@ -1259,6 +1280,15 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Tournament Manager Dialog */}
+            <TournamentManagerDialog
+                open={tournamentManagerOpen}
+                onOpenChange={setTournamentManagerOpen}
+                challengeId={manageChallenge?.id || null}
+                leagueId={leagueId}
+                challengeName={manageChallenge?.name || ''}
+            />
         </div>
     );
 }

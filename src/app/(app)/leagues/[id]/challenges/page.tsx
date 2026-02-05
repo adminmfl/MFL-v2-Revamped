@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { CheckCircle2, Clock3, XCircle, FileText, Eye } from 'lucide-react';
+import { CheckCircle2, Clock3, XCircle, FileText, Eye, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isReuploadWindowOpen } from '@/lib/utils/reupload-window';
 
@@ -26,7 +26,7 @@ type Challenge = {
   id: string;
   name: string;
   description: string | null;
-  challenge_type: 'individual' | 'team' | 'sub_team';
+  challenge_type: 'individual' | 'team' | 'sub_team' | 'tournament';
   total_points: number;
   status: 'draft' | 'scheduled' | 'active' | 'submission_closed' | 'published' | 'closed';
   start_date: string | null;
@@ -85,13 +85,23 @@ const getChallengeTypeLabel = (type: Challenge['challenge_type']) => {
       return 'Individual Challenge';
     case 'sub_team':
       return 'Sub-Team Challenge';
+    case 'tournament':
+      return 'Tournament';
     default:
       return type;
   }
 };
 
+// ... imports
+import { WhatsAppReminderButton } from '@/components/league/whatsapp-reminder-button';
+import { useRole } from '@/contexts/role-context';
+
+// ... (other types and helpers remain same)
+
 export default function ChallengesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: leagueId } = use(params);
+  const { isHost, isGovernor } = useRole();
+  const isAdmin = isHost || isGovernor;
   const tzOffsetMinutes = React.useMemo(() => new Date().getTimezoneOffset(), []);
 
   const [loading, setLoading] = React.useState(true);
@@ -109,6 +119,12 @@ export default function ChallengesPage({ params }: { params: Promise<{ id: strin
   const [viewProofOpen, setViewProofOpen] = React.useState(false);
   const [viewProofUrl, setViewProofUrl] = React.useState<string | null>(null);
 
+  // View Rules dialog
+  const [viewRulesOpen, setViewRulesOpen] = React.useState(false);
+  const [viewRulesUrl, setViewRulesUrl] = React.useState<string | null>(null);
+  const [viewRulesTitle, setViewRulesTitle] = React.useState<string>('');
+
+  // ... (existing functions: canReuploadSubmission, fetchChallenges, approvedCount, totalChallenges, handleOpenSubmit, handleUploadAndSubmit, ReadMoreText - KEEP THESE SAME)
   const canReuploadSubmission = React.useCallback(
     (submission: ChallengeSubmission | null) => {
       if (!submission || submission.status !== 'rejected') return false;
@@ -266,8 +282,13 @@ export default function ChallengesPage({ params }: { params: Promise<{ id: strin
           {challenges.map((challenge) => {
             const canSubmit =
               challenge.status === 'active' &&
+              challenge.challenge_type !== 'tournament' &&
               (!challenge.my_submission || challenge.my_submission.status === 'rejected') &&
               (challenge.my_submission?.status !== 'rejected' || canReuploadSubmission(challenge.my_submission));
+
+            const startDate = challenge.start_date ? format(parseISO(challenge.start_date), 'MMM d') : '';
+            const endDate = challenge.end_date ? format(parseISO(challenge.end_date), 'MMM d') : '';
+            const duration = startDate && endDate ? `${startDate} - ${endDate}` : startDate || 'TBD';
 
             return (
               <Card
@@ -287,11 +308,39 @@ export default function ChallengesPage({ params }: { params: Promise<{ id: strin
                 </CardHeader>
 
                 <CardContent className="flex flex-col gap-4 text-sm">
-                  <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="capitalize">
-                      {getChallengeTypeLabel(challenge.challenge_type)}
-                    </Badge>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="capitalize">
+                        {getChallengeTypeLabel(challenge.challenge_type)}
+                      </Badge>
+                    </div>
+                    {isAdmin && (
+                      <div className="-mt-1 -mr-1">
+                        <WhatsAppReminderButton
+                          type="challenge"
+                          challengeDetails={{
+                            name: challenge.name,
+                            duration: duration,
+                            docUrl: challenge.doc_url
+                          }}
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        />
+                      </div>
+                    )}
                   </div>
+
+                  {challenge.challenge_type === 'tournament' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-2"
+                      onClick={() => window.location.href = `/leagues/${leagueId}/challenges/${challenge.id}`}
+                    >
+                      <Trophy className="size-4" />
+                      View Fixtures & Standings
+                    </Button>
+                  )}
 
                   {(challenge.start_date || challenge.end_date) && (
                     <div className="text-xs text-muted-foreground">
@@ -302,15 +351,18 @@ export default function ChallengesPage({ params }: { params: Promise<{ id: strin
                   )}
 
                   {challenge.doc_url && (
-                    <a
-                      href={challenge.doc_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-primary hover:underline flex items-center gap-1"
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setViewRulesUrl(challenge.doc_url);
+                        setViewRulesTitle(challenge.name);
+                        setViewRulesOpen(true);
+                      }}
+                      className="text-xs text-primary hover:underline flex items-center gap-1 w-fit"
                     >
                       <FileText className="size-3" />
                       View Challenge Rules
-                    </a>
+                    </button>
                   )}
 
                   {/* Submission Status */}
@@ -411,6 +463,26 @@ export default function ChallengesPage({ params }: { params: Promise<{ id: strin
               <img src={viewProofUrl} alt="Proof" className="max-h-[70vh] object-contain rounded-lg" />
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* View Rules Dialog */}
+      <Dialog open={viewRulesOpen} onOpenChange={setViewRulesOpen}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{viewRulesTitle} - Rules</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto bg-muted/20 rounded-md flex items-center justify-center min-h-[300px]">
+            {viewRulesUrl ? (
+              <iframe
+                src={viewRulesUrl}
+                className="w-full h-full min-h-[500px] border-none"
+                title="Challenge Rules"
+              />
+            ) : (
+              <div className="text-muted-foreground">No rules document available.</div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

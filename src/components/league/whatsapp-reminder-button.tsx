@@ -14,8 +14,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 
 interface WhatsAppReminderButtonProps {
-    type: 'team' | 'league';
-    leagueName: string;
+    type: 'team' | 'league' | 'challenge';
+    leagueName?: string;
+    challengeDetails?: {
+        name: string;
+        duration: string;
+        docUrl: string | null;
+    };
     className?: string;
     variant?: 'default' | 'outline' | 'ghost' | 'secondary';
     size?: 'default' | 'sm' | 'lg' | 'icon';
@@ -24,6 +29,7 @@ interface WhatsAppReminderButtonProps {
 export function WhatsAppReminderButton({
     type,
     leagueName,
+    challengeDetails,
     className,
     variant = 'outline',
     size = 'sm',
@@ -37,11 +43,14 @@ export function WhatsAppReminderButton({
         if (open) {
             if (type === 'team') {
                 setText(`Hey team! \n\nPlease add your activity for today and gain a point for the team! Let's go! \n\nLink: https://myfitnessleague.in`);
+            } else if (type === 'challenge' && challengeDetails) {
+                const rulesText = challengeDetails.docUrl ? `\n Rules: ${challengeDetails.docUrl}` : '';
+                setText(` *New Challenge Alert!* \n\n*${challengeDetails.name}*\n ${challengeDetails.duration}${rulesText}\n\nCheck it out on My Fitness League in the My Challenges section! \nhttps://myfitnessleague.in`);
             } else {
                 setText(`Hey ${leagueName} players! \n\nDid you add your activity today? Don't forget to log your activity/rest day and keep the streak alive! \n\nLink: https://myfitnessleague.in`);
             }
         }
-    }, [open, type, leagueName]);
+    }, [open, type, leagueName, challengeDetails]);
 
     const handleWhatsAppShare = () => {
         const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
@@ -86,7 +95,7 @@ export function WhatsAppReminderButton({
                 <DialogHeader>
                     <DialogTitle>Send Reminder</DialogTitle>
                     <DialogDescription>
-                        Customize the message before sending it to your {type === 'team' ? 'team' : 'league'}.
+                        Customize the message before sending it to your {type === 'team' ? 'team' : type === 'challenge' ? 'players' : 'league'}.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">

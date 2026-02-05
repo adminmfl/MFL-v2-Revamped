@@ -69,3 +69,23 @@ export const calculateRR = (entry: Partial<WorkoutEntry> & { age?: number }): nu
   return 1.0;
 }
 
+export interface TournamentMatch {
+  match_id: string
+  league_challenge_id: string
+  round_number: number
+  round_name: string | null
+  group_id: string | null
+  team1_id: string | null
+  team2_id: string | null
+  score1: number
+  score2: number
+  winner_id: string | null
+  status: 'scheduled' | 'live' | 'completed' | 'cancelled'
+  start_time: string | null
+  location: string | null
+  created_at: string
+  updated_at: string
+  // Joins
+  team1?: { team_name: string }
+  team2?: { team_name: string }
+}
