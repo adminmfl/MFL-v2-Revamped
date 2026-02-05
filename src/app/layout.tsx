@@ -17,8 +17,28 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "MFL - My Fitness League",
-  description: "My Fitness League",
+  title: "MFL - My Fitness League | Corporate Fitness Challenges",
+  description: "Create leagues, build teams, and track workouts together. Simple tools to keep your community motivated and accountable.",
+  keywords: ["fitness", "league", "corporate wellness", "team building", "workout tracker", "challenges", "leaderboards"],
+  icons: {
+    icon: '/img/mfl-logo.jpg',
+    apple: '/img/mfl-logo.jpg',
+  },
+  openGraph: {
+    title: "MFL - My Fitness League",
+    description: "Fitness Challenges For Teams. Create leagues, build teams, and track workouts together.",
+    url: 'https://myfitnessleague.in',
+    siteName: 'My Fitness League',
+    images: [
+      {
+        url: '/img/mfl-logo.jpg',
+        width: 800,
+        height: 600,
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
 };
 
 export default async function RootLayout({
@@ -40,7 +60,7 @@ export default async function RootLayout({
         <meta name="theme-color" content="#0F1E46" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
       </head>
       <body className={`${manrope.variable} font-sans antialiased`}>
         <ThemeProvider>
