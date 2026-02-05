@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Check, Crown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { TierConfig, TierRecommendation, formatCurrency } from '@/lib/services/tier-helpers';
+import { TierConfig, TierRecommendation, formatCurrency, tierExceedsLimits } from '@/lib/services/tier-helpers';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface TiersModalProps {
@@ -17,6 +17,8 @@ interface TiersModalProps {
   selectedTierId: string | null;
   recommendedTierId?: string;
   onSelectTier: (tierId: string) => void;
+  durationDays: number;
+  estimatedParticipants: number;
 }
 
 export function TiersModal({
@@ -26,6 +28,8 @@ export function TiersModal({
   selectedTierId,
   recommendedTierId,
   onSelectTier,
+  durationDays,
+  estimatedParticipants,
 }: TiersModalProps) {
   const isMobile = useIsMobile();
 
@@ -41,26 +45,38 @@ export function TiersModal({
           const isSelected = selectedTierId === tier.tier_id;
           const isRecommended = recommendedTierId === tier.tier_id;
           const isFeatured = tier.is_featured;
+          const { exceedsDays, exceedsParticipants } = tierExceedsLimits(
+            tier,
+            durationDays,
+            estimatedParticipants
+          );
+          const isSelectable = !exceedsDays && !exceedsParticipants;
 
           return (
             <div
               key={tier.tier_id}
-              onClick={() => handleSelectTier(tier.tier_id)}
-              role="button"
-              tabIndex={0}
+              onClick={() => {
+                if (isSelectable) handleSelectTier(tier.tier_id);
+              }}
+              role={isSelectable ? 'button' : undefined}
+              tabIndex={isSelectable ? 0 : -1}
               onKeyDown={(e) => {
+                if (!isSelectable) return;
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   handleSelectTier(tier.tier_id);
                 }
               }}
               className={cn(
-                'relative flex flex-col gap-3 p-4 md:p-5 rounded-lg border-2 transition-all duration-200 text-left cursor-pointer',
-                'hover:border-primary/50 hover:bg-primary/5 active:scale-95',
+                'relative flex flex-col gap-3 p-4 md:p-5 rounded-lg border-2 transition-all duration-200 text-left',
+                isSelectable
+                  ? 'cursor-pointer hover:border-primary/50 hover:bg-primary/5 active:scale-95'
+                  : 'opacity-60 cursor-not-allowed',
                 isSelected
                   ? 'border-primary bg-primary/10 shadow-md shadow-primary/20'
                   : 'border-border bg-card'
               )}
+              aria-disabled={!isSelectable}
             >
               {/* Header with badges */}
               <div className="flex items-start justify-between gap-2">
@@ -91,6 +107,11 @@ export function TiersModal({
                 {isRecommended && (
                   <Badge className="text-xs bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/30">
                     Recommended
+                  </Badge>
+                )}
+                {!isSelectable && (
+                  <Badge variant="secondary" className="text-xs">
+                    Not eligible
                   </Badge>
                 )}
               </div>
@@ -135,13 +156,15 @@ export function TiersModal({
                 </div>
               </div>
 
-              {/* Select Button (visible on mobile/smaller) */}
+              {/* Select Button */}
               <Button
                 size="sm"
                 variant={isSelected ? 'default' : 'outline'}
                 className="w-full mt-2"
+                disabled={!isSelectable}
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (isSelectable) handleSelectTier(tier.tier_id);
                 }}
               >
                 {isSelected ? 'Selected' : 'Select'}

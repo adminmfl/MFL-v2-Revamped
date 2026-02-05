@@ -14,6 +14,7 @@ import {
   CreditCard,
   IndianRupee,
   Info,
+  FileText,
 } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
@@ -27,6 +28,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 import { 
   TierConfig, 
@@ -263,6 +265,12 @@ export default function CreateLeaguePage() {
     () => tiers.find((t) => t.tier_id === selectedTierId) || null,
     [tiers, selectedTierId]
   );
+  const estimatedParticipants = React.useMemo(() => {
+    const maxParticipants = parseInt(formData.max_participants);
+    if (!Number.isNaN(maxParticipants) && maxParticipants > 0) return maxParticipants;
+    const numTeams = parseInt(formData.num_teams);
+    return Number.isNaN(numTeams) ? 0 : numTeams * 5;
+  }, [formData.max_participants, formData.num_teams]);
 
   const handleCreateLeague = async () => {
     if (!formData.league_name.trim()) {
@@ -516,6 +524,8 @@ export default function CreateLeaguePage() {
                   tiers={tiers}
                   selectedTierId={selectedTierId}
                   recommendedTierId={recommendation?.tier_id}
+                  durationDays={duration}
+                  estimatedParticipants={estimatedParticipants}
                   onSelectTier={(tierId) => {
                     setSelectedTierId(tierId);
                     setTiersModalOpen(false);
@@ -528,8 +538,14 @@ export default function CreateLeaguePage() {
             {selectedTier && (
               <Card className="sticky top-6">
                 <CardHeader>
-                  <CardTitle className="text-lg">Summary</CardTitle>
-                  <CardDescription>Review pricing & details</CardDescription>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="size-5 text-primary" />
+                    Summary
+                  </CardTitle>
+                  <CardDescription className="flex items-center gap-1">
+                    <Info className="size-3" />
+                    Review pricing & details
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Pricing */}
@@ -588,6 +604,30 @@ export default function CreateLeaguePage() {
 
                   {/* Actions */}
                   <div className="pt-2 space-y-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm font-semibold flex items-center gap-2">
+                        <CreditCard className="size-4 text-primary" />
+                        Payment & Create
+                      </span>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="ghost" size="icon" className="size-4 h-4 w-4 rounded-full p-0">
+                            <Info className="size-3 text-muted-foreground" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[calc(100vw-2rem)] max-w-xs sm:max-w-xs" side="bottom" align="start" sideOffset={8}>
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold">Payment Process</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              Clicking "Pay & Create" redirects you to Razorpay's secure payment gateway. Once payment is verified, your league will be created automatically.
+                            </p>
+                            <p className="text-xs text-muted-foreground pt-1 border-t">
+                              <strong>Note:</strong> Make sure all errors are fixed before proceeding. The button is disabled if there are validation errors.
+                            </p>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                     <Button
                       onClick={handleCreateLeague}
                       disabled={loading || !pricePreview || !validation?.valid}
