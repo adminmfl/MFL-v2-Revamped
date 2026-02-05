@@ -29,25 +29,25 @@ const steps: Step[] = [
     number: '01',
     icon: PlusCircle,
     title: 'Create a League',
-    description: 'Set up your league with custom rules, scoring systems, and duration.',
+    description: 'Choose duration, teams, captains. MFL sets structure.',
   },
   {
     number: '02',
     icon: UserPlus,
-    title: 'Build Your Team',
-    description: 'Invite members via link or code. Assign captains and organize teams.',
+    title: 'Play Together',
+    description: 'Daily movement, sports, challenges, team support.',
   },
   {
     number: '03',
     icon: Activity,
-    title: 'Track Workouts',
-    description: 'Log activities with proof. Points are calculated automatically.',
+    title: 'Track Progress',
+    description: 'Leaderboards, team points, streaks.',
   },
   {
     number: '04',
     icon: Medal,
-    title: 'Compete & Win',
-    description: 'Climb the leaderboard, earn achievements, and crush your goals together.',
+    title: 'Finish & Repeat',
+    description: 'Celebrate and start next season.',
   },
 ];
 
@@ -70,7 +70,7 @@ export function HowItWorksSection() {
         </div>
 
         {/* Steps */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3">
           {steps.map((step, index) => (
             <Card
               key={step.number}
@@ -81,20 +81,20 @@ export function HowItWorksSection() {
                 {step.number}
               </div>
 
-              <CardContent className="pt-6 relative">
+              <CardContent className="pt-3 pb-4 px-4 relative">
                 {/* Icon */}
-                <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                  <step.icon className="size-6 text-primary" />
+                <div className="size-9 rounded-full bg-primary/10 flex items-center justify-center mb-2">
+                  <step.icon className="size-5 text-primary" />
                 </div>
 
                 {/* Step indicator */}
-                <div className="text-xs font-medium text-primary mb-2">
+                <div className="text-xs font-semibold text-primary mb-2">
                   STEP {step.number}
                 </div>
 
                 {/* Content */}
-                <h3 className="font-semibold text-lg mb-2">{step.title}</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="font-semibold text-lg mb-1.5">{step.title}</h3>
+                <p className="text-sm text-muted-foreground leading-snug">
                   {step.description}
                 </p>
               </CardContent>

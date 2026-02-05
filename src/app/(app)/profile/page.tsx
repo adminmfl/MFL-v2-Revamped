@@ -23,6 +23,7 @@ import {
   Dumbbell,
   Flame,
   Award,
+  KeyRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -85,6 +86,13 @@ export default function ProfilePage() {
     email: '',
     phone: '',
   });
+
+  const [passwordData, setPasswordData] = React.useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [changingPassword, setChangingPassword] = React.useState(false);
 
   // Update form and profile picture when session loads
   React.useEffect(() => {
@@ -227,6 +235,51 @@ export default function ProfilePage() {
       toast.error(error.message || 'Failed to remove profile picture');
     } finally {
       setUploadingPhoto(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      toast.error('Please fill in all password fields');
+      return;
+    }
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+    if (passwordData.newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters long');
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const res = await fetch('/api/auth/update-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update password');
+      }
+
+      toast.success('Password updated successfully');
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+    } catch (error: any) {
+      console.error('Error updating password:', error);
+      toast.error(error.message || 'Failed to update password');
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -706,7 +759,7 @@ export default function ProfilePage() {
             <Button onClick={handleSave} disabled={saving}>
               {saving ? (
                 <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Saving...
                 </>
               ) : (
@@ -714,6 +767,67 @@ export default function ProfilePage() {
                   <Save className="mr-2 size-4" />
                   Save Changes
                 </>
+              )}
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+
+      {/* Security Section */}
+      <div className="px-4 lg:px-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <KeyRound className="size-5 text-primary" />
+              Security
+            </CardTitle>
+            <CardDescription>
+              Manage your password and security settings
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 max-w-md">
+              <div className="space-y-2">
+                <Label htmlFor="current-password">Current Password</Label>
+                <Input
+                  id="current-password"
+                  type="password"
+                  value={passwordData.currentPassword}
+                  onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                  placeholder="Enter current password"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-password">New Password</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                  placeholder="Enter new password"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Confirm New Password</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  placeholder="Confirm new password"
+                />
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter className="border-t pt-6">
+            <Button onClick={handlePasswordChange} disabled={changingPassword}>
+              {changingPassword ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                'Update Password'
               )}
             </Button>
           </CardFooter>
