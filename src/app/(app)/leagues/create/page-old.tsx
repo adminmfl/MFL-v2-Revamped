@@ -255,6 +255,12 @@ export default function CreateLeaguePage() {
     () => tiers.find((t) => t.tier_id === selectedTierId) || null,
     [tiers, selectedTierId]
   );
+  const estimatedParticipants = React.useMemo(() => {
+    const maxParticipants = parseInt(formData.max_participants);
+    if (!Number.isNaN(maxParticipants) && maxParticipants > 0) return maxParticipants;
+    const numTeams = parseInt(formData.num_teams);
+    return Number.isNaN(numTeams) ? 0 : numTeams * 5;
+  }, [formData.max_participants, formData.num_teams]);
 
   const handleCreateLeague = async () => {
     if (!formData.league_name.trim()) {
@@ -482,6 +488,8 @@ export default function CreateLeaguePage() {
                   tiers={tiers}
                   selectedTierId={selectedTierId}
                   recommendedTierId={recommendation?.tier_id}
+                  durationDays={duration}
+                  estimatedParticipants={estimatedParticipants}
                   onSelectTier={(tierId) => {
                     setSelectedTierId(tierId);
                     setTiersModalOpen(false);

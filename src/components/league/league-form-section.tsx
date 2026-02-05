@@ -275,7 +275,7 @@ export function LeagueFormSection({
             />
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <Clock className="size-3" />
-              Days without workout submissions (auto-calculated as 20% of duration, can be adjusted)
+              Number of days participants can skip workout submissions during the league. (auto-calculated as 20% of duration, can be adjusted)
             </p>
           </div>
 

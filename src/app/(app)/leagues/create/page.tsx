@@ -14,8 +14,6 @@ import {
   CreditCard,
   IndianRupee,
   Info,
-  HelpCircle,
-  Layers,
   FileText,
 } from 'lucide-react';
 
@@ -267,6 +265,12 @@ export default function CreateLeaguePage() {
     () => tiers.find((t) => t.tier_id === selectedTierId) || null,
     [tiers, selectedTierId]
   );
+  const estimatedParticipants = React.useMemo(() => {
+    const maxParticipants = parseInt(formData.max_participants);
+    if (!Number.isNaN(maxParticipants) && maxParticipants > 0) return maxParticipants;
+    const numTeams = parseInt(formData.num_teams);
+    return Number.isNaN(numTeams) ? 0 : numTeams * 5;
+  }, [formData.max_participants, formData.num_teams]);
 
   const handleCreateLeague = async () => {
     if (!formData.league_name.trim()) {
@@ -490,40 +494,6 @@ export default function CreateLeaguePage() {
 
           {/* Sidebar - Tier Recommendation & Summary */}
           <div className="space-y-6">
-            {/* Step 4: Tier Selection Info */}
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Layers className="size-4 text-primary" />
-                    Select Tier
-                  </CardTitle>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="ghost" size="icon" className="size-5 h-5 w-5 rounded-full">
-                        <HelpCircle className="size-4 text-muted-foreground" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[calc(100vw-2rem)] max-w-xs sm:max-w-xs" side="bottom" align="start" sideOffset={8}>
-                      <div className="space-y-2">
-                        <p className="text-xs font-semibold">What is a Tier?</p>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          Tiers determine your league's pricing and features. Each tier has different pricing models (fixed price or per-participant) and may include features like custom activities or advanced analytics.
-                        </p>
-                        <p className="text-xs text-muted-foreground pt-1 border-t">
-                          <strong>Important:</strong> Tier selection cannot be changed after creation. Review all options before selecting.
-                        </p>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <CardDescription className="text-xs flex items-center gap-1">
-                  <Info className="size-3" />
-                  Choose a pricing tier for your league
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
             {/* Tier Recommendation Card - Always shows when recommendation exists */}
             {recommendation && (
               <>
@@ -554,6 +524,8 @@ export default function CreateLeaguePage() {
                   tiers={tiers}
                   selectedTierId={selectedTierId}
                   recommendedTierId={recommendation?.tier_id}
+                  durationDays={duration}
+                  estimatedParticipants={estimatedParticipants}
                   onSelectTier={(tierId) => {
                     setSelectedTierId(tierId);
                     setTiersModalOpen(false);
