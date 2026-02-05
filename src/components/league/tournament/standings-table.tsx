@@ -93,11 +93,11 @@ export function TournamentStandingsTable({ matches, leagueId, loading: matchesLo
             // Result
             if (match.score1 > match.score2) {
                 team1.won += 1;
-                team1.points += 3;
+                team1.points += 1;
                 team2.lost += 1;
             } else if (match.score2 > match.score1) {
                 team2.won += 1;
-                team2.points += 3;
+                team2.points += 1;
                 team1.lost += 1;
             } else {
                 team1.drawn += 1;
@@ -136,7 +136,6 @@ export function TournamentStandingsTable({ matches, leagueId, loading: matchesLo
                                 <span className="font-bold">W</span> <span className="text-muted-foreground">Won</span>
                                 <span className="font-bold">D</span> <span className="text-muted-foreground">Drawn</span>
                                 <span className="font-bold">L</span> <span className="text-muted-foreground">Lost</span>
-                                <span className="font-bold">GD</span> <span className="text-muted-foreground">Goal Difference</span>
                                 <span className="font-bold">Pts</span> <span className="text-muted-foreground">Points</span>
                             </div>
                         </PopoverContent>
@@ -153,7 +152,6 @@ export function TournamentStandingsTable({ matches, leagueId, loading: matchesLo
                             <TableHead className="text-center">W</TableHead>
                             <TableHead className="text-center">D</TableHead>
                             <TableHead className="text-center">L</TableHead>
-                            <TableHead className="text-center">GD</TableHead>
                             <TableHead className="text-right font-bold">Pts</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -173,7 +171,6 @@ export function TournamentStandingsTable({ matches, leagueId, loading: matchesLo
                                 <TableCell className="text-center text-green-600">{team.won}</TableCell>
                                 <TableCell className="text-center text-muted-foreground">{team.drawn}</TableCell>
                                 <TableCell className="text-center text-red-600">{team.lost}</TableCell>
-                                <TableCell className="text-center">{team.goalDifference > 0 ? `+${team.goalDifference}` : team.goalDifference}</TableCell>
                                 <TableCell className="text-right font-bold text-lg">{team.points}</TableCell>
                             </TableRow>
                         ))}

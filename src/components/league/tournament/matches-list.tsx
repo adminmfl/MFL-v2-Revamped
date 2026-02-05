@@ -45,6 +45,7 @@ export function TournamentMatchesList({ matches, isAdmin, onEditMatch }: Matches
                                             </span>
                                             <div className="flex items-center gap-2">
                                                 {match.status === 'live' && <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">LIVE</Badge>}
+                                                {match.status === 'scheduled' && <Badge variant="outline" className="h-5 px-1.5 text-[10px]">Scheduled</Badge>}
                                                 {match.status === 'completed' && <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">Finished</Badge>}
                                                 {match.status === 'cancelled' && <Badge variant="outline" className="h-5 px-1.5 text-[10px] border-destructive text-destructive">Cancelled</Badge>}
                                                 {isAdmin && (
