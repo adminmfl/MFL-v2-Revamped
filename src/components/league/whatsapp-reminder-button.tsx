@@ -78,8 +78,8 @@ export function WhatsAppReminderButton({
                     className={className}
                     title="Send Reminder"
                 >
-                    <MessageCircle className={`${size === 'icon' ? '' : 'mr-2'} size-4 text-green-600`} />
-                    {size !== 'icon' && "Send Reminder"}
+                    <MessageCircle className={`${size === 'icon' ? '' : 'sm:mr-2'} size-4 text-green-600`} />
+                    {size !== 'icon' && <span className="hidden sm:inline">Send Reminder</span>}
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
