@@ -215,38 +215,7 @@ export default function JoinLeaguePage() {
               </CardContent>
             </Card>
 
-            {/* Browse Public Leagues Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Globe className="size-5 text-primary" />
-                  Browse Public Leagues
-                </CardTitle>
-                <CardDescription>
-                  Find and join public leagues that are open for new members
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Empty className="border-0 p-4">
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                      <Search />
-                    </EmptyMedia>
-                    <EmptyTitle>Coming Soon</EmptyTitle>
-                    <EmptyDescription>
-                      Public league discovery is coming soon! For now, use an
-                      invite code to join a league.
-                    </EmptyDescription>
-                  </EmptyHeader>
-                  <EmptyContent>
-                    <Button variant="outline" disabled>
-                      <Search className="mr-2 size-4" />
-                      Browse Leagues
-                    </Button>
-                  </EmptyContent>
-                </Empty>
-              </CardContent>
-            </Card>
+
           </div>
 
           {/* Right Column - Info Sidebar */}
@@ -344,6 +313,41 @@ export default function JoinLeaguePage() {
               </CardContent>
             </Card>
           </div>
+        </div>
+
+        {/* Browse Public Leagues Card */}
+        <div className="mt-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Globe className="size-5 text-primary" />
+                  Browse Public Leagues
+                </CardTitle>
+                <CardDescription>
+                  Find and join public leagues that are open for new members
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Empty className="border-0 p-4">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <Search />
+                    </EmptyMedia>
+                    <EmptyTitle>Coming Soon</EmptyTitle>
+                    <EmptyDescription>
+                      Public league discovery is coming soon! For now, use an
+                      invite code to join a league.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                  <EmptyContent>
+                    <Button variant="outline" disabled>
+                      <Search className="mr-2 size-4" />
+                      Browse Leagues
+                    </Button>
+                  </EmptyContent>
+                </Empty>
+              </CardContent>
+            </Card>
         </div>
       </div>
     </div>
