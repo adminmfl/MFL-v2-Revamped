@@ -1136,7 +1136,7 @@ export default function SubmitActivityPage({
         {/* Workout Tab Content */}
         <TabsContent value="workout" className="mt-3">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="rounded-lg border p-4 space-y-4 max-w-2xl">
+            <div className="rounded-lg border bg-card/70 shadow-sm p-4 space-y-4 max-w-2xl">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="workout" className="flex items-center gap-2">
                   <Dumbbell className="size-4" />
