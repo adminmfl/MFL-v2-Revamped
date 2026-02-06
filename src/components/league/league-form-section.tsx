@@ -167,6 +167,7 @@ export function LeagueFormSection({
                 const val = e.target.value === '' ? 0 : parseInt(e.target.value);
                 onDurationChange(val);
               }}
+              placeholder="e.g., 30"
               required
               className="h-10"
             />
@@ -226,6 +227,7 @@ export function LeagueFormSection({
               min="2"
               value={formData.num_teams}
               onChange={onFormChange}
+              placeholder="e.g., 4"
               required
               className="h-10"
             />
@@ -248,6 +250,7 @@ export function LeagueFormSection({
               min="1"
               value={formData.max_participants}
               onChange={onFormChange}
+              placeholder="e.g., 20"
               required
               className="h-10"
             />
@@ -270,6 +273,7 @@ export function LeagueFormSection({
               min="0"
               value={formData.rest_days}
               onChange={onFormChange}
+              placeholder="e.g., 6"
               required
               className="h-10"
             />
