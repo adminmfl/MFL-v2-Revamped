@@ -170,58 +170,51 @@ export default function JoinLeaguePage() {
 
       {/* Main Content */}
       <div className="px-4 lg:px-6">
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left Column - Join Form */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Join by Code Card */}
-            <Card>
+        <div className="flex flex-col gap-6">
+          {/* Top Row: Actions & Stats */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Join by Code */}
+            <Card className="h-full flex flex-col">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Ticket className="size-5 text-primary" />
-                  Join with Invite Code
+                  Join a League with Invite Code
                 </CardTitle>
                 <CardDescription>
                   Enter the invite code shared by the league host
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex-1">
                 <form onSubmit={handleJoinByCode} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="inviteCode">Invite Code</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="inviteCode"
-                        placeholder="Enter your invite code..."
-                        value={inviteCode}
-                        onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                        className="flex-1 font-mono text-lg tracking-widest"
-                      />
-                      <Button type="submit" disabled={loading}>
-                        {loading ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <>
-                            Join
-                            <ArrowRight className="ml-2 size-4" />
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                    {error && (
-                      <p className="text-sm text-destructive">{error}</p>
-                    )}
+                    <Label htmlFor="inviteCode" className="text-sm font-medium">Invite Code</Label>
+                    <Input
+                      id="inviteCode"
+                      placeholder="Enter your invite code"
+                      value={inviteCode}
+                      onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                      className="font-mono text-lg py-5 tracking-tight"
+                    />
                   </div>
+                  <Button type="submit" disabled={loading} className="w-full py-5">
+                    {loading ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <>
+                        Join League
+                        <ArrowRight className="ml-2 size-4" />
+                      </>
+                    )}
+                  </Button>
+                  {error && (
+                    <p className="text-sm text-destructive">{error}</p>
+                  )}
                 </form>
               </CardContent>
             </Card>
 
-
-          </div>
-
-          {/* Right Column - Info Sidebar */}
-          <div className="space-y-6">
-            {/* Create Your Own Card */}
-            <Card className="bg-gradient-to-t from-primary/5 to-card border-primary/20">
+            {/* Create League */}
+            <Card className="bg-gradient-to-t from-primary/5 to-card border-primary/20 h-full flex flex-col">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Sparkles className="size-5 text-primary" />
@@ -231,19 +224,19 @@ export default function JoinLeaguePage() {
                   Start your own fitness league and invite friends
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="size-12 rounded-lg bg-primary flex items-center justify-center">
+              <CardContent className="flex-1 flex flex-col justify-between p-6">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="size-12 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-md shadow-primary/10">
                     <Trophy className="size-6 text-primary-foreground" />
                   </div>
                   <div>
-                    <h3 className="font-semibold">Host a League</h3>
+                    <h3 className="text-lg font-bold">Host a League</h3>
                     <p className="text-sm text-muted-foreground">
                       Create and manage your own fitness competition
                     </p>
                   </div>
                 </div>
-                <Button asChild className="w-full">
+                <Button asChild className="w-full py-5">
                   <Link href="/leagues/create">
                     Create League
                     <ArrowRight className="ml-2 size-4" />
@@ -252,102 +245,93 @@ export default function JoinLeaguePage() {
               </CardContent>
             </Card>
 
-            {/* How It Works Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Info className="size-5 text-primary" />
-                  How It Works
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-3">
-                  <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <span className="text-sm font-semibold text-primary">1</span>
-                  </div>
-                  <div>
-                    <p className="font-medium">Get an Invite Code</p>
-                    <p className="text-sm text-muted-foreground">
-                      Ask the league host for their invite code
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <span className="text-sm font-semibold text-primary">2</span>
-                  </div>
-                  <div>
-                    <p className="font-medium">Enter the Code</p>
-                    <p className="text-sm text-muted-foreground">
-                      Type the code above and click Join
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <span className="text-sm font-semibold text-primary">3</span>
-                  </div>
-                  <div>
-                    <p className="font-medium">Start Competing</p>
-                    <p className="text-sm text-muted-foreground">
-                      Join a team and start logging activities
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Stats Card */}
-            <Card>
+            <Card className="h-full flex flex-col justify-center p-6 bg-gradient-to-br from-card to-muted/20">
               <CardContent className="pt-6">
-                <div className="text-center space-y-2">
-                  <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                <div className="text-center space-y-3">
+                  <div className="flex items-center justify-center gap-3 text-muted-foreground">
                     <Users className="size-5" />
-                    <span className="text-sm">Join the community</span>
+                    <span className="text-sm font-medium">Join the community</span>
                   </div>
-                  <p className="text-2xl font-bold">1,000+</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-3xl font-extrabold tracking-tight text-primary">1,000+</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                     Active members across leagues
                   </p>
                 </div>
               </CardContent>
             </Card>
           </div>
-        </div>
 
-        {/* Browse Public Leagues Card */}
-        <div className="mt-8">
-            <Card>
-              <CardHeader>
+          {/* Second Row: How It Works & Browse */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* How It Works */}
+            <Card className="lg:col-span-2">
+              <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Globe className="size-5 text-primary" />
-                  Browse Public Leagues
+                  <Info className="size-5 text-primary" />
+                  How It Works
                 </CardTitle>
-                <CardDescription>
-                  Find and join public leagues that are open for new members
-                </CardDescription>
               </CardHeader>
               <CardContent>
-                <Empty className="border-0 p-4">
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                      <Search />
-                    </EmptyMedia>
-                    <EmptyTitle>Coming Soon</EmptyTitle>
-                    <EmptyDescription>
-                      Public league discovery is coming soon! For now, use an
-                      invite code to join a league.
-                    </EmptyDescription>
-                  </EmptyHeader>
-                  <EmptyContent>
-                    <Button variant="outline" disabled>
-                      <Search className="mr-2 size-4" />
-                      Browse Leagues
-                    </Button>
-                  </EmptyContent>
-                </Empty>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="flex gap-4 items-start">
+                    <div className="size-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
+                      <span className="text-xl font-bold text-primary">1</span>
+                    </div>
+                    <div className="pt-0.5">
+                      <p className="font-bold text-lg leading-tight">Get Code</p>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        Ask your league host for their invite code.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-4 items-start">
+                    <div className="size-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
+                      <span className="text-xl font-bold text-primary">2</span>
+                    </div>
+                    <div className="pt-0.5">
+                      <p className="font-bold text-lg leading-tight">Enter Code</p>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        Type the code above and click Join.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-4 items-start">
+                    <div className="size-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
+                      <span className="text-xl font-bold text-primary">3</span>
+                    </div>
+                    <div className="pt-0.5">
+                      <p className="font-bold text-lg leading-tight">Compete</p>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        Join a team and start logging activities.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
+
+            {/* Browse Public Leagues */}
+            <Card className="flex flex-col">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Globe className="size-5 text-primary" />
+                  Browse public leagues
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col justify-center py-6">
+                <div className="flex flex-col items-center text-center">
+                  <div className="size-14 rounded-full bg-muted flex items-center justify-center mb-3">
+                    <Search className="size-7 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-xl font-bold">Discovery Coming Soon</h3>
+                  <p className="text-sm text-muted-foreground text-center leading-relaxed">
+                    Public league discovery is coming soon! Use an invite code for now.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

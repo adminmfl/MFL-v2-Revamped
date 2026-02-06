@@ -165,6 +165,12 @@ export default function DashboardPage() {
               Join League
             </Link>
           </Button>
+          <Button size="sm" asChild className="w-full sm:w-auto" variant="outline">
+            <Link href="/leagues/create">
+              <Trophy className="mr-2 size-4" />
+              Create League
+            </Link>
+          </Button>
         </div>
       </div>
 
@@ -185,7 +191,7 @@ export default function DashboardPage() {
 
         <div className="px-4 lg:px-6" />
       </div>
-    </div>
+    </div >
   );
 }
 
