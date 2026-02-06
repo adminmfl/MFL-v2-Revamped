@@ -279,29 +279,6 @@ export function LeagueFormSection({
             </p>
           </div>
 
-          {/* Summary */}
-          {formData.num_teams && formData.max_participants && (
-            <div className="bg-primary/5 rounded-lg p-3 border border-primary/10">
-              <div className="text-sm space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground flex items-center gap-1.5">
-                    <UsersRound className="size-3.5" />
-                    Teams:
-                  </span>
-                  <span className="font-semibold">{formData.num_teams}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground flex items-center gap-1.5">
-                    <Users className="size-3.5" />
-                    Avg per team:
-                  </span>
-                  <span className="font-semibold">
-                    {Math.round(parseInt(formData.max_participants) / parseInt(formData.num_teams))} participants
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 
