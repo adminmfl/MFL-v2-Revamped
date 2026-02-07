@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Menu, X, Zap, Users, TrendingUp, LogIn, Sparkles } from 'lucide-react';
+import { Menu, X, Zap, Users, TrendingUp, LogIn, Sparkles, Palette } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -12,6 +12,7 @@ import {
   SheetClose,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { ThemeDrawer } from '@/components/theme-drawer';
 
 // ============================================================================
 // Landing Header Component
@@ -19,6 +20,7 @@ import {
 
 export function LandingHeader() {
   const [isScrolled, setIsScrolled] = React.useState(false);
+  const [themeDrawerOpen, setThemeDrawerOpen] = React.useState(false);
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -71,6 +73,15 @@ export function LandingHeader() {
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-9 hover:bg-primary/5 hover:text-primary"
+              onClick={() => setThemeDrawerOpen(true)}
+              title="Customize Theme"
+            >
+              <Palette className="size-4" />
+            </Button>
             <Button variant="ghost" asChild className="font-medium hover:bg-primary/5 hover:text-primary">
               <Link href="/login">Log In</Link>
             </Button>
@@ -78,6 +89,18 @@ export function LandingHeader() {
               <Link href="/signup">Get Started</Link>
             </Button>
           </div>
+          <ThemeDrawer open={themeDrawerOpen} onOpenChange={setThemeDrawerOpen} />
+
+          {/* Mobile Theme Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-9 md:hidden hover:bg-primary/5 hover:text-primary"
+            onClick={() => setThemeDrawerOpen(true)}
+            title="Customize Theme"
+          >
+            <Palette className="size-4" />
+          </Button>
 
           {/* Mobile Menu */}
           <Sheet>
