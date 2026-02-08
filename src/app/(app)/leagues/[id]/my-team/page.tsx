@@ -414,7 +414,8 @@ export default function MyTeamPage({
         const res = await fetch(`/api/leagues/${leagueId}/teams/${userTeamId}`);
         const json = await res.json();
         if (res.ok && json?.success && json.data?.logo_url) {
-          setTeamLogoUrl(json.data.logo_url);
+          // Add cache busting to initial load too
+          setTeamLogoUrl(`${json.data.logo_url}?t=${Date.now()}`);
         }
       } catch (err) {
         console.error('Error fetching team logo:', err);

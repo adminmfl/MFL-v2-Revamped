@@ -61,7 +61,7 @@ export interface AdminLeague {
   tier_id?: string | null;
   rest_days: number;
   auto_rest_day_enabled: boolean;
-  normalize_points_by_capacity: boolean;
+  normalize_points_by_team_size: boolean;
   is_public: boolean;
   is_exclusive: boolean;
   invite_code?: string | null;
@@ -83,7 +83,7 @@ export interface AdminLeagueCreateInput {
   tier_id?: string;
   rest_days?: number;
   auto_rest_day_enabled?: boolean;
-  normalize_points_by_capacity?: boolean;
+  normalize_points_by_team_size?: boolean;
   is_public?: boolean;
   is_exclusive?: boolean;
 }
@@ -99,7 +99,7 @@ export interface AdminLeagueUpdateInput {
   tier_id?: string;
   rest_days?: number;
   auto_rest_day_enabled?: boolean;
-  normalize_points_by_capacity?: boolean;
+  normalize_points_by_team_size?: boolean;
   is_public?: boolean;
   is_exclusive?: boolean;
 }
