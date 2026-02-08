@@ -411,7 +411,9 @@ export default function LeagueDashboardPage({
           }
 
           const isWorkout = entry.type === 'workout';
-          const workoutType = isWorkout && entry.workout_type ? String(entry.workout_type).replace(/_/g, ' ') : '';
+          const workoutType = isWorkout
+            ? (entry.custom_activity_name || (entry.workout_type ? String(entry.workout_type).replace(/_/g, ' ') : ''))
+            : '';
           const typeLabel = isWorkout ? (workoutType ? workoutType : 'Workout') : 'Rest Day';
           const statusLabel = entry.status ? String(entry.status) : '';
 
