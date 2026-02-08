@@ -194,13 +194,13 @@
 
   /* Light mode subtle gradient */
   :root body {
-    background: linear-gradient(135deg, #FFF7EF 0%, #F4FBE7 50%, #EEF7E7 100%);
+    background: linear-gradient(135deg, var(--background) 0%, var(--muted) 50%, var(--background) 100%);
     background-attachment: fixed;
   }
 
   /* Dark mode gradient - premium fitness feel */
   .dark body {
-    background: linear-gradient(135deg, #081326 0%, #0B162B 50%, #081326 100%);
+    background: linear-gradient(135deg, var(--background) 0%, var(--muted) 50%, var(--background) 100%);
     background-attachment: fixed;
   }
 }
@@ -211,39 +211,39 @@
 
 /* Gradient backgrounds for cards/sections */
 .gradient-primary {
-  background: linear-gradient(135deg, #488617 0%, #3E7A13 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 85%, black) 100%);
 }
 
 .gradient-accent {
-  background: linear-gradient(135deg, #e56b00 0%, #d65f00 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 85%, black) 100%);
 }
 
 .gradient-success {
-  background: linear-gradient(135deg, #bbda6e 0%, #a8cc58 100%);
+  background: linear-gradient(135deg, var(--secondary) 0%, color-mix(in srgb, var(--secondary) 85%, black) 100%);
 }
 
 .gradient-premium {
-  background: linear-gradient(135deg, #488617 0%, #bbda6e 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
 }
 
 .gradient-gold {
-  background: linear-gradient(135deg, #e56b00 0%, #f08a2b 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 70%, white) 100%);
 }
 
 /* Soft tinted stat tile background (used in league dashboard summary cards) */
 .gradient-box {
-  background: color-mix(in oklab, var(--card) 86%, #bbda6e 14%);
+  background: color-mix(in oklab, var(--card) 86%, var(--primary) 14%);
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
 
 .dark .gradient-box {
-  background: color-mix(in oklab, var(--card) 90%, var(--chart-2) 10%);
+  background: color-mix(in oklab, var(--card) 90%, var(--primary) 10%);
 }
 
 /* Dark mode hero gradient */
 .dark .gradient-hero {
-  background: linear-gradient(135deg, #0A1628 0%, #1E3A5F 50%, #0A1628 100%);
+  background: linear-gradient(135deg, var(--background) 0%, var(--muted) 50%, var(--background) 100%);
 }
 
 /* Glass effect */
@@ -259,18 +259,21 @@
 
 /* Fitness stat card glow */
 .stat-glow {
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--primary) 15%, transparent);
 }
 
 .dark .stat-glow {
-  box-shadow: 0 0 30px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 0 30px color-mix(in srgb, var(--primary) 20%, transparent);
 }
 
 /* Energy pulse animation for active states */
 @keyframes energy-pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.4);
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 40%, transparent);
   }
+
   50% {
     box-shadow: 0 0 0 10px rgba(255, 107, 53, 0);
   }
@@ -289,6 +292,7 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
@@ -296,11 +300,11 @@
 /* Custom scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #94A3B8 transparent;
+  scrollbar-color: var(--muted-foreground) transparent;
 }
 
 .dark * {
-  scrollbar-color: #475569 transparent;
+  scrollbar-color: var(--muted-foreground) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -314,34 +318,34 @@
 }
 
 *::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: var(--muted-foreground);
   border-radius: 10px;
   transition: background 0.2s ease;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+  background: var(--foreground);
 }
 
 .dark *::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: var(--muted-foreground);
 }
 
 .dark *::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: var(--foreground);
 }
 
 /* ============================================================================
    Focus & Selection Styles
    ============================================================================ */
 ::selection {
-  background: #e56b00;
-  color: white;
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .dark ::selection {
-  background: #3B82F6;
-  color: white;
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 /* Focus visible ring */
@@ -354,21 +358,21 @@
    Typography Enhancements
    ============================================================================ */
 .text-gradient {
-  background: linear-gradient(135deg, #488617 0%, #bbda6e 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .dark .text-gradient {
-  background: linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%);
+  background: linear-gradient(135deg, var(--chart-5) 0%, var(--primary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .text-gradient-accent {
-  background: linear-gradient(135deg, #e56b00 0%, #f08a2b 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 70%, white) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
