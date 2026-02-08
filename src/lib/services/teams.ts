@@ -42,6 +42,8 @@ export interface TeamMember {
   is_captain: boolean;
   roles: string[];
   rest_days_used?: number;
+  workout_count?: number;
+  avg_rr?: number;
 }
 
 export interface LeagueMemberWithDetails {
@@ -401,7 +403,7 @@ export async function getTeamMembers(
       return [];
     }
 
-    // Get member IDs for rest days query
+    // Get member IDs for queries
     const memberIds = members.map(m => m.league_member_id);
 
     // Get rest days used count for all members in one query
@@ -419,6 +421,25 @@ export async function getTeamMembers(
       restDaysMap.set(entry.league_member_id, current + 1);
     });
 
+    // Get workout stats (count and avg RR) for all members
+    const { data: workoutStats } = await supabase
+      .from('effortentry')
+      .select('league_member_id, rr_value')
+      .in('league_member_id', memberIds)
+      .eq('type', 'workout')
+      .eq('status', 'approved');
+
+    // Build maps for workout count and avg RR
+    const workoutCountMap = new Map<string, number>();
+    const rrSumMap = new Map<string, number>();
+    (workoutStats || []).forEach((entry: any) => {
+      const memberId = entry.league_member_id;
+      const count = workoutCountMap.get(memberId) || 0;
+      workoutCountMap.set(memberId, count + 1);
+      const rrSum = rrSumMap.get(memberId) || 0;
+      rrSumMap.set(memberId, rrSum + (Number(entry.rr_value) || 0));
+    });
+
     // Get roles for each member
     const membersWithRoles = await Promise.all(
       members.map(async (member) => {
@@ -431,6 +452,10 @@ export async function getTeamMembers(
         const roles = (rolesData || []).map((r: any) => r.roles?.role_name).filter(Boolean);
         const isCaptain = roles.includes('captain');
 
+        const workoutCount = workoutCountMap.get(member.league_member_id) || 0;
+        const rrSum = rrSumMap.get(member.league_member_id) || 0;
+        const avgRr = workoutCount > 0 ? rrSum / workoutCount : 0;
+
         return {
           league_member_id: member.league_member_id,
           user_id: member.user_id,
@@ -442,7 +467,9 @@ export async function getTeamMembers(
           is_captain: isCaptain,
           roles,
           rest_days_used: restDaysMap.get(member.league_member_id) || 0,
-        } as TeamMember;
+          workout_count: workoutCount,
+          avg_rr: avgRr,
+        } as TeamMember & { workout_count: number; avg_rr: number };
       })
     );
 

@@ -70,7 +70,7 @@ export async function DELETE(
   try {
     const { id: leagueId, challengeId } = await params;
     const session = (await getServerSession(authOptions as any)) as import('next-auth').Session | null;
-    
+
     if (!session?.user?.id) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
@@ -167,38 +167,63 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { startDate, endDate } = body as {
-      startDate?: string | null;
-      endDate?: string | null;
-    };
+    const {
+      name,
+      description,
+      challengeType,
+      totalPoints,
+      docUrl,
+      startDate,
+      endDate
+    } = body;
 
     const updates: Record<string, any> = {};
 
-    // Require both dates when attempting to move out of draft
-    const hasStart = startDate !== undefined && startDate !== null && startDate !== '';
-    const hasEnd = endDate !== undefined && endDate !== null && endDate !== '';
+    if (name !== undefined) updates.name = name;
+    if (description !== undefined) updates.description = description;
+    if (challengeType !== undefined) updates.challenge_type = challengeType;
+    if (totalPoints !== undefined) updates.total_points = totalPoints;
+    if (docUrl !== undefined) updates.doc_url = docUrl;
 
-    if (!hasStart || !hasEnd) {
-      return buildError('Start date and end date are required', 400);
+    // Handle dates and status derivation if dates are provided
+    if (startDate !== undefined) updates.start_date = startDate;
+    if (endDate !== undefined) updates.end_date = endDate;
+
+    // Only re-derive status if dates are being updated or if it's currently scheduled/active
+    // This allows manual overrides (like 'published') to stay unless dates force a change?
+    // Actually, let's keep the existing logic: if dates are provided, we re-evaluate status.
+    // IF dates are NOT provided, we leave status alone?
+
+    if (startDate || endDate) {
+      // If updating dates, we should probably re-eval status to keep it consistent
+      // But we need the *other* date if only one is provided.
+      // For simplicity, require both if changing timeline? 
+      // Or fetch existing? Fetching existing is safer.
+
+      const { data: existing } = await supabase
+        .from('leagueschallenges')
+        .select('start_date, end_date')
+        .eq('id', challengeId)
+        .single();
+
+      const newStart = startDate !== undefined ? startDate : existing?.start_date;
+      const newEnd = endDate !== undefined ? endDate : existing?.end_date;
+
+      if (newStart && newEnd) {
+        const today = new Date().toISOString().slice(0, 10);
+        let derivedStatus: ChallengeStatus = 'scheduled';
+        if (today === newStart) {
+          derivedStatus = 'active';
+        } else if (today > newEnd) {
+          derivedStatus = 'submission_closed';
+        } else if (today > newStart) {
+          derivedStatus = 'active';
+        } else {
+          derivedStatus = 'scheduled';
+        }
+        updates.status = normalizeStatus(derivedStatus);
+      }
     }
-
-    updates.start_date = startDate;
-    updates.end_date = endDate;
-
-    // Derive status based on today vs dates
-    const today = new Date().toISOString().slice(0, 10);
-    let derivedStatus: ChallengeStatus = 'scheduled';
-    if (today === startDate) {
-      derivedStatus = 'active';
-    } else if (today > endDate) {
-      derivedStatus = 'submission_closed';
-    } else if (today > startDate) {
-      derivedStatus = 'active';
-    } else {
-      derivedStatus = 'scheduled';
-    }
-
-    updates.status = normalizeStatus(derivedStatus);
 
     const { data, error } = await supabase
       .from('leagueschallenges')

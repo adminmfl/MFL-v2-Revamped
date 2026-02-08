@@ -308,7 +308,7 @@ export function getMobileTabItems(
   } else if (role === 'captain') {
     tabs.push({
       title: 'My Team',
-      url: leagueUrl('/my-team'),
+      url: leagueUrl('/my-team-view'),
       icon: Users,
     });
     tabs.push({

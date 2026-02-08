@@ -230,8 +230,11 @@ function NavSectionGroup({
       <SidebarMenu>
         {section.items.map((item) => {
           const isLeagueRoot = leagueId ? item.url === `/leagues/${leagueId}` : false;
-          const isActive =
-            pathname === item.url ||
+          // Use exact match for team pages to avoid conflicts between /my-team and /my-team-view
+          const isTeamPage = item.url.includes('/my-team');
+          const isActive = isTeamPage
+            ? pathname === item.url
+            : pathname === item.url ||
             (!isLeagueRoot && item.url !== '/dashboard' && pathname?.startsWith(item.url));
 
           return (
