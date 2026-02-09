@@ -7,15 +7,12 @@ import { Badge } from '@/components/ui/badge';
 
 export default function MFLRolesPage() {
     return (
-        <div className="flex flex-col gap-6 py-4 md:py-6">
+        <div className="flex flex-col gap-5 py-4 md:py-6">
             {/* Header */}
             <div className="px-4 lg:px-6">
-                <div className="flex items-center gap-3 mb-2">
-                    <div className="size-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-md">
-                        <Shield className="size-5 text-white" />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-semibold tracking-tight">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-2">
+                    <div className="space-y-1">
+                        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">
                             MFL Roles – Standard Framework
                         </h1>
                         <p className="text-sm text-muted-foreground">
@@ -26,20 +23,20 @@ export default function MFLRolesPage() {
             </div>
 
             {/* Content */}
-            <div className="px-4 lg:px-6 max-w-4xl mx-auto w-full space-y-5">
-                {/* Host Role */}
-                <Card>
-                    <CardHeader className="pb-4">
+            <div className="px-4 lg:px-6 max-w-4xl mx-auto w-full space-y-4">
+                {/* Player Role */}
+                <Card className="shadow-sm">
+                    <CardHeader className="pb-3">
                         <div className="flex items-start gap-3">
-                            <div className="size-10 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-sm shrink-0">
-                                <Crown className="size-5 text-white" />
+                            <div className="size-9 sm:size-10 rounded-lg bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center shadow-sm shrink-0">
+                                <User className="size-4.5 sm:size-5 text-white" />
                             </div>
-                            <div className="flex-1">
-                                <CardTitle className="text-lg flex items-center gap-2">
-                                    Host (League Owner)
+                            <div className="flex-1 min-w-0">
+                                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                                    Player (Participant)
                                 </CardTitle>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    Design, launch, and run the league
+                                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                                    Participate honestly and consistently
                                 </p>
                             </div>
                         </div>
@@ -48,33 +45,71 @@ export default function MFLRolesPage() {
                         <div>
                             <h4 className="text-sm font-semibold mb-2">Responsibilities:</h4>
                             <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                                <li>Creates the league, teams, events, rules, and scoring in MFL</li>
-                                <li>Defines the vision and intent of the league (fitness, fun, friendship etc.)</li>
-                                <li>Publishes all official announcements and timelines</li>
-                                <li>Owns end-to-end execution and experience</li>
+                                <li>Completes activities as per league rules</li>
+                                <li>Logs activities accurately within deadlines</li>
+                                <li>Maintains proof if required by league</li>
+                                <li>Can correct entries only when rejected by Captain/Governor</li>
+                                <li>Plays in the spirit of the league</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-semibold mb-1">In-app usage:</h4>
+                            <p className="text-sm text-muted-foreground">
+                                Activity logging, score tracking, event participation
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Captain Role */}
+                <Card className="shadow-sm">
+                    <CardHeader className="pb-3">
+                        <div className="flex items-start gap-3">
+                            <div className="size-9 sm:size-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm shrink-0">
+                                <Users className="size-4.5 sm:size-5 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                                    Captain (Team Leader & Motivator)
+                                </CardTitle>
+                                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                                    Enable participation, accuracy, and morale
+                                </p>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        <div>
+                            <h4 className="text-sm font-semibold mb-2">Responsibilities:</h4>
+                            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                                <li>Leads and coordinates a team</li>
+                                <li>Helps players log activities correctly and on time</li>
+                                <li>If a player logs incorrectly or misses a deadline: Captain can reject the entry, enabling re-submission within allowed window</li>
+                                <li>Ensures team participation in events and challenges</li>
+                                <li>First point of escalation before Governor involvement</li>
                             </ul>
                         </div>
                         <div>
                             <h4 className="text-sm font-semibold mb-1">In-app powers:</h4>
                             <p className="text-sm text-muted-foreground">
-                                League setup, event creation, announcements, full league visibility
+                                Team management, review/reject team entries, coordination
                             </p>
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* Governor Role */}
-                <Card>
-                    <CardHeader className="pb-4">
+                <Card className="shadow-sm">
+                    <CardHeader className="pb-3">
                         <div className="flex items-start gap-3">
-                            <div className="size-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm shrink-0">
-                                <Shield className="size-5 text-white" />
+                            <div className="size-9 sm:size-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm shrink-0">
+                                <Shield className="size-4.5 sm:size-5 text-white" />
                             </div>
-                            <div className="flex-1">
-                                <CardTitle className="text-lg flex items-center gap-2">
+                            <div className="flex-1 min-w-0">
+                                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
                                     Governor (Fairness & Authority)
                                 </CardTitle>
-                                <p className="text-sm text-muted-foreground mt-1">
+                                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                                     Protect integrity, fairness, and spirit of the league
                                 </p>
                             </div>
@@ -116,19 +151,19 @@ export default function MFLRolesPage() {
                     </CardContent>
                 </Card>
 
-                {/* Captain Role */}
-                <Card>
-                    <CardHeader className="pb-4">
+                {/* Host Role */}
+                <Card className="shadow-sm">
+                    <CardHeader className="pb-3">
                         <div className="flex items-start gap-3">
-                            <div className="size-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm shrink-0">
-                                <Users className="size-5 text-white" />
+                            <div className="size-9 sm:size-10 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-sm shrink-0">
+                                <Crown className="size-4.5 sm:size-5 text-white" />
                             </div>
-                            <div className="flex-1">
-                                <CardTitle className="text-lg flex items-center gap-2">
-                                    Captain (Team Leader & Motivator)
+                            <div className="flex-1 min-w-0">
+                                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                                    Host (League Owner)
                                 </CardTitle>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    Enable participation, accuracy, and morale
+                                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                                    Design, launch, and run the league
                                 </p>
                             </div>
                         </div>
@@ -137,69 +172,31 @@ export default function MFLRolesPage() {
                         <div>
                             <h4 className="text-sm font-semibold mb-2">Responsibilities:</h4>
                             <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                                <li>Leads and coordinates a team</li>
-                                <li>Helps players log activities correctly and on time</li>
-                                <li>If a player logs incorrectly or misses a deadline: Captain can reject the entry, enabling re-submission within allowed window</li>
-                                <li>Ensures team participation in events and challenges</li>
-                                <li>First point of escalation before Governor involvement</li>
+                                <li>Creates the league, teams, events, rules, and scoring in MFL</li>
+                                <li>Defines the vision and intent of the league (fitness, fun, friendship etc.)</li>
+                                <li>Publishes all official announcements and timelines</li>
+                                <li>Owns end-to-end execution and experience</li>
                             </ul>
                         </div>
                         <div>
                             <h4 className="text-sm font-semibold mb-1">In-app powers:</h4>
                             <p className="text-sm text-muted-foreground">
-                                Team management, review/reject team entries, coordination
-                            </p>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Player Role */}
-                <Card>
-                    <CardHeader className="pb-4">
-                        <div className="flex items-start gap-3">
-                            <div className="size-10 rounded-lg bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center shadow-sm shrink-0">
-                                <User className="size-5 text-white" />
-                            </div>
-                            <div className="flex-1">
-                                <CardTitle className="text-lg flex items-center gap-2">
-                                    Player (Participant)
-                                </CardTitle>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    Participate honestly and consistently
-                                </p>
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        <div>
-                            <h4 className="text-sm font-semibold mb-2">Responsibilities:</h4>
-                            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                                <li>Completes activities as per league rules</li>
-                                <li>Logs activities accurately within deadlines</li>
-                                <li>Maintains proof if required by league</li>
-                                <li>Can correct entries only when rejected by Captain/Governor</li>
-                                <li>Plays in the spirit of the league</li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="text-sm font-semibold mb-1">In-app usage:</h4>
-                            <p className="text-sm text-muted-foreground">
-                                Activity logging, score tracking, event participation
+                                League setup, event creation, announcements, full league visibility
                             </p>
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* Universal Principles */}
-                <Card className="border-primary/50 bg-primary/5">
-                    <CardHeader className="pb-4">
+                <Card className="border-primary/50 bg-primary/5 shadow-sm">
+                    <CardHeader className="pb-3">
                         <div className="flex items-start gap-3">
-                            <div className="size-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-sm shrink-0">
-                                <Info className="size-5 text-white" />
+                            <div className="size-9 sm:size-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-sm shrink-0">
+                                <Info className="size-4.5 sm:size-5 text-white" />
                             </div>
-                            <div className="flex-1">
-                                <CardTitle className="text-lg">Universal MFL Principles</CardTitle>
-                                <p className="text-sm text-muted-foreground mt-1">
+                            <div className="flex-1 min-w-0">
+                                <CardTitle className="text-base sm:text-lg">Universal MFL Principles</CardTitle>
+                                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                                     Applies unless explicitly overridden
                                 </p>
                             </div>
