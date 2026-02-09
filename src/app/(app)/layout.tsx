@@ -12,7 +12,6 @@ import { MobileBottomTabs } from '@/components/app/mobile-bottom-tabs';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
 
 
 
@@ -57,6 +56,15 @@ export default function AppLayout({
     if (segments.length <= 1) return '/dashboard';
     return `/${segments.slice(0, -1).join('/')}`;
   }, [pathname]);
+
+  const handleBackClick = React.useCallback(() => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    router.push(backHref);
+  }, [backHref, router]);
 
   // Redirect unauthenticated users to login
   useEffect(() => {
@@ -107,11 +115,9 @@ export default function AppLayout({
             <main className="flex-1 overflow-auto pb-20 md:pb-0">
               <div className="p-4 lg:p-6">
                 {pathname !== '/dashboard' && !/^\/leagues\/[^/]+$/.test(pathname || '') && !/^\/leagues\/[^/]+\/submit$/.test(pathname || '') && (
-                  <Button asChild variant="outline" size="sm" className="mb-4 gap-2">
-                    <Link href={backHref}>
-                      <ArrowLeft className="size-4" />
-                      Back
-                    </Link>
+                  <Button variant="outline" size="sm" className="mb-4 gap-2" onClick={handleBackClick}>
+                    <ArrowLeft className="size-4" />
+                    Back
                   </Button>
                 )}
                 {children}
