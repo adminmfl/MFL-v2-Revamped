@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, Shield, ChevronDown, Palette } from 'lucide-react';
+import { Home, Shield, ChevronDown } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
 import { useRole } from '@/contexts/role-context';
@@ -22,7 +22,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { useSession } from 'next-auth/react';
-import { ThemeDrawer } from '@/components/theme-drawer';
+
 
 // ============================================================================
 // Route Title Mapping
@@ -156,7 +156,7 @@ export function AppHeader() {
   const { activeLeague } = useLeague();
   const { activeRole } = useRole();
   const [isLeagueSwitcherOpen, setIsLeagueSwitcherOpen] = React.useState(false);
-  const [themeDrawerOpen, setThemeDrawerOpen] = React.useState(false);
+
 
   const pageTitle = getPageTitle(pathname);
   const breadcrumbs = getBreadcrumbs(pathname, activeLeague?.name);
@@ -236,17 +236,7 @@ export function AppHeader() {
             />
           )}
 
-          {/* Theme Customizer */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-9"
-            onClick={() => setThemeDrawerOpen(true)}
-            title="Customize Theme"
-          >
-            <Palette className="size-4" />
-          </Button>
-          <ThemeDrawer open={themeDrawerOpen} onOpenChange={setThemeDrawerOpen} />
+
 
           {/* Admin Panel Link (only for admins) */}
           {isAdmin && (
