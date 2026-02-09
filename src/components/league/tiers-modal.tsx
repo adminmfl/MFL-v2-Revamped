@@ -181,14 +181,17 @@ export function TiersModal({
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="p-0">
           <div className="px-4 pt-4 pb-2">
-            <DrawerHeader className="p-0">
+            <DrawerHeader className="p-0 text-left">
               <DrawerTitle className="flex items-center gap-2">
-                <Crown className="size-5 text-primary" />
+                <Crown className="size-5 text-green-600 dark:text-green-500" />
                 All Pricing Tiers
               </DrawerTitle>
-              <DrawerDescription>
+              <DrawerDescription className="text-left">
                 Select the tier that best fits your league needs
               </DrawerDescription>
+              <p className="text-xs text-muted-foreground mt-1 text-left">
+                💡 Not eligible for a tier? Adjust your duration or participant count to unlock more options.
+              </p>
             </DrawerHeader>
           </div>
           <div className="px-4 pb-6 max-h-[70vh] overflow-y-auto">
@@ -204,12 +207,15 @@ export function TiersModal({
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Crown className="size-5 text-primary" />
+            <Crown className="size-5 text-green-600 dark:text-green-500" />
             All Pricing Tiers
           </DialogTitle>
           <DialogDescription>
             Compare all available tiers and select the one that fits your league best
           </DialogDescription>
+          <p className="text-xs text-muted-foreground mt-2 italic">
+            💡 Not eligible for a tier? Adjust your duration or participant count to unlock more options.
+          </p>
         </DialogHeader>
         <div className="mt-6">
           {content}
