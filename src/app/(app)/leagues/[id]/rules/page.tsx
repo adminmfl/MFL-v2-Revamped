@@ -34,6 +34,7 @@ import {
   Activity,
   ArrowRight,
   Crown,
+  Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -439,30 +440,38 @@ export default function RulesPage({
               </Badge>
             )}
           </div>
-          {isHost && (
-            <Button onClick={() => setEditorOpen(true)}>
-              <Edit3 className="size-4 mr-2" />
-              {hasRules ? 'Edit Rules' : 'Add Rules'}
+          <div className="flex gap-2">
+            {isHost && (
+              <Button onClick={() => setEditorOpen(true)}>
+                <Edit3 className="size-4 mr-2" />
+                {hasRules ? 'Edit Rules' : 'Add Rules'}
+              </Button>
+            )}
+            <Button variant="outline" asChild>
+              <Link href={`/leagues/${id}/mfl-roles`}>
+                <Info className="size-4 mr-2" />
+                MFL Roles
+              </Link>
             </Button>
-          )}
+          </div>
         </div>
       </div>
 
       {/* Content */}
       <div className="px-4 lg:px-6">
         {!hasRules ? (
-          <Card className="max-w-2xl mx-auto">
-            <CardContent className="py-12 text-center">
-              <FileText className="size-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">No Rules Set</h3>
-              <p className="text-muted-foreground mb-4">
+          <Card className="max-w-lg mx-auto">
+            <CardContent className="py-8 text-center">
+              <FileText className="size-12 mx-auto mb-3 text-muted-foreground" />
+              <h3 className="text-base font-semibold mb-1.5">No Rules Set</h3>
+              <p className="text-sm text-muted-foreground mb-4">
                 {isHost
                   ? 'Add league rules and guidelines for your participants.'
                   : 'The league host has not added any rules yet.'}
               </p>
               {isHost && (
-                <Button onClick={() => setEditorOpen(true)}>
-                  <Edit3 className="size-4 mr-2" />
+                <Button onClick={() => setEditorOpen(true)} size="sm">
+                  <Edit3 className="size-3.5 mr-2" />
                   Add Rules
                 </Button>
               )}
@@ -494,6 +503,22 @@ export default function RulesPage({
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-semibold group-hover:text-primary transition-colors">View Allowed Activities</h3>
                     <p className="text-xs text-muted-foreground">See which activities count</p>
+                  </div>
+                  <ArrowRight className="size-4 text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all" />
+                </CardContent>
+              </Card>
+            </Link>
+
+            {/* MFL Roles Link */}
+            <Link href={`/leagues/${id}/mfl-roles`}>
+              <Card className="hover:shadow-md transition-all hover:border-primary/30 cursor-pointer group">
+                <CardContent className="p-3 flex items-center gap-3">
+                  <div className="size-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-md shrink-0">
+                    <Info className="size-5 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold group-hover:text-primary transition-colors">MFL Roles</h3>
+                    <p className="text-xs text-muted-foreground">Understand roles and responsibilities</p>
                   </div>
                   <ArrowRight className="size-4 text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all" />
                 </CardContent>
