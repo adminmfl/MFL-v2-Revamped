@@ -214,6 +214,29 @@ export function LeagueFormSection({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Max Participants - First since it affects tier recommendations */}
+          <div className="space-y-2">
+            <Label htmlFor="max_participants" className="font-semibold flex items-center gap-2">
+              <UserPlus className="size-4 text-primary" />
+              Total Participants (Max) *
+            </Label>
+            <Input
+              id="max_participants"
+              type="number"
+              name="max_participants"
+              min="1"
+              value={formData.max_participants}
+              onChange={onFormChange}
+              placeholder="e.g., 20"
+              required
+              className="h-10"
+            />
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Users className="size-3" />
+              Maximum number of people who can join (divided evenly across teams)
+            </p>
+          </div>
+
           {/* Number of Teams */}
           <div className="space-y-2">
             <Label htmlFor="num_teams" className="font-semibold flex items-center gap-2">
@@ -234,29 +257,6 @@ export function LeagueFormSection({
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <Info className="size-3" />
               Minimum 2 teams required
-            </p>
-          </div>
-
-          {/* Max Participants */}
-          <div className="space-y-2">
-            <Label htmlFor="max_participants" className="font-semibold flex items-center gap-2">
-              <UserPlus className="size-4 text-primary" />
-              Total Participants (Max) *
-            </Label>
-            <Input
-              id="max_participants"
-              type="number"
-              name="max_participants"
-              min="1"
-              value={formData.max_participants}
-              onChange={onFormChange}
-              placeholder="e.g., 20"
-              required
-              className="h-10"
-            />
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <Users className="size-3" />
-              Maximum number of people who can join (divided evenly across teams)
             </p>
           </div>
 
