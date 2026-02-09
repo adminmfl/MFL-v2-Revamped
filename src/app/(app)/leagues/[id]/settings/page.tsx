@@ -421,7 +421,6 @@ export default function LeagueSettingsPage({
                     <Label htmlFor="league_name">League Name</Label>
                     <FieldInfoButton text="Shown across invites, leaderboard, and member views." />
                   </div>
-                  <p className="text-xs text-muted-foreground">Name your league clearly.</p>
                 </div>
                 <div className="w-full sm:max-w-sm">
                   <Input
@@ -447,7 +446,6 @@ export default function LeagueSettingsPage({
                     <Label htmlFor="description">Description</Label>
                     <FieldInfoButton text="Optional summary shown on the league page." />
                   </div>
-                  <p className="text-xs text-muted-foreground">Add goals, rules, or a short welcome note.</p>
                 </div>
                 <div className="w-full sm:max-w-md">
                   <Textarea
@@ -473,7 +471,6 @@ export default function LeagueSettingsPage({
                     <Label>Schedule</Label>
                     <FieldInfoButton text="Start and end dates are locked after launch." />
                   </div>
-                  <p className="text-xs text-muted-foreground">Choose the league duration window.</p>
                 </div>
                 <div className="w-full sm:max-w-md grid grid-cols-2 gap-2">
                   <Input
@@ -504,7 +501,6 @@ export default function LeagueSettingsPage({
                     <Label>Number of Teams</Label>
                     <FieldInfoButton text="Team count can be edited in draft mode only." />
                   </div>
-                  <p className="text-xs text-muted-foreground">Capacity comes from your league tier.</p>
                 </div>
                 <div className="w-full sm:max-w-sm">
                   <Select
@@ -533,9 +529,8 @@ export default function LeagueSettingsPage({
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
                     <Label htmlFor="rest_days">Total Rest Days</Label>
-                    <FieldInfoButton text="Rest day changes apply immediately." />
+                    <FieldInfoButton text="Total rest days per member." />
                   </div>
-                  <p className="text-xs text-muted-foreground">Total rest days per member.</p>
                 </div>
                 <div className="w-full sm:max-w-sm">
                   <Input
@@ -553,13 +548,12 @@ export default function LeagueSettingsPage({
               </div>
 
               {/* Auto Rest Day */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-5">
-                <div className="flex-1 space-y-1">
+              <div className="flex items-center justify-between gap-3 py-5">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <Label>Auto Rest Day</Label>
-                    <FieldInfoButton text="Auto-assign rest days for missed deadlines." />
+                    <FieldInfoButton text="When enabled, the cron job assigns a rest day for members with remaining rest days and no submission for the previous day." />
                   </div>
-                  <p className="text-xs text-muted-foreground">Applies daily after submission cutoff.</p>
                 </div>
                 <Switch
                   checked={formData.auto_rest_day_enabled}
@@ -570,13 +564,12 @@ export default function LeagueSettingsPage({
               </div>
 
               {/* Point Normalization */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-5">
-                <div className="flex-1 space-y-1">
+              <div className="flex items-center justify-between gap-3 py-5">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <Label>Point Normalization</Label>
-                    <FieldInfoButton text="Normalize points by team size for fairness." />
+                    <FieldInfoButton text="When enabled, team points are normalized using the formula: (raw_points / team_size) × max_team_size"/>
                   </div>
-                  <p className="text-xs text-muted-foreground">Formula: (raw / team_size) × max_team_size.</p>
                 </div>
                 <Switch
                   checked={formData.normalize_points_by_team_size}
@@ -587,16 +580,15 @@ export default function LeagueSettingsPage({
               </div>
 
               {/* Visibility */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-5">
-                <div className="flex-1 space-y-1">
+              <div className="flex items-center justify-between gap-3 py-5">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <Label className="flex items-center gap-2">
                       <Globe className="size-4 text-muted-foreground" />
                       Public League
                     </Label>
-                    <FieldInfoButton text="Public leagues appear in discovery." />
+                    <FieldInfoButton text="Public leagues appear in discovery, anyone can find and view the league and join." />
                   </div>
-                  <p className="text-xs text-muted-foreground">Anyone can find and view the league.</p>
                 </div>
                 <Switch
                   checked={formData.is_public}
@@ -608,8 +600,8 @@ export default function LeagueSettingsPage({
               </div>
 
               {/* Invite Only */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-5">
-                <div className="flex-1 space-y-1">
+              <div className="flex items-center justify-between gap-3 py-5">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <Label className="flex items-center gap-2">
                       <Lock className="size-4 text-muted-foreground" />
@@ -617,7 +609,6 @@ export default function LeagueSettingsPage({
                     </Label>
                     <FieldInfoButton text="Invite-only leagues require a join code." />
                   </div>
-                  <p className="text-xs text-muted-foreground">Restrict joining to invited members.</p>
                 </div>
                 <Switch
                   checked={formData.is_exclusive}
@@ -633,7 +624,7 @@ export default function LeagueSettingsPage({
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
                     <Label>League Logo</Label>
-                    <FieldInfoButton text="Square logo for league pages and invites." />
+                    <FieldInfoButton text="logo for your league pages and invites." />
                   </div>
                   <p className="text-xs text-muted-foreground">PNG/JPEG/WebP, max 2MB. Recommended 512×512.</p>
                 </div>
