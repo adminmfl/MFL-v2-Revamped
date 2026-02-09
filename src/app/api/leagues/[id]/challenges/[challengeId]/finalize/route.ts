@@ -19,16 +19,22 @@ export async function POST(
         const supabase = getSupabaseServiceRole();
         const userId = session.user.id;
 
-        // 1. Verify access (Host/Governor only)
-        const { data: memberRole, error: roleError } = await supabase
+        // 1. Verify access (Host/Governor only) - handle multiple role assignments
+        const { data: memberRoles, error: roleError } = await supabase
             .from('assignedrolesforleague')
-            .select('roles(role_name)')
+            .select('role_id, roles(role_name)')
             .eq('user_id', userId)
-            .eq('league_id', leagueId)
-            .maybeSingle();
+            .eq('league_id', leagueId);
 
-        const userRole = memberRole?.roles?.role_name;
-        if (roleError || (userRole !== 'host' && userRole !== 'governor')) {
+        console.log('[finalize] Role check:', { userId, leagueId, memberRoles, roleError });
+
+        const hasAdminRole = memberRoles?.some((r: any) => {
+            const roleName = r.roles?.role_name;
+            return roleName === 'host' || roleName === 'governor';
+        });
+
+        if (roleError || !hasAdminRole) {
+            console.log('[finalize] Access denied.');
             return NextResponse.json({ success: false, error: 'Forbidden: Admins only' }, { status: 403 });
         }
 

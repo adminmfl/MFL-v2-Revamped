@@ -230,59 +230,102 @@ export async function GET(
           .map((item, index) => ({ ...item, rank: index + 1 }));
       }
     } else if (challenge.challenge_type === 'tournament') {
-      // Tournament challenge - calculate based on match results
-      // 3 points for win, 1 for draw, 0 for loss
-      const { data: matches } = await supabase
-        .from('challenge_tournament_matches')
-        .select(`
-          match_id,
-          team1_id,
-          team2_id,
-          score1,
-          score2,
-          status,
-          team1:teams!challenge_tournament_matches_team1_id_fkey(team_name),
-          team2:teams!challenge_tournament_matches_team2_id_fkey(team_name)
-        `)
-        .eq('league_challenge_id', challengeId)
-        .eq('status', 'completed');
+      // Tournament challenge - check for manually assigned scores first
+      // If manual scores exist, use those. Otherwise calculate from match results.
 
-      const stats: Record<string, { name: string; score: number }> = {};
+      // First check if we have a parent challenge_id with manual scores
+      const { data: leagueChallenge } = await supabase
+        .from('leagueschallenges')
+        .select('challenge_id')
+        .eq('id', challengeId)
+        .single();
 
-      // Initialize helper
-      const getStat = (id: string, name: string) => {
-        if (!stats[id]) stats[id] = { name, score: 0 };
-        return stats[id];
-      };
+      let manualScores: Array<{ team_id: string; score: number }> = [];
 
-      (matches || []).forEach((match: any) => {
-        if (!match.team1_id || !match.team2_id) return;
+      if (leagueChallenge?.challenge_id) {
+        const { data: scoresData } = await supabase
+          .from('specialchallengeteamscore')
+          .select('team_id, score')
+          .eq('challenge_id', leagueChallenge.challenge_id)
+          .eq('league_id', leagueId);
 
-        const t1Name = match.team1?.team_name || 'Unknown Team';
-        const t2Name = match.team2?.team_name || 'Unknown Team';
+        manualScores = scoresData || [];
+      }
 
-        const t1 = getStat(match.team1_id, t1Name);
-        const t2 = getStat(match.team2_id, t2Name);
+      if (manualScores.length > 0) {
+        // Use manual scores
+        const teamIds = manualScores.map(s => s.team_id);
+        const { data: teams } = await supabase
+          .from('teams')
+          .select('team_id, team_name')
+          .in('team_id', teamIds);
 
-        if (match.score1 > match.score2) {
-          t1.score += 3;
-        } else if (match.score2 > match.score1) {
-          t2.score += 3;
-        } else {
-          t1.score += 1;
-          t2.score += 1;
-        }
-      });
+        const teamNameMap = new Map((teams || []).map(t => [t.team_id, t.team_name]));
 
-      rankings = Object.entries(stats)
-        .map(([id, data]) => ({
-          id,
-          name: data.name,
-          score: data.score,
-          rank: 0,
-        }))
-        .sort((a, b) => b.score - a.score)
-        .map((item, index) => ({ ...item, rank: index + 1 }));
+        rankings = manualScores
+          .map(s => ({
+            id: s.team_id,
+            name: teamNameMap.get(s.team_id) || 'Unknown Team',
+            score: Number(s.score || 0),
+            rank: 0,
+          }))
+          .sort((a, b) => b.score - a.score)
+          .map((item, index) => ({ ...item, rank: index + 1 }));
+      } else {
+        // Fall back to match-based calculation
+        // 3 points for win, 1 for draw, 0 for loss
+        const { data: matches } = await supabase
+          .from('challenge_tournament_matches')
+          .select(`
+            match_id,
+            team1_id,
+            team2_id,
+            score1,
+            score2,
+            status,
+            team1:teams!challenge_tournament_matches_team1_id_fkey(team_name),
+            team2:teams!challenge_tournament_matches_team2_id_fkey(team_name)
+          `)
+          .eq('league_challenge_id', challengeId)
+          .eq('status', 'completed');
+
+        const stats: Record<string, { name: string; score: number }> = {};
+
+        // Initialize helper
+        const getStat = (id: string, name: string) => {
+          if (!stats[id]) stats[id] = { name, score: 0 };
+          return stats[id];
+        };
+
+        (matches || []).forEach((match: any) => {
+          if (!match.team1_id || !match.team2_id) return;
+
+          const t1Name = match.team1?.team_name || 'Unknown Team';
+          const t2Name = match.team2?.team_name || 'Unknown Team';
+
+          const t1 = getStat(match.team1_id, t1Name);
+          const t2 = getStat(match.team2_id, t2Name);
+
+          if (match.score1 > match.score2) {
+            t1.score += 3;
+          } else if (match.score2 > match.score1) {
+            t2.score += 3;
+          } else {
+            t1.score += 1;
+            t2.score += 1;
+          }
+        });
+
+        rankings = Object.entries(stats)
+          .map(([id, data]) => ({
+            id,
+            name: data.name,
+            score: data.score,
+            rank: 0,
+          }))
+          .sort((a, b) => b.score - a.score)
+          .map((item, index) => ({ ...item, rank: index + 1 }));
+      }
     }
 
     return NextResponse.json({

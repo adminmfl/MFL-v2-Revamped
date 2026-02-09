@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/dialog';
 import { Plus } from 'lucide-react';
 import { TournamentStandingsTable } from '@/components/league/tournament/standings-table';
-import { FinalizeTournamentView } from '@/components/league/tournament/finalize-view';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface TournamentManagerDialogProps {
@@ -21,6 +20,8 @@ interface TournamentManagerDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     challengeName: string;
+    defaultTab?: string;
+    onPublish?: () => Promise<void>;
 }
 
 export function TournamentManagerDialog({
@@ -29,6 +30,8 @@ export function TournamentManagerDialog({
     open,
     onOpenChange,
     challengeName,
+    defaultTab = 'fixtures',
+    onPublish,
 }: TournamentManagerDialogProps) {
     if (!challengeId) return null;
 
@@ -41,17 +44,32 @@ export function TournamentManagerDialog({
                         Schedule matches, update scores, and view standings.
                     </DialogDescription>
                 </DialogHeader>
-                <ManagerContent challengeId={challengeId} leagueId={leagueId} />
+                <ManagerContent
+                    challengeId={challengeId}
+                    leagueId={leagueId}
+                    defaultTab={defaultTab}
+                    onPublish={onPublish}
+                />
             </DialogContent>
         </Dialog>
     );
 }
 
-function ManagerContent({ challengeId, leagueId }: { challengeId: string; leagueId: string }) {
+function ManagerContent({
+    challengeId,
+    leagueId,
+    defaultTab,
+    onPublish
+}: {
+    challengeId: string;
+    leagueId: string;
+    defaultTab: string;
+    onPublish?: () => Promise<void>;
+}) {
     const { matches, loading, refresh, createMatch, updateMatch } = useTournamentMatches(challengeId);
     const [matchDialogOpen, setMatchDialogOpen] = useState(false);
     const [editingMatch, setEditingMatch] = useState<any>(null);
-    const [activeTab, setActiveTab] = useState('fixtures');
+    const [activeTab, setActiveTab] = useState(defaultTab);
 
     const handleEditMatch = (match: any) => {
         setEditingMatch(match);
@@ -83,7 +101,6 @@ function ManagerContent({ challengeId, leagueId }: { challengeId: string; league
                         <TabsList>
                             <TabsTrigger value="fixtures">Fixtures</TabsTrigger>
                             <TabsTrigger value="standings">Standings</TabsTrigger>
-                            <TabsTrigger value="finalize">Finalize & Points</TabsTrigger>
                         </TabsList>
 
                         {activeTab === 'fixtures' && (
@@ -108,14 +125,6 @@ function ManagerContent({ challengeId, leagueId }: { challengeId: string; league
 
                     <TabsContent value="standings">
                         <TournamentStandingsTable matches={matches} leagueId={leagueId} loading={loading} />
-                    </TabsContent>
-
-                    <TabsContent value="finalize" className="space-y-4">
-                        <FinalizeTournamentView
-                            challengeId={challengeId}
-                            leagueId={leagueId}
-                            matches={matches}
-                        />
                     </TabsContent>
                 </Tabs>
             </div>

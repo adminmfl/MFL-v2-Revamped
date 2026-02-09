@@ -35,6 +35,7 @@ import { useRole } from '@/contexts/role-context';
 import { cn } from '@/lib/utils';
 import { SubTeamManager } from '@/components/challenges/sub-team-manager';
 import { TournamentManagerDialog } from '@/components/challenges/tournament-manager-dialog';
+import { TournamentFinalizeDialog } from '@/components/challenges/tournament-finalize-dialog';
 
 // Types
 type Challenge = {
@@ -208,6 +209,7 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
 
     // Tournament Manager state
     const [tournamentManagerOpen, setTournamentManagerOpen] = React.useState(false);
+    const [tournamentFinalizeOpen, setTournamentFinalizeOpen] = React.useState(false);
     const [manageChallenge, setManageChallenge] = React.useState<Challenge | null>(null);
 
     const finishDays = React.useMemo(() => {
@@ -885,18 +887,31 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
                                             Finish Creation
                                         </Button>
                                     ) : challenge.challenge_type === 'tournament' ? (
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => {
-                                                setManageChallenge(challenge);
-                                                setTournamentManagerOpen(true);
-                                            }}
-                                            className="gap-2"
-                                        >
-                                            <Shield className="size-3" />
-                                            Manage Matches
-                                        </Button>
+                                        <>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => {
+                                                    setManageChallenge(challenge);
+                                                    setTournamentManagerOpen(true);
+                                                }}
+                                                className="gap-2"
+                                            >
+                                                <Shield className="size-3" />
+                                                Manage Matches
+                                            </Button>
+                                            {challenge.status === 'submission_closed' && (
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setManageChallenge(challenge);
+                                                        setTournamentFinalizeOpen(true);
+                                                    }}
+                                                >
+                                                    Score & Finalize
+                                                </Button>
+                                            )}
+                                        </>
                                     ) : (
                                         <Button
                                             size="sm"
@@ -909,7 +924,7 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
                                         </Button>
                                     )}
 
-                                    {challenge.status === 'submission_closed' && (
+                                    {challenge.status === 'submission_closed' && challenge.challenge_type !== 'tournament' && (
                                         <Button
                                             size="sm"
                                             onClick={() => handlePublish(challenge)}
@@ -920,14 +935,28 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
                                     )}
 
                                     {challenge.status === 'published' && (
-                                        <Button
-                                            size="sm"
-                                            variant="destructive"
-                                            onClick={() => handleOpenCloseConfirm(challenge)}
-                                            disabled={closingId === challenge.id}
-                                        >
-                                            Finalize & Close
-                                        </Button>
+                                        <>
+                                            {challenge.challenge_type === 'tournament' && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => {
+                                                        setManageChallenge(challenge);
+                                                        setTournamentFinalizeOpen(true);
+                                                    }}
+                                                >
+                                                    Edit Scores
+                                                </Button>
+                                            )}
+                                            <Button
+                                                size="sm"
+                                                variant="destructive"
+                                                onClick={() => handleOpenCloseConfirm(challenge)}
+                                                disabled={closingId === challenge.id}
+                                            >
+                                                Finalize & Close
+                                            </Button>
+                                        </>
                                     )}
                                 </div>
 
@@ -1463,6 +1492,26 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
                 challengeId={manageChallenge?.id || null}
                 leagueId={leagueId}
                 challengeName={manageChallenge?.name || ''}
+            />
+
+            {/* Tournament Finalize Dialog */}
+            <TournamentFinalizeDialog
+                open={tournamentFinalizeOpen}
+                onOpenChange={setTournamentFinalizeOpen}
+                challengeId={manageChallenge?.id || null}
+                leagueId={leagueId}
+                challengeName={manageChallenge?.name || ''}
+                onPublish={async () => {
+                    if (manageChallenge) {
+                        // Only publish if not already published
+                        if (manageChallenge.status !== 'published' && manageChallenge.status !== 'closed') {
+                            await handlePublish(manageChallenge);
+                        }
+                        setTournamentFinalizeOpen(false);
+                        // Refresh challenges to show updated scores
+                        fetchChallenges();
+                    }
+                }}
             />
         </div>
     );

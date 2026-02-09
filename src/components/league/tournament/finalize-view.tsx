@@ -12,20 +12,39 @@ interface FinalizeViewProps {
     challengeId: string;
     leagueId: string;
     matches: TournamentMatch[];
+    onPublish?: () => Promise<void>;
 }
 
-export function FinalizeTournamentView({ challengeId, leagueId, matches }: FinalizeViewProps) {
+export function FinalizeTournamentView({ challengeId, leagueId, matches, onPublish }: FinalizeViewProps) {
     const { data: teamsData, isLoading: teamsLoading } = useLeagueTeams(leagueId);
     const [points, setPoints] = useState<Record<string, string>>({});
     const [submitting, setSubmitting] = useState(false);
+    const [loading, setLoading] = useState(true);
 
-    // Initialize points with some sensible defaults or previous values if we fetch them?
-    // For now, we start empty or 0.
-    // If we want to show current standings references, we could calculate them here too.
+    // Fetch existing scores
+    useEffect(() => {
+        const fetchScores = async () => {
+            try {
+                const res = await fetch(`/api/leagues/${leagueId}/challenges/${challengeId}/scores`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.scores && Array.isArray(data.scores)) {
+                        const scoreMap: Record<string, string> = {};
+                        data.scores.forEach((s: any) => {
+                            scoreMap[s.team_id] = String(s.score || '');
+                        });
+                        setPoints(scoreMap);
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch scores:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    // We can pre-fill based on "Standings" logic using `matches` if desired, 
-    // but the user wanted manual control.
-    // Let's just list the teams.
+        fetchScores();
+    }, [challengeId, leagueId]);
 
     const handlePointChange = (teamId: string, value: string) => {
         setPoints(prev => ({
@@ -37,14 +56,6 @@ export function FinalizeTournamentView({ challengeId, leagueId, matches }: Final
     const handleFinalize = async () => {
         setSubmitting(true);
         try {
-            const scores = Object.entries(points).map(([teamId, scoreStr]) => ({
-                teamId,
-                points: parseFloat(scoreStr) || 0
-            })).filter(s => s.points > 0); // Only send positive scores? User said "0 points as well". 
-            // Better to send all defined scores even if 0. 
-            // But let's filter only teams that have a defined value to avoid overwriting others with 0 unintentionally?
-            // Actually, sending all is safer for a "Finalize" action.
-
             const payload = Object.entries(points).map(([teamId, scoreStr]) => ({
                 teamId,
                 points: parseFloat(scoreStr) || 0
@@ -72,6 +83,10 @@ export function FinalizeTournamentView({ challengeId, leagueId, matches }: Final
                 description: "Tournament points updated successfully.",
             });
 
+            if (onPublish) {
+                await onPublish();
+            }
+
         } catch (err: any) {
             console.error(err);
             toast.error("Error", {
@@ -82,7 +97,7 @@ export function FinalizeTournamentView({ challengeId, leagueId, matches }: Final
         }
     };
 
-    if (teamsLoading) return <div className="text-center p-4">Loading teams...</div>;
+    if (loading || teamsLoading) return <div className="text-center p-4">Loading...</div>;
     if (!teamsData?.teams) return <div className="text-center p-4">No teams found.</div>;
 
     return (
@@ -127,9 +142,9 @@ export function FinalizeTournamentView({ challengeId, leagueId, matches }: Final
                         </div>
 
                         <div className="flex justify-end pt-4">
-                            <Button onClick={handleFinalize} disabled={submitting}>
-                                {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                Save Points
+                            <Button onClick={handleFinalize} disabled={submitting} className="gap-2">
+                                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trophy className="h-4 w-4" />}
+                                Save & Publish
                             </Button>
                         </div>
                     </div>
