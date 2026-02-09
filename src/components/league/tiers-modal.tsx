@@ -186,12 +186,15 @@ export function TiersModal({
                 <Crown className="size-5 text-green-600 dark:text-green-500" />
                 All Pricing Tiers
               </DrawerTitle>
-              <DrawerDescription className="text-left">
-                Select the tier that best fits your league needs
+              <DrawerDescription className="text-xs text-left">
+                <li className="ml-5">
+                  Select the tier that best fits your league needs
+                </li>
+                <li className="ml-5">
+                  Not eligible for a tier? Adjust your duration or participant count to unlock more options.
+                </li>
               </DrawerDescription>
-              <p className="text-xs text-muted-foreground mt-1 text-left">
-                💡 Not eligible for a tier? Adjust your duration or participant count to unlock more options.
-              </p>
+              
             </DrawerHeader>
           </div>
           <div className="px-4 pb-6 max-h-[70vh] overflow-y-auto">
