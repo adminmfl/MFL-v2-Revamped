@@ -393,6 +393,8 @@ export default function TeamSubmissionsPage({
       ),
     },
     {
+      id: 'date',
+      accessorKey: 'date',
       header: 'Date',
       cell: ({ row }) => {
         const isTrial = activeLeague?.start_date && row.original.date < activeLeague.start_date;

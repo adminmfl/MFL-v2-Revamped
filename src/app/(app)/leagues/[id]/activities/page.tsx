@@ -22,7 +22,6 @@ import { useLeagueActivities } from '@/hooks/use-league-activities';
 import { ActivityMinimumDropdown } from '@/components/leagues/activity-minimum-dropdown';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import {
@@ -44,21 +43,19 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 // ============================================================================
-// Loading Skeleton
+// Loading State
 // ============================================================================
 
 function LoadingSkeleton() {
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-10 w-32" />
+    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
+      <div className="relative">
+        <div className="size-16 rounded-full bg-primary/10 flex items-center justify-center">
+          <Dumbbell className="size-8 text-primary" />
+        </div>
+        <div className="absolute inset-0 size-16 rounded-full border-2 border-primary border-t-transparent animate-spin" />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-24" />
-        ))}
-      </div>
+      <p className="text-sm text-muted-foreground animate-pulse">Loading activities...</p>
     </div>
   );
 }
@@ -103,6 +100,16 @@ export default function LeagueActivitiesPage({
   }, [data?.activities]);
 
   const supportsFrequency = data?.supportsFrequency !== false;
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-6 py-4 md:py-6">
+        <div className="px-4 lg:px-6">
+          <LoadingSkeleton />
+        </div>
+      </div>
+    );
+  }
 
   React.useEffect(() => {
     if (!data?.activities) return;
@@ -475,8 +482,6 @@ export default function LeagueActivitiesPage({
 
         {/* Content */}
         <div className="px-4 lg:px-6">
-          {isLoading && <LoadingSkeleton />}
-
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="size-4" />
@@ -633,8 +638,6 @@ export default function LeagueActivitiesPage({
 
       {/* Content */}
       <div className="px-4 lg:px-6 space-y-6">
-        {isLoading && <LoadingSkeleton />}
-
         {error && (
           <Alert variant="destructive">
             <AlertCircle className="size-4" />

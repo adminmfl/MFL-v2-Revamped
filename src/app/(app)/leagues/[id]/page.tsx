@@ -1519,68 +1519,14 @@ function QuickActionCard({
 
 function LeagueDashboardSkeleton() {
   return (
-    <div className="@container/main flex flex-1 flex-col gap-4 lg:gap-6">
-      {/* Header Skeleton */}
-      <div className="flex flex-col gap-4 px-4 lg:px-6 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-4">
-          <Skeleton className="size-14 rounded-xl" />
-          <div className="space-y-2">
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-4 w-80" />
-          </div>
+    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 px-4 lg:px-6">
+      <div className="relative">
+        <div className="size-16 rounded-full bg-primary/10 flex items-center justify-center">
+          <Dumbbell className="size-8 text-primary" />
         </div>
-        <div className="flex gap-2">
-          <Skeleton className="h-9 w-24" />
-          <Skeleton className="h-9 w-24" />
-        </div>
+        <div className="absolute inset-0 size-16 rounded-full border-2 border-primary border-t-transparent animate-spin" />
       </div>
-
-      {/* Section Cards Skeleton */}
-      <div className="grid gap-4 grid-cols-1 px-4 lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-        {[1, 2, 3, 4].map((i) => (
-          <Card key={i}>
-            <CardHeader>
-              <Skeleton className="h-4 w-24 mb-2" />
-              <Skeleton className="h-8 w-20" />
-            </CardHeader>
-            <CardFooter className="flex-col items-start gap-1.5">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-3 w-40" />
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
-
-      {/* Progress Skeleton */}
-      <div className="px-4 lg:px-6">
-        <Skeleton className="h-24 w-full rounded-xl" />
-      </div>
-
-      {/* Quick Actions Skeleton */}
-      <div className="px-4 lg:px-6">
-        <div className="mb-4">
-          <Skeleton className="h-6 w-32 mb-2" />
-          <Skeleton className="h-4 w-48" />
-        </div>
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardContent className="p-4">
-                <Skeleton className="h-16 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      {/* League Info Skeleton */}
-      <div className="px-4 lg:px-6">
-        <div className="mb-4">
-          <Skeleton className="h-6 w-40 mb-2" />
-          <Skeleton className="h-4 w-56" />
-        </div>
-        <Skeleton className="h-48 w-full rounded-lg" />
-      </div>
+      <p className="text-sm text-muted-foreground animate-pulse">Loading activities...</p>
     </div>
   );
 }
