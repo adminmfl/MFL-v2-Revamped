@@ -381,22 +381,12 @@ export default function LeagueSettingsPage({
       <div className="px-4 lg:px-6">
         <div className="max-w-5xl mx-auto">
           <Card className="overflow-hidden">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                League Settings
-                <FieldInfoButton text="All configuration in one place." />
-              </CardTitle>
-              <CardDescription>
-                Simple, row-based settings with quick info in the “i” icon.
-              </CardDescription>
-            </CardHeader>
             <CardContent className="divide-y">
               {/* Quick Links */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-5">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 pb-5">
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
                     <Label>Manage</Label>
-                    <FieldInfoButton text="Open team and activity configuration." />
                   </div>
                   <p className="text-xs text-muted-foreground">Manage teams and activities in separate screens.</p>
                 </div>
