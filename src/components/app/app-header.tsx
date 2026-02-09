@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, Shield, ChevronDown } from 'lucide-react';
+import { Home, Shield, ChevronDown, Palette } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
 import { useRole } from '@/contexts/role-context';
@@ -22,6 +22,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { useSession } from 'next-auth/react';
+import { ThemeDrawer } from '@/components/theme-drawer';
 
 // ============================================================================
 // Route Title Mapping
@@ -41,7 +42,7 @@ const routeTitles: Record<string, string> = {
 const dynamicRoutePatterns: [RegExp, (match: RegExpMatchArray) => string][] = [
   [/^\/leagues\/([^/]+)$/, () => 'My Activities'],
   [/^\/leagues\/([^/]+)\/team$/, () => 'Team Management'],
-  [/^\/leagues\/([^/]+)\/my-team$/, () => 'My Team'],
+  [/^\/leagues\/([^/]+)\/my-team$/, () => 'Team Overview'],
   [/^\/leagues\/([^/]+)\/my-team-view$/, () => 'My Team'],
   [/^\/leagues\/([^/]+)\/team\/manage$/, () => 'Team Management'],
   [/^\/leagues\/([^/]+)\/leaderboard$/, () => 'Leaderboard'],
@@ -155,6 +156,7 @@ export function AppHeader() {
   const { activeLeague } = useLeague();
   const { activeRole } = useRole();
   const [isLeagueSwitcherOpen, setIsLeagueSwitcherOpen] = React.useState(false);
+  const [themeDrawerOpen, setThemeDrawerOpen] = React.useState(false);
 
   const pageTitle = getPageTitle(pathname);
   const breadcrumbs = getBreadcrumbs(pathname, activeLeague?.name);
@@ -234,7 +236,18 @@ export function AppHeader() {
             />
           )}
 
-          {/* Theme Toggle */}
+          {/* Theme Customizer */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-9"
+            onClick={() => setThemeDrawerOpen(true)}
+            title="Customize Theme"
+          >
+            <Palette className="size-4" />
+          </Button>
+          <ThemeDrawer open={themeDrawerOpen} onOpenChange={setThemeDrawerOpen} />
+
           {/* Admin Panel Link (only for admins) */}
           {isAdmin && (
             <Button variant="ghost" asChild size="sm" className="hidden sm:flex">

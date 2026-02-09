@@ -411,7 +411,9 @@ export default function LeagueDashboardPage({
           }
 
           const isWorkout = entry.type === 'workout';
-          const workoutType = isWorkout && entry.workout_type ? String(entry.workout_type).replace(/_/g, ' ') : '';
+          const workoutType = isWorkout
+            ? (entry.custom_activity_name || (entry.workout_type ? String(entry.workout_type).replace(/_/g, ' ') : ''))
+            : '';
           const typeLabel = isWorkout ? (workoutType ? workoutType : 'Workout') : 'Rest Day';
           const statusLabel = entry.status ? String(entry.status) : '';
 
@@ -1003,7 +1005,7 @@ export default function LeagueDashboardPage({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-md border border-[#bbda6e]/60 bg-[#bbda6e]/35 dark:bg-blue-950 px-3 py-2.5 text-center">
+                  <div className="rounded-md border border-primary/20 bg-primary/10 dark:bg-primary/20 px-3 py-2.5 text-center">
                     <div className="text-xs text-muted-foreground">Total Points</div>
                     <div className="text-base font-semibold text-foreground tabular-nums">
                       {mySummary?.points.toLocaleString() ?? '—'}
@@ -1019,7 +1021,7 @@ export default function LeagueDashboardPage({
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-md border border-[#bbda6e]/60 bg-[#bbda6e]/35 dark:bg-blue-950 px-3 py-2.5 text-center">
+                  <div className="rounded-md border border-primary/20 bg-primary/10 dark:bg-primary/20 px-3 py-2.5 text-center">
                     <div className="text-[11px] text-muted-foreground">Rest Days Used</div>
                     <div className="text-sm font-semibold text-foreground tabular-nums">
                       {mySummary?.restUsed.toLocaleString() ?? '—'}
@@ -1040,7 +1042,7 @@ export default function LeagueDashboardPage({
                     </div>
                   </div>
                   <div
-                    className={`rounded-md border border-border/60 px-3 py-2.5 text-center ${rejectedCount > 0 ? 'bg-red-100 dark:bg-red-950/40' : 'bg-muted/40'
+                    className={`rounded-md border border-border/60 px-3 py-2.5 text-center ${rejectedCount > 0 ? 'bg-destructive/10 dark:bg-destructive/20' : 'bg-muted/40'
                       }`}
                   >
                     <div className="text-[11px] text-muted-foreground">Rejected Workouts</div>
@@ -1146,7 +1148,7 @@ export default function LeagueDashboardPage({
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-md border border-[#bbda6e]/60 bg-[#bbda6e]/35 dark:bg-blue-950 px-3 py-2.5 text-center">
+                  <div className="rounded-md border border-primary/20 bg-primary/10 dark:bg-primary/20 px-3 py-2.5 text-center">
                     <div className="text-xs text-muted-foreground">Total Points</div>
                     <div className="text-base font-semibold text-foreground tabular-nums">
                       {typeof mySummary?.teamPoints === 'number'

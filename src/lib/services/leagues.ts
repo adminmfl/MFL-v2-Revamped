@@ -19,7 +19,7 @@ export interface LeagueInput {
   max_participants?: number;
   rest_days?: number;
   auto_rest_day_enabled?: boolean;
-  normalize_points_by_capacity?: boolean;
+  normalize_points_by_team_size?: boolean;
   is_public?: boolean;
   is_exclusive?: boolean;
 }
@@ -469,8 +469,10 @@ export async function updateLeague(
       if (data.auto_rest_day_enabled !== undefined) {
         allowedUpdates.auto_rest_day_enabled = data.auto_rest_day_enabled;
       }
+      if (data.normalize_points_by_team_size !== undefined) {
+        allowedUpdates.normalize_points_by_team_size = data.normalize_points_by_team_size;
+      }
       if (data.description !== undefined) allowedUpdates.description = data.description;
-
     }
 
     if (Object.keys(allowedUpdates).length === 0) {

@@ -254,6 +254,7 @@ export function SubmissionDetailDialog({
 
   // Format workout type for display
   const formatWorkoutType = (type: string | null) => {
+    if (submission.custom_activity_name) return submission.custom_activity_name;
     if (!type) return 'General Workout';
     return type
       .split('_')

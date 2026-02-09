@@ -31,7 +31,8 @@ const updateLeagueSchema = z.object({
   const { normalize_points_by_capacity, normalize_points_by_team_size, ...rest } = input;
   return {
     ...rest,
-    normalize_points_by_capacity: normalize_points_by_capacity ?? normalize_points_by_team_size,
+    // Database column is normalize_points_by_team_size
+    normalize_points_by_team_size: normalize_points_by_team_size ?? normalize_points_by_capacity,
   };
 });
 

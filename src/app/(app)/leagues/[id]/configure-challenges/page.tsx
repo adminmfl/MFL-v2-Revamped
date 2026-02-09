@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Upload, Plus, CheckCircle2, Clock3, XCircle, Shield, FileText, Trash2, Share2, Copy, Users } from 'lucide-react';
+import { Upload, Plus, CheckCircle2, Clock3, XCircle, Shield, FileText, Trash2, Share2, Copy, Users, Pencil } from 'lucide-react';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -146,6 +146,19 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
         docUrl: '',
     });
     const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+
+    // Edit dialog state
+    const [editOpen, setEditOpen] = React.useState(false);
+    const [editChallenge, setEditChallenge] = React.useState<Challenge | null>(null);
+    const [editForm, setEditForm] = React.useState({
+        name: '',
+        description: '',
+        challengeType: 'individual' as Challenge['challenge_type'],
+        totalPoints: '' as string | number,
+        docUrl: '',
+        startDate: '',
+        endDate: '',
+    });
 
     // Activate preset dialog state
     const [activateOpen, setActivateOpen] = React.useState(false);
@@ -351,6 +364,72 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
             fetchChallenges();
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Failed to create challenge');
+        }
+    };
+
+
+    const handleEditClick = (challenge: Challenge) => {
+        setEditChallenge(challenge);
+        setEditForm({
+            name: challenge.name,
+            description: challenge.description || '',
+            challengeType: challenge.challenge_type,
+            totalPoints: challenge.total_points,
+            docUrl: challenge.doc_url || '',
+            startDate: challenge.start_date ? challenge.start_date.split('T')[0] : '',
+            endDate: challenge.end_date ? challenge.end_date.split('T')[0] : '',
+        });
+        setSelectedFile(null);
+        setEditOpen(true);
+    };
+
+    const handleEditSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editChallenge) return;
+
+        try {
+            let docUrl = editForm.docUrl || null;
+
+            if (selectedFile) {
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                formData.append('league_id', leagueId);
+
+                const uploadRes = await fetch('/api/upload/challenge-document', {
+                    method: 'POST',
+                    body: formData,
+                });
+                const uploadData = await uploadRes.json();
+                if (!uploadRes.ok) throw new Error(uploadData.error || 'Upload failed');
+                docUrl = uploadData.data.url;
+            }
+
+            const payload = {
+                name: editForm.name,
+                description: editForm.description,
+                challengeType: editForm.challengeType,
+                totalPoints: Number(editForm.totalPoints) || 0,
+                docUrl,
+                startDate: editForm.startDate || null,
+                endDate: editForm.endDate || null,
+            };
+
+            const res = await fetch(`/api/leagues/${leagueId}/challenges/${editChallenge.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+
+            const json = await res.json();
+            if (!res.ok || !json.success) throw new Error(json.error || 'Update failed');
+
+            toast.success('Challenge updated');
+            setEditOpen(false);
+            setEditChallenge(null);
+            setSelectedFile(null);
+            fetchChallenges();
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Update failed');
         }
     };
 
@@ -862,9 +941,16 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
                                     )}
 
                                     {isHost && (
-                                        <Button size="sm" variant="destructive" onClick={() => handleDeleteClick(challenge)}>
-                                            Delete
-                                        </Button>
+                                        <>
+                                            <Button size="sm" variant="outline" onClick={() => handleEditClick(challenge)}>
+                                                <Pencil className="size-3 mr-1" />
+                                                Edit
+                                            </Button>
+                                            <Button size="sm" variant="destructive" onClick={() => handleDeleteClick(challenge)}>
+                                                <Trash2 className="size-3 mr-1" />
+                                                Delete
+                                            </Button>
+                                        </>
                                     )}
                                 </div>
                             </div>
@@ -1280,6 +1366,95 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Edit Challenge Dialog */}
+            <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Edit Challenge</DialogTitle>
+                        <DialogDescription>Update challenge details.</DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleEditSubmit} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-name">Name</Label>
+                            <Input
+                                id="edit-name"
+                                value={editForm.name}
+                                onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-desc">Description</Label>
+                            <Textarea
+                                id="edit-desc"
+                                rows={3}
+                                value={editForm.description}
+                                onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))}
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                                <Label>Type</Label>
+                                <Select
+                                    value={editForm.challengeType}
+                                    onValueChange={(val) => setEditForm((p) => ({ ...p, challengeType: val as Challenge['challenge_type'] }))}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="individual">Individual</SelectItem>
+                                        <SelectItem value="team">Team</SelectItem>
+                                        <SelectItem value="sub_team">Sub-Team</SelectItem>
+                                        <SelectItem value="tournament">Tournament</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Total Points</Label>
+                                <Input
+                                    type="number"
+                                    value={editForm.totalPoints}
+                                    min={0}
+                                    onChange={(e) => setEditForm((p) => ({ ...p, totalPoints: e.target.value }))}
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                                <Label>Start Date</Label>
+                                <Input
+                                    type="date"
+                                    value={editForm.startDate}
+                                    onChange={(e) => setEditForm((p) => ({ ...p, startDate: e.target.value }))}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>End Date</Label>
+                                <Input
+                                    type="date"
+                                    value={editForm.endDate}
+                                    onChange={(e) => setEditForm((p) => ({ ...p, endDate: e.target.value }))}
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-doc">Update Rules Document (Optional)</Label>
+                            <Input
+                                id="edit-doc"
+                                type="file"
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp"
+                                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                            />
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+                            <Button type="submit">Save Changes</Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
 
             {/* Tournament Manager Dialog */}
             <TournamentManagerDialog

@@ -148,7 +148,7 @@ export async function createLeague(
         tier_id: input.tier_id || null,
         rest_days: input.rest_days ?? 18,
         auto_rest_day_enabled: input.auto_rest_day_enabled ?? false,
-        normalize_points_by_capacity: input.normalize_points_by_capacity ?? false,
+        normalize_points_by_team_size: input.normalize_points_by_team_size ?? false,
         is_public: input.is_public || false,
         is_exclusive: input.is_exclusive ?? true,
         invite_code: generateInviteCode(),

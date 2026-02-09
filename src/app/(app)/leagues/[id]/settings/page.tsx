@@ -320,24 +320,7 @@ export default function LeagueSettingsPage({
 
       await refetch();
 
-      // Show specific toast for each setting changed
-      const messages: string[] = [];
-
-      if (payload.auto_rest_day_enabled !== undefined) {
-        const status = payload.auto_rest_day_enabled ? 'enabled' : 'disabled';
-        messages.push(`Auto rest day ${status}`);
-      }
-
-      if (payload.normalize_points_by_team_size !== undefined) {
-        const status = payload.normalize_points_by_team_size ? 'enabled' : 'disabled';
-        messages.push(`Point normalization ${status}`);
-      }
-
-      if (messages.length > 0) {
-        toast.success(messages.join('. ') + '.');
-      } else {
-        toast.success('League settings updated.');
-      }
+      toast.success('League settings updated.');
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save changes');
     } finally {

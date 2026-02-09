@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { use, useState, useEffect, useMemo } from 'react';
+import { use, useState, useEffect, useMemo, useRef } from 'react';
 import {
   Users,
   Trophy,
@@ -21,6 +21,9 @@ import {
   UserMinus,
   MoreVertical,
   Loader2,
+  Camera,
+  Upload,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -66,6 +69,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -133,6 +137,13 @@ export default function MyTeamPage({
   const [teamPoints, setTeamPoints] = useState<string>('--');
   const [teamAvgRR, setTeamAvgRR] = useState<string>('--');
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
+  const [teamLogoUrl, setTeamLogoUrl] = useState<string | null>(null);
+
+  // Logo dialog state
+  const [logoDialogOpen, setLogoDialogOpen] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoDeleting, setLogoDeleting] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const userTeamId = activeLeague?.team_id;
   const userTeamName = activeLeague?.team_name;
@@ -255,9 +266,9 @@ export default function MyTeamPage({
 
     const teamName = teamsData?.teams.find(t => t.team_id === teamId)?.team_name;
     const memberCount = selectedMemberIds.size;
-    
+
     setIsBulkAssigning(true);
-    
+
     try {
       let successCount = 0;
       let failCount = 0;
@@ -395,6 +406,70 @@ export default function MyTeamPage({
     fetchLeaderboardStats();
   }, [leagueId, userTeamId]);
 
+  // Fetch team logo
+  useEffect(() => {
+    async function fetchTeamLogo() {
+      if (!leagueId || !userTeamId) return;
+      try {
+        const res = await fetch(`/api/leagues/${leagueId}/teams/${userTeamId}`);
+        const json = await res.json();
+        if (res.ok && json?.success && json.data?.logo_url) {
+          // Add cache busting to initial load too
+          setTeamLogoUrl(`${json.data.logo_url}?t=${Date.now()}`);
+        }
+      } catch (err) {
+        console.error('Error fetching team logo:', err);
+      }
+    }
+    fetchTeamLogo();
+  }, [leagueId, userTeamId]);
+
+  // Logo handlers
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !userTeamId) return;
+
+    setLogoUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch(`/api/leagues/${leagueId}/teams/${userTeamId}/logo`, {
+        method: 'POST',
+        body: formData,
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'Upload failed');
+      // Add cache-busting timestamp to prevent browser from showing cached old image
+      const urlWithCacheBust = `${json.data.url}?t=${Date.now()}`;
+      setTeamLogoUrl(urlWithCacheBust);
+      toast.success('Team logo updated!');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to upload logo');
+    } finally {
+      setLogoUploading(false);
+      if (logoInputRef.current) logoInputRef.current.value = '';
+    }
+  };
+
+  const handleLogoDelete = async () => {
+    if (!userTeamId) return;
+    setLogoDeleting(true);
+    try {
+      const res = await fetch(`/api/leagues/${leagueId}/teams/${userTeamId}/logo`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'Delete failed');
+      setTeamLogoUrl(null);
+      toast.success('Team logo removed');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete logo');
+    } finally {
+      setLogoDeleting(false);
+    }
+  };
+
   // Check if user is captain
   if (!isCaptain) {
     return (
@@ -440,7 +515,13 @@ export default function MyTeamPage({
       {/* Header */}
       <div className="flex flex-col gap-4 px-4 lg:px-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-4">
-          {activeLeague?.team_logo_url ? (
+          {teamLogoUrl ? (
+            <img
+              src={teamLogoUrl}
+              alt={userTeamName || 'Team logo'}
+              className="size-14 rounded-xl object-cover shrink-0 shadow-lg"
+            />
+          ) : activeLeague?.team_logo_url ? (
             <img
               src={activeLeague.team_logo_url}
               alt={userTeamName || 'Team logo'}
@@ -477,6 +558,15 @@ export default function MyTeamPage({
             <Crown className="size-3 mr-1" />
             Team Captain
           </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setLogoDialogOpen(true)}
+            className="gap-2"
+          >
+            <Camera className="size-4" />
+            Team Logo
+          </Button>
         </div>
       </div>
 
@@ -548,23 +638,25 @@ export default function MyTeamPage({
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableHead className="w-12">#</TableHead>
+                <TableHead className="w-8 text-center">#</TableHead>
                 <TableHead>Member</TableHead>
-                <TableHead>Role</TableHead>
+                <TableHead className="w-16 text-center">Avg RR</TableHead>
+                <TableHead className="w-16 text-center">Rest Days</TableHead>
+                <TableHead className="w-16 text-center">Points</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedMembers.length > 0 ? (
                 paginatedMembers.map((member, index) => (
                   <TableRow key={member.league_member_id}>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-muted-foreground text-center text-sm">
                       {pagination.pageIndex * pagination.pageSize + index + 1}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center">
-                            <span className="text-sm font-medium text-primary">
+                      <div className="flex items-center gap-2">
+                        <div className="relative shrink-0">
+                          <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span className="text-xs font-medium text-primary">
                               {member.username
                                 .split(' ')
                                 .map((n) => n[0])
@@ -574,31 +666,28 @@ export default function MyTeamPage({
                             </span>
                           </div>
                           {member.is_captain && (
-                            <div className="absolute -bottom-0.5 -right-0.5 size-4 rounded-full bg-amber-500 flex items-center justify-center ring-2 ring-background">
-                              <Crown className="size-2.5 text-white" />
+                            <div className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-amber-500 flex items-center justify-center ring-2 ring-background">
+                              <Crown className="size-2 text-white" />
                             </div>
                           )}
                         </div>
-                        <div>
-                          <span className="font-medium">{member.username}</span>
-                        </div>
+                        <span className="font-medium text-sm truncate">{member.username}</span>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      {member.is_captain ? (
-                        <Badge className="bg-amber-500/10 text-amber-600 border-amber-200">
-                          <Shield className="size-3 mr-1" />
-                          Captain
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">Player</Badge>
-                      )}
+                    <TableCell className="text-center text-sm tabular-nums">
+                      {((member as any).avg_rr ?? 0).toFixed(1)}
+                    </TableCell>
+                    <TableCell className="text-center text-sm tabular-nums">
+                      {(member as any).rest_days_used ?? 0}
+                    </TableCell>
+                    <TableCell className="text-center text-sm font-medium tabular-nums">
+                      {(member as any).points ?? 0}
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={3} className="h-24 text-center">
+                  <TableCell colSpan={5} className="h-24 text-center">
                     {searchQuery
                       ? 'No members found matching your search.'
                       : 'No members in this team yet.'}
@@ -828,6 +917,68 @@ export default function MyTeamPage({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Team Logo Dialog */}
+      <Dialog open={logoDialogOpen} onOpenChange={setLogoDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Team Logo</DialogTitle>
+            <DialogDescription>
+              Upload or change your team's logo. Max 2MB. Supported: PNG, JPG, WebP.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-4">
+            {teamLogoUrl ? (
+              <div className="relative">
+                <img
+                  src={teamLogoUrl}
+                  alt="Team Logo"
+                  className="size-32 rounded-xl object-cover shadow-lg"
+                />
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="absolute -top-2 -right-2 size-8 rounded-full"
+                  onClick={handleLogoDelete}
+                  disabled={logoDeleting}
+                >
+                  {logoDeleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                </Button>
+              </div>
+            ) : (
+              <div className="size-32 rounded-xl bg-muted flex items-center justify-center">
+                <Camera className="size-12 text-muted-foreground" />
+              </div>
+            )}
+            <div className="w-full">
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleLogoUpload}
+                className="hidden"
+                id="captain-logo-upload"
+              />
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() => logoInputRef.current?.click()}
+                disabled={logoUploading}
+              >
+                {logoUploading ? (
+                  <><Loader2 className="size-4 animate-spin" /> Uploading...</>
+                ) : (
+                  <><Upload className="size-4" /> {teamLogoUrl ? 'Change Logo' : 'Upload Logo'}</>
+                )}
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLogoDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
