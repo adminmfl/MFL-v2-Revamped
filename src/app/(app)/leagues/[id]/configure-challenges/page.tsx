@@ -802,7 +802,7 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
                                     onClick={handleActivatePreset}
                                     disabled={!selectedPresetId}
                                 >
-                                    Activate Challenge
+                                    Select Challenge
                                 </Button>
                             </div>
                         </CardContent>
