@@ -85,6 +85,7 @@ export default function LeagueActivitiesPage({
   const [frequencyTypeDrafts, setFrequencyTypeDrafts] = React.useState<Record<string, 'weekly' | 'monthly'>>({});
   const [isSaving, setIsSaving] = React.useState(false);
   const [resetKey, setResetKey] = React.useState(0);
+  const [openDescriptionId, setOpenDescriptionId] = React.useState<string | null>(null);
 
   // Track pending changes before saving
   const [pendingChanges, setPendingChanges] = React.useState<Map<string, { enabled?: boolean; frequency?: number | null; frequency_type?: 'weekly' | 'monthly' | null; minimums?: { min_value: number | null; age_group_overrides: Record<string, any> } }>>(new Map());
@@ -101,16 +102,7 @@ export default function LeagueActivitiesPage({
 
   const supportsFrequency = data?.supportsFrequency !== false;
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col gap-6 py-4 md:py-6">
-        <div className="px-4 lg:px-6">
-          <LoadingSkeleton />
-        </div>
-      </div>
-    );
-  }
-
+  // Initialize frequency drafts when data changes (must be before early returns)
   React.useEffect(() => {
     if (!data?.activities) return;
     const next: Record<string, string> = {};
@@ -126,7 +118,7 @@ export default function LeagueActivitiesPage({
     setFrequencyTypeDrafts(nextTypes);
   }, [data?.activities]);
 
-  // Extract unique categories
+  // Extract unique categories (must be before early returns)
   const categories = useMemo(() => {
     if (!data) return [];
     const allActivities = isAdmin ? data.allActivities || [] : data.activities;
@@ -143,7 +135,7 @@ export default function LeagueActivitiesPage({
     );
   }, [data, isAdmin]);
 
-  // Filter activities by selected category
+  // Filter activities by selected category (must be before early returns)
   const filteredActivities = useMemo(() => {
     if (!data) return [];
     const activities = isAdmin ? data.allActivities || [] : data.activities;
@@ -168,6 +160,16 @@ export default function LeagueActivitiesPage({
       return a.activity_name.localeCompare(b.activity_name);
     });
   }, [filteredActivities, enabledActivityIds]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-6 py-4 md:py-6">
+        <div className="px-4 lg:px-6">
+          <LoadingSkeleton />
+        </div>
+      </div>
+    );
+  }
 
   const handleToggle = (activityId: string, enable: boolean) => {
     // Check if the new state matches the original state
@@ -360,8 +362,8 @@ export default function LeagueActivitiesPage({
             const nextFrequencyType = change.frequency_type !== undefined
               ? change.frequency_type
               : frequencyTypeDrafts[activityId]
-                ?? enabledActivityMap.get(activityId)?.frequency_type
-                ?? 'weekly';
+              ?? enabledActivityMap.get(activityId)?.frequency_type
+              ?? 'weekly';
 
             const success = await updateFrequency(activityId, nextFrequency, nextFrequencyType);
             if (success) successCount++;
@@ -682,16 +684,12 @@ export default function LeagueActivitiesPage({
                     <div
                       key={activity.activity_id}
                       className={cn(
-                        'flex items-start gap-3 p-4 rounded-lg border transition-all cursor-pointer',
+                        'flex items-start gap-3 p-4 rounded-lg border transition-all',
                         hasPendingChange && 'ring-2 ring-amber-400 bg-amber-50/50 dark:ring-primary/60 dark:bg-primary/10',
                         !hasPendingChange && isEnabled && 'border-primary bg-primary/5 ring-1 ring-primary',
                         !hasPendingChange && !isEnabled && 'border-border bg-card hover:border-primary/50',
                         isProcessing && 'opacity-50 pointer-events-none'
                       )}
-                      onClick={() =>
-                        !isProcessing &&
-                        handleToggle(activity.activity_id, !isEnabled)
-                      }
                     >
                       <div className="pt-0.5">
                         {isProcessing ? (
@@ -700,7 +698,7 @@ export default function LeagueActivitiesPage({
                           <Checkbox
                             checked={isEnabled}
                             disabled={isProcessing}
-                            className="pointer-events-none"
+                            onClick={() => handleToggle(activity.activity_id, !isEnabled)}
                           />
                         )}
                       </div>
@@ -720,17 +718,34 @@ export default function LeagueActivitiesPage({
                               {activity.category.display_name}
                             </Badge>
                           )}
+                          {activity.description && (
+                            <div className="relative">
+                              <Info
+                                className="size-3.5 text-muted-foreground cursor-pointer hover:text-primary transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenDescriptionId(openDescriptionId === activity.activity_id ? null : activity.activity_id);
+                                }}
+                              />
+                              {openDescriptionId === activity.activity_id && (
+                                <>
+                                  <div
+                                    className="fixed inset-0 z-40"
+                                    onClick={() => setOpenDescriptionId(null)}
+                                  />
+                                  <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 w-64 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-card p-3 text-xs text-card-foreground shadow-lg">
+                                    <p className="leading-relaxed break-words">{activity.description}</p>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
                           {hasPendingChange && (
                             <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 dark:bg-primary/10 dark:text-primary dark:border-primary/20">
                               Pending
                             </Badge>
                           )}
                         </div>
-                        {activity.description && (
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                            {activity.description}
-                          </p>
-                        )}
 
                         {isEnabled && (
                           <div onClick={(e) => e.stopPropagation()}>
