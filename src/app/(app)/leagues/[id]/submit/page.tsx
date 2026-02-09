@@ -1169,7 +1169,7 @@ export default function SubmitActivityPage({
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="workout" className="flex items-center gap-2">
                   <Dumbbell className="size-4" />
-                  Workout
+                  Activity
                 </TabsTrigger>
                 <TabsTrigger value="rest" className="flex items-center gap-2">
                   <Moon className="size-4" />
@@ -1431,7 +1431,7 @@ export default function SubmitActivityPage({
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="workout" className="flex items-center gap-2">
                   <Dumbbell className="size-4" />
-                  Workout
+                  Activity
                 </TabsTrigger>
                 <TabsTrigger value="rest" className="flex items-center gap-2">
                   <Moon className="size-4" />

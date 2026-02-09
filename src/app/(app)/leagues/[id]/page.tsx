@@ -859,7 +859,7 @@ export default function LeagueDashboardPage({
               >
                 <Link href={`/leagues/${id}/submit?type=workout`}>
                   <Dumbbell className="mr-2 size-4" />
-                  Add activity
+                  Add Activity
                 </Link>
               </Button>
               <Button
@@ -952,7 +952,7 @@ export default function LeagueDashboardPage({
               >
                 <Link href={`/leagues/${id}/submit?type=workout`}>
                   <Dumbbell className="mr-2 size-4" />
-                  Add Workout
+                  Add Activity
                 </Link>
               </Button>
               <Button
