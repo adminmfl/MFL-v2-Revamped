@@ -170,19 +170,20 @@ export function LeagueProvider({ children }: LeagueProviderProps) {
         const savedRole = localStorage.getItem(`role_${selectedLeague.league_id}`);
         const sortedRoles = sortRolesByHierarchy(selectedLeague.roles);
         const highestAvailableRole = sortedRoles[0] || null;
+        const preferredRole = selectedLeague.roles.includes('captain')
+          ? 'captain'
+          : selectedLeague.roles.includes('player')
+            ? 'player'
+            : null;
 
-        // If user has a higher role (host/governor/captain), don't restore 'player' from localStorage
-        // This fixes the issue where stale 'player' selection overrides the correct role
-        const hasHigherRole = sortedRoles.some(r => ['host', 'governor', 'captain'].includes(r));
-        const shouldIgnoreSavedPlayer = savedRole === 'player' && hasHigherRole;
+        // Always land in player/captain view when available
+        const nextRole = preferredRole || highestAvailableRole;
 
-        if (savedRole && selectedLeague.roles.includes(savedRole as LeagueRole) && !shouldIgnoreSavedPlayer) {
+        if (savedRole && selectedLeague.roles.includes(savedRole as LeagueRole) && (savedRole === 'player' || savedRole === 'captain')) {
           setCurrentRoleState(savedRole as LeagueRole);
-        } else if (highestAvailableRole) {
-          // Default to highest role
-          setCurrentRoleState(highestAvailableRole);
-          // Clear stale localStorage value
-          localStorage.setItem(`role_${selectedLeague.league_id}`, highestAvailableRole);
+        } else if (nextRole) {
+          setCurrentRoleState(nextRole);
+          localStorage.setItem(`role_${selectedLeague.league_id}`, nextRole);
         }
       }
     } catch (err) {
@@ -210,16 +211,19 @@ export function LeagueProvider({ children }: LeagueProviderProps) {
       const savedRole = localStorage.getItem(`role_${league.league_id}`);
       const sortedRoles = sortRolesByHierarchy(league.roles);
       const highestAvailableRole = sortedRoles[0] || null;
+      const preferredRole = league.roles.includes('captain')
+        ? 'captain'
+        : league.roles.includes('player')
+          ? 'player'
+          : null;
 
-      // If user has a higher role, don't restore 'player' from localStorage
-      const hasHigherRole = sortedRoles.some(r => ['host', 'governor', 'captain'].includes(r));
-      const shouldIgnoreSavedPlayer = savedRole === 'player' && hasHigherRole;
+      const nextRole = preferredRole || highestAvailableRole;
 
-      if (savedRole && league.roles.includes(savedRole as LeagueRole) && !shouldIgnoreSavedPlayer) {
+      if (savedRole && league.roles.includes(savedRole as LeagueRole) && (savedRole === 'player' || savedRole === 'captain')) {
         setCurrentRoleState(savedRole as LeagueRole);
-      } else if (highestAvailableRole) {
-        setCurrentRoleState(highestAvailableRole);
-        localStorage.setItem(`role_${league.league_id}`, highestAvailableRole);
+      } else if (nextRole) {
+        setCurrentRoleState(nextRole);
+        localStorage.setItem(`role_${league.league_id}`, nextRole);
       } else {
         setCurrentRoleState(null);
       }

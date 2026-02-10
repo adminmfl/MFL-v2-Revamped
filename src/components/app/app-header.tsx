@@ -7,6 +7,7 @@ import { Home, Shield, ChevronDown } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
 import { useRole } from '@/contexts/role-context';
+import { getRoleDisplayName } from '@/lib/rbac/permissions';
 import { RoleSwitcher } from './role-switcher';
 import { LeagueSwitcher } from './league-switcher';
 import { Button } from '@/components/ui/button';
@@ -219,8 +220,8 @@ export function AppHeader() {
                   <div className="flex flex-col items-start leading-none gap-1">
                     <span className="text-sm font-bold truncate max-w-[120px] sm:max-w-[140px]">{activeLeague.name}</span>
                     {activeRole && (
-                      <span className={`text-[11px] font-medium uppercase tracking-wide ${roleTextColors[activeRole] || 'text-gray-500'}`}>
-                        {activeRole}
+                      <span className={`text-[11px] font-medium tracking-wide ${roleTextColors[activeRole] || 'text-gray-500'}`}>
+                        {getRoleDisplayName(activeRole)}
                       </span>
                     )}
                   </div>
