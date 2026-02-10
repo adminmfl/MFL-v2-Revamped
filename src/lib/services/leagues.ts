@@ -22,6 +22,7 @@ export interface LeagueInput {
   normalize_points_by_team_size?: boolean;
   is_public?: boolean;
   is_exclusive?: boolean;
+  max_team_capacity?: number;
 }
 
 export interface League extends LeagueInput {
@@ -36,6 +37,7 @@ export interface League extends LeagueInput {
   created_date: string;
   modified_by: string;
   modified_date: string;
+  max_team_capacity?: number; // Configurable limit (default 10)
   league_capacity?: number; // Derived from tier
 }
 
@@ -182,6 +184,7 @@ export async function createLeague(userId: string, data: LeagueInput): Promise<L
         auto_rest_day_enabled: data.auto_rest_day_enabled ?? false,
         is_public: data.is_public || false,
         is_exclusive: data.is_exclusive ?? true,
+        max_team_capacity: data.max_team_capacity || 10,
         invite_code: generateInviteCode(),
         status: initialStatus,
         created_by: userId,
@@ -471,6 +474,9 @@ export async function updateLeague(
       }
       if (data.normalize_points_by_team_size !== undefined) {
         allowedUpdates.normalize_points_by_team_size = data.normalize_points_by_team_size;
+      }
+      if (data.max_team_capacity !== undefined) {
+        allowedUpdates.max_team_capacity = data.max_team_capacity;
       }
       if (data.description !== undefined) allowedUpdates.description = data.description;
     }

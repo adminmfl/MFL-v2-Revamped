@@ -182,7 +182,7 @@ CREATE TABLE IF NOT EXISTS public.leagues (
   status varchar DEFAULT 'scheduled' CHECK (status IN ('scheduled','active','ended','completed','cancelled','abandoned')),
   is_active boolean DEFAULT true,
   num_teams integer DEFAULT 4 CHECK (num_teams > 0),
-  team_size integer DEFAULT 5 CHECK (team_size > 0),
+  max_team_capacity integer DEFAULT 10 CHECK (max_team_capacity > 0),
   rest_days integer DEFAULT 1 CHECK (rest_days >= 0 AND rest_days <= 7),
   auto_rest_day_enabled boolean DEFAULT false,
   is_public boolean DEFAULT false,

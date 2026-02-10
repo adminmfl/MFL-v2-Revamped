@@ -110,6 +110,7 @@ export default function LeagueSettingsPage({
     end_date: '',
     status: 'draft' as 'draft' | 'launched' | 'active' | 'completed',
     normalize_points_by_team_size: false,
+    max_team_capacity: '10',
   });
 
   const canEditStructure = formData.status === 'draft';
@@ -194,6 +195,7 @@ export default function LeagueSettingsPage({
           end_date: league.end_date,
           status: league.status,
           normalize_points_by_team_size: !!league.normalize_points_by_team_size,
+          max_team_capacity: String(league.max_team_capacity || '10'),
         });
         setLogoUrl(league.logo_url || null);
       } catch (err) {
@@ -276,6 +278,7 @@ export default function LeagueSettingsPage({
         auto_rest_day_enabled: formData.auto_rest_day_enabled,
         description: formData.description,
         normalize_points_by_team_size: formData.normalize_points_by_team_size,
+        max_team_capacity: Number(formData.max_team_capacity),
       };
 
       if (canEditStructure) {
@@ -352,28 +355,17 @@ export default function LeagueSettingsPage({
     <div className="flex flex-col gap-6 py-4 md:py-6">
       {/* Header */}
       <div className="flex flex-col gap-4 px-4 lg:px-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
-              <Settings className="size-6 text-primary" />
-              League Settings
-            </h1>
-            <p className="text-muted-foreground">
-              Configure your league settings and preferences
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2 items-center">
-            <Badge variant="outline" className="w-fit">
-              League ID: {id.slice(0, 8)}...
-            </Badge>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
+            <Settings className="size-6 text-primary" />
+            League Settings
             <Badge variant={formData.status === 'active' ? 'default' : 'secondary'} className="capitalize">
               {formData.status}
             </Badge>
-            <Badge variant="outline" className="flex items-center gap-1 text-xs">
-              <Calendar className="size-3" />
-              {formData.start_date || '—'} → {formData.end_date || '—'}
-            </Badge>
-          </div>
+          </h1>
+          <p className="text-muted-foreground">
+            Configure your league settings and preferences
+          </p>
         </div>
       </div>
 
@@ -525,6 +517,30 @@ export default function LeagueSettingsPage({
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+
+              {/* Max Team Capacity */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-5">
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="max_team_capacity">Max Team Capacity</Label>
+                    <FieldInfoButton text="Maximum members allowed per team." />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Limits team size for joining.</p>
+                </div>
+                <div className="w-full sm:max-w-sm">
+                  <Input
+                    id="max_team_capacity"
+                    type="number"
+                    min="1"
+                    value={formData.max_team_capacity}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, max_team_capacity: e.target.value }))
+                    }
+                    placeholder="e.g. 10"
+                    className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
+                  />
                 </div>
               </div>
 
