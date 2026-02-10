@@ -219,7 +219,9 @@ export function LeagueSwitcher({ trigger, onOpenChange }: LeagueSwitcherProps) {
                     )}
                   </div>
                   <div className="flex items-center gap-0.5 mt-0.5 flex-wrap">
-                    {league.roles.map((role) => (
+                    {league.roles
+                      .filter((role) => !(role === 'player' && league.roles.includes('captain')))
+                      .map((role) => (
                       <Badge
                         key={role}
                         variant="outline"
@@ -325,7 +327,10 @@ export function LeagueSwitcher({ trigger, onOpenChange }: LeagueSwitcherProps) {
                       <span className="truncate font-medium">{league.name}</span>
                     </div>
                     <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                      {league.roles.slice(0, 2).map((role) => (
+                      {league.roles
+                        .filter((role) => !(role === 'player' && league.roles.includes('captain')))
+                        .slice(0, 2)
+                        .map((role) => (
                         <Badge
                           key={role}
                           variant="outline"
@@ -376,14 +381,6 @@ export function LeagueSwitcher({ trigger, onOpenChange }: LeagueSwitcherProps) {
       </SidebarMenuItem>
     </SidebarMenu>
   );
-}
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-function capitalize(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 export default LeagueSwitcher;
