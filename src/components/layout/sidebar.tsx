@@ -72,21 +72,21 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
+    <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
       {/* Logo/Brand */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-sidebar-border">
         <Link href="/dashboard" className="flex items-center gap-2">
           <img
             src="/img/mfl-logo.jpg"
             alt="My Fitness League"
             className="size-10 rounded-lg object-cover"
           />
-          <h2 className="text-xl font-bold text-[#0B365F]">MFL</h2>
+          <h2 className="text-xl font-bold text-foreground">MFL</h2>
         </Link>
       </div>
 
       {/* Role Switcher */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-sidebar-border">
         <RoleSwitcher />
       </div>
 
@@ -103,8 +103,8 @@ export function Sidebar() {
                 key={item.name}
                 href={item.href}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                  ? 'bg-[#0B365F] text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                  : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                   }`}
               >
                 <Icon className="w-5 h-5" />
@@ -115,8 +115,8 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-200">
-        <div className="text-xs text-gray-500 text-center">
+      <div className="p-4 border-t border-sidebar-border">
+        <div className="text-xs text-muted-foreground text-center">
           © 2025 My Fitness League
         </div>
       </div>

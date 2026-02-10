@@ -217,7 +217,7 @@ export function ActivityMinimumDropdown({
           {supportsFrequency && (
             <div className="space-y-2 pb-3 border-b">
               <h4 className="text-xs font-semibold">Frequency</h4>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Select
                   value={frequencyTypeDraft}
                   onValueChange={(value) => {
@@ -257,7 +257,7 @@ export function ActivityMinimumDropdown({
                     })}
                   </SelectContent>
                 </Select>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground break-words">
                   submissions per {frequencyTypeDraft === 'monthly' ? 'month' : 'week'}
                 </span>
               </div>

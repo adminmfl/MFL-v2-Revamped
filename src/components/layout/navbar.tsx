@@ -69,7 +69,7 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
   // Minimal header for governors only
   if (role === 'governor') {
     return (
-      <nav className="bg-rfl-navy text-white shadow-lg">
+      <nav className="bg-primary text-primary-foreground shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
@@ -82,7 +82,7 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
             <div className="hidden md:flex items-center gap-3">
               {name ? (
                 <>
-                  <Button onClick={() => signOut({ callbackUrl: '/' })} variant="outline" size="sm" className="text-rfl-navy border-white hover:bg-white hover:text-rfl-navy flex items-center">
+                  <Button onClick={() => signOut({ callbackUrl: '/' })} variant="outline" size="sm" className="text-primary border-white hover:bg-white hover:text-primary flex items-center">
                     <LogOut className="w-4 h-4 mr-1" />
                     Sign Out
                   </Button>
@@ -91,7 +91,7 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
             </div>
             {/* Mobile hamburger */}
             <button
-              className="md:hidden p-2 rounded hover:bg-rfl-light-blue/30"
+              className="md:hidden p-2 rounded hover:bg-primary/10"
               aria-label="Open menu"
               onClick={() => setMobileOpen(true)}
             >
@@ -103,15 +103,15 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
         {mobileOpen && (
           <div className="md:hidden fixed inset-0 z-50">
             <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
-            <div className="absolute right-0 top-0 h-full w-64 bg-rfl-navy text-white shadow-xl">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+            <div className="absolute right-0 top-0 h-full w-64 bg-primary text-primary-foreground shadow-xl">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-primary-foreground/10">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded overflow-hidden bg-white">
                     <img src="/img/mfl-logo.jpg" alt="My Fitness League" className="w-full h-full object-cover" />
                   </div>
                   <span className="text-sm">Welcome, {name ?? 'Governor'}</span>
                 </div>
-                <button className="p-2 rounded hover:bg-rfl-light-blue/30" aria-label="Close menu" onClick={() => setMobileOpen(false)}>
+                <button className="p-2 rounded hover:bg-primary/10" aria-label="Close menu" onClick={() => setMobileOpen(false)}>
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -119,7 +119,7 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
                 {name ? (
                   <>
                     <button
-                      className="w-full text-left px-3 py-2 rounded-md bg-white text-rfl-navy font-medium flex items-center gap-2"
+                      className="w-full text-left px-3 py-2 rounded-md bg-white text-primary font-medium flex items-center gap-2"
                       onClick={() => { setMobileOpen(false); signOut({ callbackUrl: '/' }); }}
                     >
                       <LogOut className="w-4 h-4" />
@@ -137,7 +137,7 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
 
   const linksToShow = navLinks ?? navItems;
   return (
-    <nav className="bg-rfl-navy text-white shadow-lg">
+    <nav className="bg-primary text-primary-foreground shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* RFL Logo/Brand */}
@@ -148,7 +148,7 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
               </div>
               <div className="whitespace-nowrap leading-tight">
                 <h1 className="text-lg font-bold whitespace-nowrap">MFL</h1>
-                <p className="text-xs text-gray-300 whitespace-nowrap">My Fitness League</p>
+                <p className="text-xs text-primary-foreground/80 whitespace-nowrap">My Fitness League</p>
               </div>
             </Link>
           </div>
@@ -165,8 +165,8 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
                   key={item.href}
                   href={item.href}
                   className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${isActive
-                      ? 'bg-rfl-coral text-white'
-                      : 'text-gray-300 hover:text-white hover:bg-rfl-light-blue'
+                      ? 'bg-accent text-accent-foreground'
+                      : 'text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary/10'
                     }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -182,7 +182,7 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
               <div className="flex items-center space-x-2">
                 <Avatar className="size-6 border border-white/20">
                   <AvatarImage src={(session?.user as any)?.profile_picture_url || undefined} />
-                  <AvatarFallback className="text-xs bg-white text-rfl-navy">
+                  <AvatarFallback className="text-xs bg-white text-primary">
                     {name.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -192,7 +192,7 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
             {/* Desktop-only auth actions */}
             <div className="hidden md:flex items-center space-x-3">
               {name ? (
-                <Button onClick={() => signOut({ callbackUrl: '/' })} variant="outline" size="sm" className="text-rfl-navy border-white hover:bg-white hover:text-rfl-navy flex items-center">
+                <Button onClick={() => signOut({ callbackUrl: '/' })} variant="outline" size="sm" className="text-primary border-white hover:bg-white hover:text-primary flex items-center">
                   <LogOut className="w-4 h-4 mr-1" />
                   Sign Out
                 </Button>
@@ -200,7 +200,7 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
             </div>
             {/* Hamburger toggle (mobile only) */}
             <button
-              className="md:hidden p-2 rounded hover:bg-rfl-light-blue/30"
+              className="md:hidden p-2 rounded hover:bg-primary/10"
               aria-label="Toggle navigation menu"
               onClick={() => setMobileOpen((v) => !v)}
             >
@@ -214,20 +214,20 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
-          <div className="absolute right-0 top-0 h-full w-64 bg-rfl-navy text-white shadow-xl">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+          <div className="absolute right-0 top-0 h-full w-64 bg-primary text-primary-foreground shadow-xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-primary-foreground/10">
               {name && (
                 <div className="flex items-center gap-2">
                   <Avatar className="size-6 border border-white/20">
                     <AvatarImage src={(session?.user as any)?.profile_picture_url || undefined} />
-                    <AvatarFallback className="text-xs bg-white text-rfl-navy">
+                    <AvatarFallback className="text-xs bg-white text-primary">
                       {name.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-sm">{name}</span>
                 </div>
               )}
-              <button className="p-2 rounded hover:bg-rfl-light-blue/30" aria-label="Close menu" onClick={() => setMobileOpen(false)}>
+              <button className="p-2 rounded hover:bg-primary/10" aria-label="Close menu" onClick={() => setMobileOpen(false)}>
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -242,8 +242,8 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
                     key={item.href}
                     href={item.href}
                     className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${isActive
-                        ? 'bg-rfl-coral text-white'
-                        : 'text-gray-300 hover:text-white hover:bg-rfl-light-blue'
+                        ? 'bg-accent text-accent-foreground'
+                        : 'text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary/10'
                       }`}
                     onClick={() => setMobileOpen(false)}
                   >
@@ -253,10 +253,10 @@ export function Navbar({ navLinks }: { navLinks?: typeof navItems }) {
                 )
               })}
             </div>
-            <div className="mt-auto px-4 py-3 border-t border-white/10 space-y-2">
+            <div className="mt-auto px-4 py-3 border-t border-primary-foreground/10 space-y-2">
               {name ? (
                 <button
-                  className="w-full text-left px-3 py-2 rounded-md bg-white text-rfl-navy font-medium flex items-center gap-2"
+                  className="w-full text-left px-3 py-2 rounded-md bg-white text-primary font-medium flex items-center gap-2"
                   onClick={() => { setMobileOpen(false); signOut({ callbackUrl: '/' }) }}
                 >
                   <LogOut className="w-4 h-4" />

@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import { useSession } from 'next-auth/react';
 
+
 // ============================================================================
 // Route Title Mapping
 // ============================================================================
@@ -41,7 +42,7 @@ const routeTitles: Record<string, string> = {
 const dynamicRoutePatterns: [RegExp, (match: RegExpMatchArray) => string][] = [
   [/^\/leagues\/([^/]+)$/, () => 'My Activities'],
   [/^\/leagues\/([^/]+)\/team$/, () => 'Team Management'],
-  [/^\/leagues\/([^/]+)\/my-team$/, () => 'My Team'],
+  [/^\/leagues\/([^/]+)\/my-team$/, () => 'Team Overview'],
   [/^\/leagues\/([^/]+)\/my-team-view$/, () => 'My Team'],
   [/^\/leagues\/([^/]+)\/team\/manage$/, () => 'Team Management'],
   [/^\/leagues\/([^/]+)\/leaderboard$/, () => 'Leaderboard'],
@@ -156,6 +157,7 @@ export function AppHeader() {
   const { activeRole } = useRole();
   const [isLeagueSwitcherOpen, setIsLeagueSwitcherOpen] = React.useState(false);
 
+
   const pageTitle = getPageTitle(pathname);
   const breadcrumbs = getBreadcrumbs(pathname, activeLeague?.name);
 
@@ -234,7 +236,8 @@ export function AppHeader() {
             />
           )}
 
-          {/* Theme Toggle */}
+
+
           {/* Admin Panel Link (only for admins) */}
           {isAdmin && (
             <Button variant="ghost" asChild size="sm" className="hidden sm:flex">

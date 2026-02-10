@@ -84,7 +84,7 @@ export async function validateInviteCode(code: string): Promise<LeagueInviteInfo
         .select('league_capacity')
         .eq('tier_id', league.tier_id)
         .single();
-      
+
       if (tierData?.league_capacity) {
         leagueCapacity = tierData.league_capacity;
       }
@@ -289,11 +289,12 @@ export async function validateTeamInviteCode(code: string): Promise<TeamInviteIn
           league_name,
           description,
           status,
-          start_date,
-          end_date,
-          tier_id
-        )
-      `)
+        start_date,
+        end_date,
+        tier_id,
+        max_team_capacity
+      )
+    `)
       .eq('team_id', team.team_id)
       .single();
 
@@ -311,7 +312,7 @@ export async function validateTeamInviteCode(code: string): Promise<TeamInviteIn
         .select('league_capacity')
         .eq('tier_id', league.tier_id)
         .single();
-      
+
       if (tierData?.league_capacity) {
         leagueCapacity = tierData.league_capacity;
       }
@@ -324,8 +325,8 @@ export async function validateTeamInviteCode(code: string): Promise<TeamInviteIn
       .eq('league_id', league.league_id)
       .eq('team_id', team.team_id);
 
-    // For team capacity, we'll use a reasonable default (5)
-    const teamMaxCapacity = 5;
+    // Use configured max team capacity (default to 10 if not set)
+    const teamMaxCapacity = league.max_team_capacity || 10;
     const currentTeamCount = teamMemberCount || 0;
     const isTeamFull = currentTeamCount >= teamMaxCapacity;
     const canJoin = league.status !== 'completed' && !isTeamFull;

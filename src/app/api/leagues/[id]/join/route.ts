@@ -23,6 +23,19 @@ export async function POST(
       return NextResponse.json({ error: 'League not found' }, { status: 404 });
     }
 
+    // Determine max capacity
+    // 1. Frozen tier snapshot (preserved at creation)
+    // 2. Default (40)
+    let maxCapacity = 40;
+
+    if (league.tier_snapshot && typeof league.tier_snapshot === 'object') {
+      // @ts-ignore
+      const snapshotMax = league.tier_snapshot.max_participants;
+      if (snapshotMax) {
+        maxCapacity = Number(snapshotMax);
+      }
+    }
+
     // Check if league is public or user has valid invite code (TODO: implement invite code logic)
     if (!league.is_public) {
       // For now, reject private leagues

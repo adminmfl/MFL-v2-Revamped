@@ -27,6 +27,7 @@ export interface MySubmission {
   modified_date: string;
   reupload_of: string | null;
   rejection_reason: string | null;
+  custom_activity_name?: string;
 }
 
 /**

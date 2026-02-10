@@ -150,7 +150,7 @@ export async function getLeaderboardWithVariance(leagueId: string) {
     const supabase = getSupabaseServiceRole();
     const { data: league, error: leagueError } = await supabase
       .from('leagues')
-      .select('normalize_points_by_capacity')
+      .select('normalize_points_by_team_size')
       .eq('league_id', leagueId)
       .single();
 
@@ -161,7 +161,7 @@ export async function getLeaderboardWithVariance(leagueId: string) {
 
     const leaderboard = await getLeagueLeaderboard(
       leagueId,
-      league.normalize_points_by_capacity
+      league.normalize_points_by_team_size
     );
 
     // Calculate team size stats from leaderboard

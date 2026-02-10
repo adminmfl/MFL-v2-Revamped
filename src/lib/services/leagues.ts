@@ -19,9 +19,12 @@ export interface LeagueInput {
   max_participants?: number;
   rest_days?: number;
   auto_rest_day_enabled?: boolean;
-  normalize_points_by_capacity?: boolean;
+  normalize_points_by_team_size?: boolean;
   is_public?: boolean;
   is_exclusive?: boolean;
+  max_team_capacity?: number;
+  price_paid?: number;
+  payment_status?: 'pending' | 'completed' | 'failed';
 }
 
 export interface League extends LeagueInput {
@@ -36,6 +39,7 @@ export interface League extends LeagueInput {
   created_date: string;
   modified_by: string;
   modified_date: string;
+  max_team_capacity?: number; // Configurable limit (default 10)
   league_capacity?: number; // Derived from tier
 }
 
@@ -182,9 +186,12 @@ export async function createLeague(userId: string, data: LeagueInput): Promise<L
         auto_rest_day_enabled: data.auto_rest_day_enabled ?? false,
         is_public: data.is_public || false,
         is_exclusive: data.is_exclusive ?? true,
+        max_team_capacity: data.max_team_capacity || 10,
         invite_code: generateInviteCode(),
         status: initialStatus,
         created_by: userId,
+        price_paid: data.price_paid || null,
+        payment_status: data.payment_status || 'pending',
       })
       .select()
       .single();
@@ -260,17 +267,14 @@ export async function getLeagueById(leagueId: string): Promise<League | null> {
 
     if (error || !data) return null;
 
-    // Fetch tier capacity separately if tier_id exists
-    let leagueCapacity = 20;
-    if (data.tier_id) {
-      const { data: tierData } = await supabase
-        .from('league_tiers')
-        .select('league_capacity')
-        .eq('tier_id', data.tier_id)
-        .single();
+    // Calculate league_capacity from tier_snapshot or fallback
+    let leagueCapacity = 40;
 
-      if (tierData?.league_capacity) {
-        leagueCapacity = tierData.league_capacity;
+    if (data.tier_snapshot && typeof data.tier_snapshot === 'object') {
+      // @ts-ignore
+      const snapshotMax = data.tier_snapshot.max_participants;
+      if (snapshotMax) {
+        leagueCapacity = Number(snapshotMax);
       }
     }
 
@@ -469,8 +473,13 @@ export async function updateLeague(
       if (data.auto_rest_day_enabled !== undefined) {
         allowedUpdates.auto_rest_day_enabled = data.auto_rest_day_enabled;
       }
+      if (data.normalize_points_by_team_size !== undefined) {
+        allowedUpdates.normalize_points_by_team_size = data.normalize_points_by_team_size;
+      }
+      if (data.max_team_capacity !== undefined) {
+        allowedUpdates.max_team_capacity = data.max_team_capacity;
+      }
       if (data.description !== undefined) allowedUpdates.description = data.description;
-
     }
 
     if (Object.keys(allowedUpdates).length === 0) {

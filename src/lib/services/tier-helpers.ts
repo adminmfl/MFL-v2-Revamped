@@ -151,7 +151,7 @@ export interface TierRecommendation {
 
 /**
  * Recommend a tier based on league requirements
- * Strategy: Find cheapest tier that doesn't waste capacity
+ * Strategy: Find smallest tier that fits duration and total participants (NOT number of teams)
  */
 export function recommendTier(
   tiers: TierConfig[],
@@ -160,18 +160,21 @@ export function recommendTier(
 ): TierRecommendation | null {
   if (!tiers || tiers.length === 0) return null;
 
-  // Filter tiers that fit all constraints
+  // Filter tiers that fit duration and participant constraints
   const suitableTiers = tiers.filter(
     (tier) => durationDays <= tier.max_days && estimatedParticipants <= tier.max_participants
   );
 
   if (suitableTiers.length === 0) return null;
 
-  // Find the tier with smallest capacity that still fits (most cost-efficient)
+  // Find the tier with smallest max_days that still fits (most cost-efficient)
   const recommended = suitableTiers.reduce((best, current) => {
-    const bestCapacity = best.max_participants * best.max_days;
-    const currentCapacity = current.max_participants * current.max_days;
-    return currentCapacity < bestCapacity ? current : best;
+    // If current is featured, prefer it
+    if (current.is_featured && !best.is_featured) return current;
+    if (best.is_featured && !current.is_featured) return best;
+
+    // Otherwise, prefer smaller tier (by max_days)
+    return current.max_days < best.max_days ? current : best;
   });
 
   // Determine reason

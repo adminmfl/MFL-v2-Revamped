@@ -46,17 +46,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch tier capacity separately
-    let maxCapacity = 20;
-    if (league.tier_id) {
-      const { data: tierData } = await supabase
-        .from('league_tiers')
-        .select('league_capacity')
-        .eq('tier_id', league.tier_id)
-        .single();
-      
-      if (tierData?.league_capacity) {
-        maxCapacity = tierData.league_capacity;
+    // Determine max capacity
+    // 1. Frozen tier snapshot (preserved at creation)
+    // 2. Default (40)
+    let maxCapacity = 40;
+
+    if (league.tier_snapshot && typeof league.tier_snapshot === 'object') {
+      // @ts-ignore
+      const snapshotMax = league.tier_snapshot.max_participants;
+      if (snapshotMax) {
+        maxCapacity = Number(snapshotMax);
       }
     }
 

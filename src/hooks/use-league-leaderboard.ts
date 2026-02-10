@@ -214,7 +214,6 @@ export function useLeagueLeaderboard(
       if (teamsResp.ok) {
         const teamsJson = await teamsResp.json();
         const normalizeActive = Boolean(
-          teamsJson?.data?.league?.normalize_points_by_capacity ??
           teamsJson?.data?.league?.normalize_points_by_team_size
         );
         const variance = teamsJson?.data?.teamSizeVariance as { hasVariance: boolean; avgSize: number; minSize: number; maxSize: number } | undefined;

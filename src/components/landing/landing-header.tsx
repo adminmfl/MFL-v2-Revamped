@@ -20,6 +20,7 @@ import {
 export function LandingHeader() {
   const [isScrolled, setIsScrolled] = React.useState(false);
 
+
   React.useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
@@ -71,6 +72,7 @@ export function LandingHeader() {
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
+
             <Button variant="ghost" asChild className="font-medium hover:bg-primary/5 hover:text-primary">
               <Link href="/login">Log In</Link>
             </Button>
@@ -78,6 +80,8 @@ export function LandingHeader() {
               <Link href="/signup">Get Started</Link>
             </Button>
           </div>
+
+
 
           {/* Mobile Menu */}
           <Sheet>

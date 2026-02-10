@@ -182,7 +182,7 @@ CREATE TABLE IF NOT EXISTS public.leagues (
   status varchar DEFAULT 'scheduled' CHECK (status IN ('scheduled','active','ended','completed','cancelled','abandoned')),
   is_active boolean DEFAULT true,
   num_teams integer DEFAULT 4 CHECK (num_teams > 0),
-  team_size integer DEFAULT 5 CHECK (team_size > 0),
+  max_team_capacity integer DEFAULT 10 CHECK (max_team_capacity > 0),
   rest_days integer DEFAULT 1 CHECK (rest_days >= 0 AND rest_days <= 7),
   auto_rest_day_enabled boolean DEFAULT false,
   is_public boolean DEFAULT false,
@@ -1028,6 +1028,117 @@ USING (
 
 
 -- =====================================================================================
--- END OF SCHEMA
+-- TOURNAMENT FEATURE UPDATES (Merged)
 -- =====================================================================================
 
+-- 1. Remove unique constraint to allow multiple challenges of same type
+ALTER TABLE public.leagueschallenges DROP CONSTRAINT IF EXISTS unique_league_challenge;
+
+-- 2. Update challenge_type check constraints to include 'tournament'
+ALTER TABLE public.specialchallenges DROP CONSTRAINT IF EXISTS specialchallenges_challenge_type_check;
+ALTER TABLE public.leagueschallenges DROP CONSTRAINT IF EXISTS leagueschallenges_challenge_type_check;
+
+ALTER TABLE public.specialchallenges ADD CONSTRAINT specialchallenges_challenge_type_check 
+  CHECK (challenge_type IN ('individual', 'team', 'sub_team', 'tournament'));
+
+ALTER TABLE public.leagueschallenges ADD CONSTRAINT leagueschallenges_challenge_type_check 
+  CHECK (challenge_type IN ('individual', 'team', 'sub_team', 'tournament'));
+
+-- 3. Create Tournament Matches Table (NO RLS as requested)
+CREATE TABLE IF NOT EXISTS public.challenge_tournament_matches (
+    match_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    league_challenge_id uuid NOT NULL REFERENCES public.leagueschallenges(id) ON DELETE CASCADE,
+    
+    -- Organization
+    round_number integer DEFAULT 0,
+    round_name text,                -- "Group Stage", "Semi-Final", "Final"
+    group_id text,                  -- Optional: "A", "B"
+    
+    -- Teams
+    team1_id uuid REFERENCES public.teams(team_id) ON DELETE SET NULL,
+    team2_id uuid REFERENCES public.teams(team_id) ON DELETE SET NULL,
+    
+    -- Results
+    score1 integer DEFAULT 0,
+    score2 integer DEFAULT 0,
+    winner_id uuid REFERENCES public.teams(team_id) ON DELETE SET NULL,
+    
+    -- Meta
+    status text DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'live', 'completed', 'cancelled')),
+    start_time timestamptz,
+    location text,
+    
+    created_at timestamptz DEFAULT now(),
+    updated_at timestamptz DEFAULT now()
+);
+
+-- Indexing
+CREATE INDEX IF NOT EXISTS idx_ct_matches_challenge ON public.challenge_tournament_matches(league_challenge_id);
+CREATE INDEX IF NOT EXISTS idx_ct_matches_teams ON public.challenge_tournament_matches(team1_id, team2_id);
+CREATE INDEX IF NOT EXISTS idx_ct_matches_round ON public.challenge_tournament_matches(league_challenge_id, round_number);
+
+-- Trigger for updated_at
+DROP TRIGGER IF EXISTS challenge_tournament_matches_updated_at ON public.challenge_tournament_matches;
+CREATE TRIGGER challenge_tournament_matches_updated_at BEFORE UPDATE ON public.challenge_tournament_matches
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- NOTE: RLS IS EXPLICITLY DISABLED/NOT ENABLED FOR THIS TABLE
+
+
+-- 5. Helper RPC to get matches with team names (SAFE JOIN)
+CREATE OR REPLACE FUNCTION public.get_tournament_matches(p_challenge_id uuid)
+RETURNS TABLE (
+    match_id uuid,
+    league_challenge_id uuid,
+    round_number integer,
+    round_name text,
+    group_id text,
+    team1_id uuid,
+    team2_id uuid,
+    score1 integer,
+    score2 integer,
+    winner_id uuid,
+    status text,
+    start_time timestamptz,
+    location text,
+    created_at timestamptz,
+    updated_at timestamptz,
+    team1 json,
+    team2 json
+)
+SECURITY DEFINER
+SET search_path = public
+LANGUAGE sql
+AS $$
+  SELECT 
+    m.match_id,
+    m.league_challenge_id,
+    m.round_number,
+    m.round_name,
+    m.group_id,
+    m.team1_id,
+    m.team2_id,
+    m.score1,
+    m.score2,
+    m.winner_id,
+    m.status,
+    m.start_time,
+    m.location,
+    m.created_at,
+    m.updated_at,
+    json_build_object('team_name', t1.team_name) as team1,
+    json_build_object('team_name', t2.team_name) as team2
+  FROM challenge_tournament_matches m
+  LEFT JOIN teams t1 ON m.team1_id = t1.team_id
+  LEFT JOIN teams t2 ON m.team2_id = t2.team_id
+  WHERE m.league_challenge_id = p_challenge_id
+  ORDER BY m.round_number ASC, m.start_time ASC;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_tournament_matches(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_tournament_matches(uuid) TO service_role;
+
+
+-- =====================================================================================
+-- END OF SCHEMA
+-- =====================================================================================

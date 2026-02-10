@@ -377,6 +377,10 @@ export default function SubmitActivityPage({
   const [ocrDialogOpen, setOcrDialogOpen] = React.useState(false);
   const [ocrResult, setOcrResult] = React.useState<{ raw: string; minutes: number } | null>(null);
 
+  // Confirm submission dialog
+  const [confirmDialogOpen, setConfirmDialogOpen] = React.useState(false);
+  const [confirmSubmitType, setConfirmSubmitType] = React.useState<'workout' | 'rest'>('workout');
+
   // Confetti state for success dialog
   const [showConfetti, setShowConfetti] = React.useState(false);
   const [windowSize, setWindowSize] = React.useState({ width: 0, height: 0 });
@@ -711,7 +715,8 @@ export default function SubmitActivityPage({
   // Submit the activity (step 1: validation and check)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    handleSubmissionFlow(false);
+    setConfirmSubmitType('workout');
+    setConfirmDialogOpen(true);
   };
 
   const handleSubmissionFlow = async (overwrite: boolean) => {
@@ -921,9 +926,7 @@ export default function SubmitActivityPage({
   };
 
   // Submit rest day
-  const handleRestDaySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const submitRestDay = async () => {
     // START CHECK: Allow submissions 3 days before league start (Trial Period)
     if (leagueStartLocal) {
       const trialStartDate = subDays(leagueStartLocal, 3);
@@ -948,15 +951,12 @@ export default function SubmitActivityPage({
         league_id: leagueId,
         date: format(activityDate, 'yyyy-MM-dd'),
         type: 'rest',
-        tzOffsetMinutes: new Date().getTimezoneOffset(), // Send user's timezone offset (same as new Date().getTimezoneOffset())
+        tzOffsetMinutes: new Date().getTimezoneOffset(),
         ianaTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
-        // Add notes - if exemption, prefix with marker
         notes: needsExemption
           ? `[EXEMPTION_REQUEST] ${restDayReason || 'Rest day exemption requested'}`
           : restDayReason || undefined,
-        overwrite: true // Allow overwriting rest days freely if needed? Assuming yes for now, or we can check too.
-        // For simplicity, let's treat rest days as simpler. But ideally should warn here too.
-        // Given user request was about "uploaded", likely focused on workout.
+        overwrite: true,
       };
 
       const response = await fetch('/api/entries/upsert', {
@@ -995,6 +995,21 @@ export default function SubmitActivityPage({
       toast.error(error instanceof Error ? error.message : 'Failed to submit rest day');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRestDaySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setConfirmSubmitType('rest');
+    setConfirmDialogOpen(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setConfirmDialogOpen(false);
+    if (confirmSubmitType === 'rest') {
+      await submitRestDay();
+    } else {
+      await handleSubmissionFlow(false);
     }
   };
 
@@ -1102,6 +1117,20 @@ export default function SubmitActivityPage({
     }
   };
 
+  const confirmDateLabel = format(activityDate, 'MMMM d, yyyy');
+  const confirmActivityLabel = selectedActivity?.activity_name || '—';
+  const confirmMeasurementType = selectedActivity?.measurement_type || 'duration';
+  const confirmMetrics = [
+    formData.duration ? { label: 'Duration', value: `${formData.duration} min` } : null,
+    formData.distance ? { label: 'Distance', value: `${formData.distance} km` } : null,
+    formData.steps ? { label: 'Steps', value: `${formData.steps}` } : null,
+    formData.holes ? { label: 'Holes', value: `${formData.holes}` } : null,
+  ].filter(Boolean) as { label: string; value: string }[];
+  const confirmNotes = formData.notes?.trim() || '—';
+  const confirmProof = selectedFile ? selectedFile.name : 'Not attached';
+  const confirmRestReason = restDayReason.trim() || '—';
+  const confirmNeedsExemption = restDayStats?.isAtLimit || false;
+
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
       {/* Header */}
@@ -1136,11 +1165,11 @@ export default function SubmitActivityPage({
         {/* Workout Tab Content */}
         <TabsContent value="workout" className="mt-3">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="rounded-lg border p-4 space-y-4 max-w-2xl">
+            <div className="rounded-lg border bg-card/70 shadow-sm p-4 space-y-4 max-w-2xl">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="workout" className="flex items-center gap-2">
                   <Dumbbell className="size-4" />
-                  Workout
+                  Activity
                 </TabsTrigger>
                 <TabsTrigger value="rest" className="flex items-center gap-2">
                   <Moon className="size-4" />
@@ -1402,7 +1431,7 @@ export default function SubmitActivityPage({
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="workout" className="flex items-center gap-2">
                   <Dumbbell className="size-4" />
-                  Workout
+                  Activity
                 </TabsTrigger>
                 <TabsTrigger value="rest" className="flex items-center gap-2">
                   <Moon className="size-4" />
@@ -1544,6 +1573,106 @@ export default function SubmitActivityPage({
           </form>
         </TabsContent>
       </Tabs>
+
+      {/* Confirm Submission Dialog */}
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Submission</AlertDialogTitle>
+            <AlertDialogDescription>
+              Review your details before confirming.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 text-sm">
+            <div className="rounded-md border bg-muted/30 p-3">
+              <div className="grid grid-cols-1 gap-2">
+                <div>
+                  <span className="text-muted-foreground block text-xs">Type</span>
+                  <span className="font-medium">
+                    {confirmSubmitType === 'rest' ? 'Rest Day' : 'Workout'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs">Date</span>
+                  <span className="font-medium">{confirmDateLabel}</span>
+                </div>
+              </div>
+            </div>
+
+            {confirmSubmitType === 'workout' ? (
+              <div className="rounded-md border bg-card/70 p-3 space-y-2">
+                <div>
+                  <span className="text-muted-foreground block text-xs">Activity Type</span>
+                  <span className="font-medium">{confirmActivityLabel}</span>
+                </div>
+
+                <div>
+                  <span className="text-muted-foreground block text-xs">Measurement</span>
+                  {confirmMeasurementType === 'none' ? (
+                    <span className="font-medium">None required</span>
+                  ) : confirmMetrics.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-1">
+                      {confirmMetrics.map((metric) => (
+                        <div key={metric.label}>
+                          <span className="text-muted-foreground block text-xs">{metric.label}</span>
+                          <span className="font-medium">{metric.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="font-medium">Not provided</span>
+                  )}
+                </div>
+
+                <div>
+                  <span className="text-muted-foreground block text-xs">Notes</span>
+                  <span className="font-medium">{confirmNotes}</span>
+                </div>
+
+                <div>
+                  <span className="text-muted-foreground block text-xs">Proof Screenshot</span>
+                  {imagePreview ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={imagePreview}
+                      alt="Proof screenshot preview"
+                      className="mt-2 h-28 w-full rounded-md border object-contain bg-muted"
+                    />
+                  ) : (
+                    <span className="font-medium">{confirmProof}</span>
+                  )}
+                </div>
+
+                <div>
+                  <span className="text-muted-foreground block text-xs">Estimated RR</span>
+                  <span className="font-medium">{estimatedRR.toFixed(2)}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-md border bg-card/70 p-3 space-y-2">
+                <div>
+                  <span className="text-muted-foreground block text-xs">Reason</span>
+                  <span className="font-medium">{confirmRestReason}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs">Exemption</span>
+                  <span className="font-medium">{confirmNeedsExemption ? 'Required' : 'No'}</span>
+                </div>
+              </div>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <div className="flex w-full sm:justify-end gap-2">
+              <Button variant="outline" onClick={() => setConfirmDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleConfirmSubmit} disabled={loading || uploadingImage}>
+                Confirm
+              </Button>
+            </div>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* OCR Success Dialog */}
       <AlertDialog open={ocrDialogOpen} onOpenChange={setOcrDialogOpen}>
@@ -1717,7 +1846,7 @@ export default function SubmitActivityPage({
                 ? 'Exemption Request Submitted!'
                 : submittedData?.isRestDay
                   ? 'Rest Day Logged!'
-                  : 'Activity Submitted!'}
+                  : 'Confirmed Submission!'}
             </DialogTitle>
             <DialogDescription className="text-base">
               {submittedData?.isExemption
@@ -1753,7 +1882,7 @@ export default function SubmitActivityPage({
             <Button asChild className="flex-1">
               <Link href={`/leagues/${leagueId}`}>
                 <Eye className="mr-2 size-4" />
-                My Activities
+                Back to My Activities
               </Link>
             </Button>
           </div>

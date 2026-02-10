@@ -152,17 +152,17 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
-          <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
-            <Link href="/leagues">
-              <Search className="mr-2 size-4" />
-              Search Leagues
-            </Link>
-          </Button>
-          <Button size="sm" asChild className="w-full sm:w-auto">
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <Button size="sm" asChild>
             <Link href="/leagues/join">
               <Users className="mr-2 size-4" />
               Join League
+            </Link>
+          </Button>
+          <Button size="sm" asChild variant="outline">
+            <Link href="/leagues/create">
+              <Trophy className="mr-2 size-4" />
+              Create League
             </Link>
           </Button>
         </div>
@@ -185,7 +185,7 @@ export default function DashboardPage() {
 
         <div className="px-4 lg:px-6" />
       </div>
-    </div>
+    </div >
   );
 }
 

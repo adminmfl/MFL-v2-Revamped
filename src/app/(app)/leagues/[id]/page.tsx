@@ -49,6 +49,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
+import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import { getClientCache, setClientCache, invalidateClientCache } from '@/lib/client-cache';
 import { DownloadReportButton, DownloadCertificateButton } from '@/components/leagues/download-report-button';
 import { DynamicReportDialog } from '@/components/leagues/dynamic-report-dialog';
@@ -172,6 +173,15 @@ export default function LeagueDashboardPage({
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
   const [selectedSubmission, setSelectedSubmission] = React.useState<MySubmission | null>(null);
   const [mySummaryLoading, setMySummaryLoading] = React.useState(true);
+
+  const isTrialPeriod = React.useMemo(() => {
+    if (!league?.start_date) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(String(league.start_date).slice(0, 10));
+    start.setHours(0, 0, 0, 0);
+    return today < start;
+  }, [league?.start_date]);
 
 
   const { user } = useAuth();
@@ -411,7 +421,9 @@ export default function LeagueDashboardPage({
           }
 
           const isWorkout = entry.type === 'workout';
-          const workoutType = isWorkout && entry.workout_type ? String(entry.workout_type).replace(/_/g, ' ') : '';
+          const workoutType = isWorkout
+            ? (entry.custom_activity_name || (entry.workout_type ? String(entry.workout_type).replace(/_/g, ' ') : ''))
+            : '';
           const typeLabel = isWorkout ? (workoutType ? workoutType : 'Workout') : 'Rest Day';
           const statusLabel = entry.status ? String(entry.status) : '';
 
@@ -812,6 +824,11 @@ export default function LeagueDashboardPage({
             )}
           </div>
           <p className="text-muted-foreground">One workout closer to your best self !</p>
+          {isTrialPeriod && (
+            <Badge className="mt-2 bg-amber-50 text-amber-700 border-amber-200">
+              Trial Period
+            </Badge>
+          )}
           {/* {hostName && (
             <Badge className="mt-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-0 px-3 py-1.5 hover:from-blue-600 hover:to-cyan-600 transition-all shadow-sm">
               <Crown className="size-3.5 mr-1.5" />
@@ -857,7 +874,7 @@ export default function LeagueDashboardPage({
               >
                 <Link href={`/leagues/${id}/submit?type=workout`}>
                   <Dumbbell className="mr-2 size-4" />
-                  Add activity
+                  Add Activity
                 </Link>
               </Button>
               <Button
@@ -950,7 +967,7 @@ export default function LeagueDashboardPage({
               >
                 <Link href={`/leagues/${id}/submit?type=workout`}>
                   <Dumbbell className="mr-2 size-4" />
-                  Add Workout
+                  Add Activity
                 </Link>
               </Button>
               <Button
@@ -1003,7 +1020,7 @@ export default function LeagueDashboardPage({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-md border border-[#bbda6e]/60 bg-[#bbda6e]/35 dark:bg-blue-950 px-3 py-2.5 text-center">
+                  <div className="rounded-md border border-primary/20 bg-primary/10 dark:bg-primary/20 px-3 py-2.5 text-center">
                     <div className="text-xs text-muted-foreground">Total Points</div>
                     <div className="text-base font-semibold text-foreground tabular-nums">
                       {mySummary?.points.toLocaleString() ?? '—'}
@@ -1019,7 +1036,7 @@ export default function LeagueDashboardPage({
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-md border border-[#bbda6e]/60 bg-[#bbda6e]/35 dark:bg-blue-950 px-3 py-2.5 text-center">
+                  <div className="rounded-md border border-primary/20 bg-primary/10 dark:bg-primary/20 px-3 py-2.5 text-center">
                     <div className="text-[11px] text-muted-foreground">Rest Days Used</div>
                     <div className="text-sm font-semibold text-foreground tabular-nums">
                       {mySummary?.restUsed.toLocaleString() ?? '—'}
@@ -1040,7 +1057,7 @@ export default function LeagueDashboardPage({
                     </div>
                   </div>
                   <div
-                    className={`rounded-md border border-border/60 px-3 py-2.5 text-center ${rejectedCount > 0 ? 'bg-red-100 dark:bg-red-950/40' : 'bg-muted/40'
+                    className={`rounded-md border border-border/60 px-3 py-2.5 text-center ${rejectedCount > 0 ? 'bg-destructive/10 dark:bg-destructive/20' : 'bg-muted/40'
                       }`}
                   >
                     <div className="text-[11px] text-muted-foreground">Rejected Workouts</div>
@@ -1146,7 +1163,7 @@ export default function LeagueDashboardPage({
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-md border border-[#bbda6e]/60 bg-[#bbda6e]/35 dark:bg-blue-950 px-3 py-2.5 text-center">
+                  <div className="rounded-md border border-primary/20 bg-primary/10 dark:bg-primary/20 px-3 py-2.5 text-center">
                     <div className="text-xs text-muted-foreground">Total Points</div>
                     <div className="text-base font-semibold text-foreground tabular-nums">
                       {typeof mySummary?.teamPoints === 'number'
@@ -1516,71 +1533,7 @@ function QuickActionCard({
 // ============================================================================
 
 function LeagueDashboardSkeleton() {
-  return (
-    <div className="@container/main flex flex-1 flex-col gap-4 lg:gap-6">
-      {/* Header Skeleton */}
-      <div className="flex flex-col gap-4 px-4 lg:px-6 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-4">
-          <Skeleton className="size-14 rounded-xl" />
-          <div className="space-y-2">
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-4 w-80" />
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Skeleton className="h-9 w-24" />
-          <Skeleton className="h-9 w-24" />
-        </div>
-      </div>
-
-      {/* Section Cards Skeleton */}
-      <div className="grid gap-4 grid-cols-1 px-4 lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-        {[1, 2, 3, 4].map((i) => (
-          <Card key={i}>
-            <CardHeader>
-              <Skeleton className="h-4 w-24 mb-2" />
-              <Skeleton className="h-8 w-20" />
-            </CardHeader>
-            <CardFooter className="flex-col items-start gap-1.5">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-3 w-40" />
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
-
-      {/* Progress Skeleton */}
-      <div className="px-4 lg:px-6">
-        <Skeleton className="h-24 w-full rounded-xl" />
-      </div>
-
-      {/* Quick Actions Skeleton */}
-      <div className="px-4 lg:px-6">
-        <div className="mb-4">
-          <Skeleton className="h-6 w-32 mb-2" />
-          <Skeleton className="h-4 w-48" />
-        </div>
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardContent className="p-4">
-                <Skeleton className="h-16 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      {/* League Info Skeleton */}
-      <div className="px-4 lg:px-6">
-        <div className="mb-4">
-          <Skeleton className="h-6 w-40 mb-2" />
-          <Skeleton className="h-4 w-56" />
-        </div>
-        <Skeleton className="h-48 w-full rounded-lg" />
-      </div>
-    </div>
-  );
+  return <DumbbellLoading label="Loading My Activity..." />;
 }
 
 // ============================================================================

@@ -36,14 +36,14 @@ const CreateTierSchema = z.object({
   max_days: z.number().int().min(1).max(365),
   max_participants: z.number().int().min(1).max(10000),
   pricing_type: z.enum(['fixed', 'dynamic']),
-  
+
   // Pricing fields (conditional based on pricing_type)
   fixed_price: nonNegativeNullable,
   base_fee: nonNegativeNullable,
   per_day_rate: nonNegativeNullable,
   per_participant_rate: nonNegativeNullable,
   gst_percentage: z.number().min(0).max(100).default(18),
-  
+
   display_order: z.number().int().min(0).default(0),
   is_featured: z.boolean().default(false),
   features: z.array(z.string()).default([])
@@ -88,13 +88,13 @@ async function checkAdminAccess(): Promise<{ success: boolean; user_id?: string;
     .select('platform_role')
     .eq('user_id', userId)
     .single();
-  
+
   console.debug('admin/tiers checkAdminAccess - users.platform_role lookup', { userId, userData: userData ?? null, userError });
   if (userError || userData?.platform_role !== 'admin') {
     console.warn('admin/tiers checkAdminAccess - admin check failed', { userId, userData, userError });
     return { success: false, error: 'Admin access required' };
   }
-  
+
   return { success: true, user_id: userId };
 }
 
@@ -179,20 +179,20 @@ export async function POST(request: NextRequest) {
     if (!adminCheck.success) {
       return NextResponse.json({ error: adminCheck.error }, { status: 403 });
     }
-    
+
     const body = await request.json();
     const validationResult = CreateTierSchema.safeParse(body);
-    
+
     if (!validationResult.success) {
       return NextResponse.json(
         { error: 'Validation failed', details: validationResult.error.errors },
         { status: 400 }
       );
     }
-    
+
     const data = validationResult.data;
     const supabase = getSupabaseServiceRole();
-    
+
     const resolvedFixedPrice = data.pricing_type === 'fixed' ? data.fixed_price ?? null : null;
     const resolvedBaseFee = data.base_fee ?? 0;
     const resolvedPerDayRate = data.per_day_rate ?? 0;
@@ -200,9 +200,9 @@ export async function POST(request: NextRequest) {
 
     // Validate pricing configuration
     if (data.pricing_type === 'fixed') {
-      if (resolvedFixedPrice === null || resolvedFixedPrice <= 0) {
+      if (resolvedFixedPrice === null || resolvedFixedPrice === undefined || resolvedFixedPrice < 0) {
         return NextResponse.json(
-          { error: 'fixed_price must be provided and greater than 0 for fixed pricing' },
+          { error: 'fixed_price must be provided and >= 0 for fixed pricing (0 = free tier)' },
           { status: 400 }
         );
       }
@@ -216,7 +216,7 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-    
+
     // Create pricing entry first
     const { data: pricingData, error: pricingError } = await supabase
       .from('pricing')
@@ -233,13 +233,13 @@ export async function POST(request: NextRequest) {
       })
       .select()
       .single();
-    
+
     if (pricingError || !pricingData) {
       console.error('Failed to create pricing:', pricingError);
       console.debug('create pricing payload:', { data: { tier_name: data.name, pricing_type: data.pricing_type, resolvedFixedPrice, resolvedBaseFee, resolvedPerDayRate, resolvedPerParticipantRate, gst_percentage: data.gst_percentage }, admin: adminCheck.user_id });
       return NextResponse.json({ error: 'Failed to create pricing configuration' }, { status: 500 });
     }
-    
+
     // Create tier entry
     const { data: tierData, error: tierError } = await supabase
       .from('league_tiers')
@@ -258,7 +258,7 @@ export async function POST(request: NextRequest) {
       })
       .select()
       .single();
-    
+
     if (tierError || !tierData) {
       // Rollback pricing creation
       await supabase.from('pricing').delete().eq('id', pricingData.id);
@@ -266,9 +266,9 @@ export async function POST(request: NextRequest) {
       console.debug('create tier payload:', { tier: { name: data.name, display_name: data.display_name, max_days: data.max_days, max_participants: data.max_participants }, admin: adminCheck.user_id });
       return NextResponse.json({ error: 'Failed to create tier' }, { status: 500 });
     }
-    
+
     return NextResponse.json({ tier: tierData, pricing: pricingData }, { status: 201 });
-    
+
   } catch (error) {
     console.error('POST tier error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

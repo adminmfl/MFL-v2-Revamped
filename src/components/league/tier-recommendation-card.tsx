@@ -53,23 +53,25 @@ export function TierRecommendationCard({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* Price Display */}
-        {priceBreakdown && (
+        {/* Price Display - from breakdown or tier config */}
+        {priceBreakdown ? (
           <div className="space-y-2">
             <div className="flex items-baseline gap-2">
-              {priceBreakdown.pricing_type === 'fixed' && tier.pricing.fixed_price ? (
+              {priceBreakdown.pricing_type === 'fixed' && tier.pricing.fixed_price !== null ? (
                 <>
                   <span className="text-3xl font-bold text-primary">
-                    {formatCurrency(priceBreakdown.total)}
+                    {tier.pricing.fixed_price === 0 ? 'Free' : formatCurrency(tier.pricing.fixed_price)}
                   </span>
-                  <span className="text-sm text-muted-foreground">for {priceBreakdown.duration_days} days</span>
+                  {tier.pricing.fixed_price > 0 && (
+                    <span className="text-sm text-muted-foreground">+GST</span>
+                  )}
                 </>
               ) : (
                 <>
                   <span className="text-3xl font-bold text-primary">
                     {formatCurrency(priceBreakdown.total)}
                   </span>
-                  <span className="text-sm text-muted-foreground">estimated</span>
+                  <span className="text-sm text-muted-foreground">incl. GST</span>
                 </>
               )}
             </div>
@@ -88,7 +90,22 @@ export function TierRecommendationCard({
               </div>
             </div>
           </div>
-        )}
+        ) : tier.pricing ? (
+          <div className="flex items-baseline gap-2">
+            {tier.pricing.pricing_type === 'fixed' && tier.pricing.fixed_price !== null ? (
+              <>
+                <span className="text-3xl font-bold text-primary">
+                  {tier.pricing.fixed_price === 0 ? 'Free' : formatCurrency(tier.pricing.fixed_price)}
+                </span>
+                {tier.pricing.fixed_price > 0 && (
+                  <span className="text-sm text-muted-foreground">+GST</span>
+                )}
+              </>
+            ) : (
+              <span className="text-sm text-muted-foreground">Dynamic pricing</span>
+            )}
+          </div>
+        ) : null}
 
         {/* Tier Limits */}
         <div className="grid grid-cols-2 gap-3">

@@ -30,9 +30,9 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
-import { 
-  TierConfig, 
-  PriceBreakdown, 
+import {
+  TierConfig,
+  PriceBreakdown,
   TierValidationResult,
   recommendTier,
   TierRecommendation,
@@ -75,16 +75,16 @@ export default function CreateLeaguePage() {
   const [formData, setFormData] = React.useState<FormData>({
     league_name: '',
     description: '',
-    num_teams: '4',
-    max_participants: '20',
-    rest_days: '6',
+    num_teams: '',
+    max_participants: '',
+    rest_days: '',
     is_public: false,
     is_exclusive: true,
   });
 
   // Date/Duration State
   const [startDate, setStartDate] = React.useState<Date | undefined>();
-  const [duration, setDuration] = React.useState(30);
+  const [duration, setDuration] = React.useState();
   const [endDate, setEndDate] = React.useState<Date | undefined>();
 
   // Tier & Pricing State
@@ -169,11 +169,11 @@ export default function CreateLeaguePage() {
   // Recommend tier when form data changes (shows recommendation but doesn't auto-select)
   React.useEffect(() => {
     if (tiers.length === 0) return;
-    
+
     const estimatedParticipants = parseInt(formData.max_participants) || parseInt(formData.num_teams) * 5;
     const rec = recommendTier(tiers, duration, estimatedParticipants);
     setRecommendation(rec);
-    
+
     // Clear selected tier when form changes so user must confirm new recommendation
     setSelectedTierId(null);
   }, [tiers, duration, formData]);
