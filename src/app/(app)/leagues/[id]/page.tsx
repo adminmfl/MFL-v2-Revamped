@@ -49,6 +49,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
+import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import { getClientCache, setClientCache, invalidateClientCache } from '@/lib/client-cache';
 import { DownloadReportButton, DownloadCertificateButton } from '@/components/leagues/download-report-button';
 import { DynamicReportDialog } from '@/components/leagues/dynamic-report-dialog';
@@ -1532,17 +1533,7 @@ function QuickActionCard({
 // ============================================================================
 
 function LeagueDashboardSkeleton() {
-  return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 px-4 lg:px-6">
-      <div className="relative">
-        <div className="size-16 rounded-full bg-primary/10 flex items-center justify-center">
-          <Dumbbell className="size-8 text-primary" />
-        </div>
-        <div className="absolute inset-0 size-16 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-      </div>
-      <p className="text-sm text-muted-foreground animate-pulse">Loading activities...</p>
-    </div>
-  );
+  return <DumbbellLoading label="Loading My Activity..." />;
 }
 
 // ============================================================================

@@ -33,6 +33,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import {
   Select,
   SelectContent,
@@ -233,18 +234,7 @@ export default function LeagueSettingsPage({
   }
 
   if (loading) {
-    return (
-      <div className="flex flex-col gap-6 py-4 md:py-6">
-        <div className="px-4 lg:px-6">
-          <Card className="max-w-lg mx-auto">
-            <CardContent className="pt-6 text-center space-y-3">
-              <Loader2 className="size-10 animate-spin text-primary mx-auto" />
-              <p className="text-muted-foreground">Loading league settings...</p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
+    return <DumbbellLoading label="Loading league settings..." />;
   }
 
   if (loadError) {

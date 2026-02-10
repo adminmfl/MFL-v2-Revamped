@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import {
   Card,
   CardContent,
@@ -45,20 +46,6 @@ import { toast } from 'sonner';
 // ============================================================================
 // Loading State
 // ============================================================================
-
-function LoadingSkeleton() {
-  return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
-      <div className="relative">
-        <div className="size-16 rounded-full bg-primary/10 flex items-center justify-center">
-          <Dumbbell className="size-8 text-primary" />
-        </div>
-        <div className="absolute inset-0 size-16 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-      </div>
-      <p className="text-sm text-muted-foreground animate-pulse">Loading activities...</p>
-    </div>
-  );
-}
 function TrialPeriodAlert({ daysLeft }: { daysLeft: number }) {
   return (
     <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
@@ -82,15 +69,20 @@ export default function LeagueActivitiesPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: leagueId } = use(params);
-  const { isHost, isGovernor } = useRole();
   const { activeLeague } = useLeague();
-
-  // Host/Governor can see all activities to configure
+  const { isHost, isGovernor } = useRole();
   const isAdmin = isHost || isGovernor;
-  const { data, isLoading, error, refetch, addActivities, removeActivity, updateFrequency } =
-    useLeagueActivities(leagueId, { includeAll: isAdmin });
 
-  const [toggleLoading, setToggleLoading] = React.useState<string | null>(null);
+  const {
+    data,
+    isLoading,
+    error,
+    refetch,
+    addActivities,
+    removeActivity,
+    updateFrequency,
+  } = useLeagueActivities(leagueId, { includeAll: isAdmin });
+
   const [selectedCategory, setSelectedCategory] = React.useState<string>('all');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [frequencyDrafts, setFrequencyDrafts] = React.useState<Record<string, string>>({});
@@ -103,6 +95,7 @@ export default function LeagueActivitiesPage({
   const [pendingChanges, setPendingChanges] = React.useState<Map<string, { enabled?: boolean; frequency?: number | null; frequency_type?: 'weekly' | 'monthly' | null; minimums?: { min_value: number | null; age_group_overrides: Record<string, any> } }>>(new Map());
 
   const hasChanges = pendingChanges.size > 0;
+  const toggleLoading = null;
 
   const enabledActivityIds = React.useMemo(() => {
     return new Set(data?.activities.map((a) => a.activity_id) || []);
@@ -185,13 +178,7 @@ export default function LeagueActivitiesPage({
   }, [filteredActivities, enabledActivityIds]);
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col gap-6 py-4 md:py-6">
-        <div className="px-4 lg:px-6">
-          <LoadingSkeleton />
-        </div>
-      </div>
-    );
+    return <DumbbellLoading label="Loading activities..." />;
   }
 
   const handleToggle = (activityId: string, enable: boolean) => {
