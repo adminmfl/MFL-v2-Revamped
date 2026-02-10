@@ -460,7 +460,7 @@ export default function LeagueSettingsPage({
                     <FieldInfoButton text="Start and end dates are locked after launch." />
                   </div>
                 </div>
-                <div className="w-full max-w-[340px] grid grid-cols-2 gap-2">
+                <div className="w-full max-w-md flex gap-2">
                   <Input
                     type="date"
                     value={formData.start_date}
@@ -468,7 +468,7 @@ export default function LeagueSettingsPage({
                       setFormData((prev) => ({ ...prev, start_date: e.target.value }))
                     }
                     disabled={!canEditStructure}
-                    className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
+                    className="flex-1 min-w-0 bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground text-[12px] sm:text-sm px-2.5"
                   />
                   <Input
                     type="date"
@@ -477,7 +477,7 @@ export default function LeagueSettingsPage({
                       setFormData((prev) => ({ ...prev, end_date: e.target.value }))
                     }
                     disabled={!canEditStructure}
-                    className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
+                    className="flex-1 min-w-0 bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground text-[12px] sm:text-sm px-2.5"
                   />
                 </div>
               </div>
