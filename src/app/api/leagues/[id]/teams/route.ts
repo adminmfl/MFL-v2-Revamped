@@ -87,6 +87,17 @@ export async function GET(
       }))
     );
 
+    // Determine max capacity for UI display
+    let displayCapacity = 40;
+
+    if (league.tier_snapshot && typeof league.tier_snapshot === 'object') {
+      // @ts-ignore
+      const snapshotMax = league.tier_snapshot.max_participants;
+      if (snapshotMax) {
+        displayCapacity = Number(snapshotMax);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -99,13 +110,14 @@ export async function GET(
         league: {
           league_id: league.league_id,
           league_name: league.league_name,
-          invite_code: (league as any).invite_code || null,
-          num_teams: league.num_teams,
-          league_capacity: league.league_capacity || 20,
+          invite_code: league.invite_code || null,
+          num_teams: league.num_teams || 0,
+          league_capacity: displayCapacity,
           status: league.status,
           host_user_id: league.created_by,
           normalize_points_by_team_size: league.normalize_points_by_team_size,
-          logo_url: (league as any).logo_url || null,
+          logo_url: league.logo_url || null,
+          tier_name: (league.tier_snapshot as any)?.display_name || (league.tier_snapshot as any)?.tier_name || null,
         },
         teamSizeVariance: {
           hasVariance: teamSizeStats.hasVariance,

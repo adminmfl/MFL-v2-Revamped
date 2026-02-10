@@ -267,17 +267,14 @@ export async function getLeagueById(leagueId: string): Promise<League | null> {
 
     if (error || !data) return null;
 
-    // Fetch tier capacity separately if tier_id exists
-    let leagueCapacity = 20;
-    if (data.tier_id) {
-      const { data: tierData } = await supabase
-        .from('league_tiers')
-        .select('league_capacity')
-        .eq('tier_id', data.tier_id)
-        .single();
+    // Calculate league_capacity from tier_snapshot or fallback
+    let leagueCapacity = 40;
 
-      if (tierData?.league_capacity) {
-        leagueCapacity = tierData.league_capacity;
+    if (data.tier_snapshot && typeof data.tier_snapshot === 'object') {
+      // @ts-ignore
+      const snapshotMax = data.tier_snapshot.max_participants;
+      if (snapshotMax) {
+        leagueCapacity = Number(snapshotMax);
       }
     }
 
