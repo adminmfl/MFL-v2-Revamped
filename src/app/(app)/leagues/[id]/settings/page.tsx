@@ -16,6 +16,8 @@ import {
   Shield,
   Calendar,
   Activity,
+  CheckCircle2,
+  Circle,
 } from 'lucide-react';
 
 import { useRole } from '@/contexts/role-context';
@@ -54,6 +56,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
+import { useLeagueTeams } from '@/hooks/use-league-teams';
+import { useLeagueActivities } from '@/hooks/use-league-activities';
 
 // ============================================================================
 // League Settings Page (Host Only)
@@ -87,6 +91,8 @@ export default function LeagueSettingsPage({
   const router = useRouter();
   const { isHost } = useRole();
   const { activeLeague, refetch } = useLeague();
+  const { data: teamsData, isLoading: teamsLoading } = useLeagueTeams(id);
+  const { data: activitiesData, isLoading: activitiesLoading } = useLeagueActivities(id);
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -115,6 +121,11 @@ export default function LeagueSettingsPage({
   });
 
   const canEditStructure = formData.status === 'draft';
+  const isTeamsConfigured = (teamsData?.teams?.length ?? 0) > 0;
+  const isActivitiesConfigured = (activitiesData?.activities?.length ?? 0) > 0;
+  const setupCompletedCount = Number(isTeamsConfigured) + Number(isActivitiesConfigured);
+  const setupTotalCount = 2;
+  const showSetupChecklist = !teamsLoading && !activitiesLoading && setupCompletedCount < setupTotalCount;
 
   const handleLogoUpload = async (file: File) => {
     setLogoUploading(true);
@@ -375,8 +386,55 @@ export default function LeagueSettingsPage({
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
                     <Label>Manage</Label>
+                    {showSetupChecklist && (
+                      <Badge variant="outline" className="text-[10px] sm:text-xs">
+                        {setupCompletedCount}/{setupTotalCount} completed
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">Manage teams and activities in separate screens.</p>
+                  {showSetupChecklist && (
+                    <div className="mt-3 rounded-lg border bg-muted/30 p-3 text-xs space-y-2">
+                      <p className="font-medium text-foreground">Required setup</p>
+                      <p className="text-muted-foreground">Must configure before season starts.</p>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between rounded-md border bg-background/70 px-2 py-1.5">
+                          <div className="flex items-center gap-2">
+                            {isTeamsConfigured ? (
+                              <CheckCircle2 className="size-4 text-green-600" />
+                            ) : (
+                              <Circle className="size-4 text-muted-foreground" />
+                            )}
+                            <span className={isTeamsConfigured ? 'text-muted-foreground line-through' : 'text-foreground'}>
+                              Team management
+                            </span>
+                          </div>
+                          <Button asChild size="sm" variant={isTeamsConfigured ? 'ghost' : 'outline'} className="h-7 text-[10px]">
+                            <Link href={`/leagues/${id}/team`}>
+                              {isTeamsConfigured ? 'View' : 'Set up'}
+                            </Link>
+                          </Button>
+                        </div>
+                        <div className="flex items-center justify-between rounded-md border bg-background/70 px-2 py-1.5">
+                          <div className="flex items-center gap-2">
+                            {isActivitiesConfigured ? (
+                              <CheckCircle2 className="size-4 text-green-600" />
+                            ) : (
+                              <Circle className="size-4 text-muted-foreground" />
+                            )}
+                            <span className={isActivitiesConfigured ? 'text-muted-foreground line-through' : 'text-foreground'}>
+                              Configure activities
+                            </span>
+                          </div>
+                          <Button asChild size="sm" variant={isActivitiesConfigured ? 'ghost' : 'outline'} className="h-7 text-[10px]">
+                            <Link href={`/leagues/${id}/activities`}>
+                              {isActivitiesConfigured ? 'View' : 'Set up'}
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
                   <Button
