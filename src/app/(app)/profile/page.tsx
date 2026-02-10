@@ -24,6 +24,7 @@ import {
   Flame,
   Award,
   KeyRound,
+  Palette,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -51,6 +52,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ThemeDrawer } from '@/components/theme-drawer';
 
 // ============================================================================
 // Types
@@ -93,6 +95,7 @@ export default function ProfilePage() {
     confirmPassword: '',
   });
   const [changingPassword, setChangingPassword] = React.useState(false);
+  const [themeDrawerOpen, setThemeDrawerOpen] = React.useState(false);
 
   // Update form and profile picture when session loads
   React.useEffect(() => {
@@ -834,28 +837,7 @@ export default function ProfilePage() {
         </Card>
       </div>
 
-      <div className="px-4 lg:px-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">System Theme</CardTitle>
-            <CardDescription>Choose your preferred appearance</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="w-full sm:max-w-xs">
-              <Select value={theme ?? 'system'} onValueChange={setTheme}>
-                <SelectTrigger aria-label="Theme preference">
-                  <SelectValue placeholder="Theme preference" />
-                </SelectTrigger>
-                <SelectContent align="start">
-                  <SelectItem value="light">Light Mode</SelectItem>
-                  <SelectItem value="dark">Dark Mode</SelectItem>
-                  <SelectItem value="system">System Preference</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+
 
       {/* Activity Stats - SectionCards Style */}
       <div className="px-4 lg:px-6">
@@ -1006,6 +988,33 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Theme Customization */}
+      <div className="px-4 lg:px-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Palette className="size-5 text-primary" />
+              Theme Customization
+            </CardTitle>
+            <CardDescription>
+              Personalize your appearance with custom colors, depth, and fonts
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={() => setThemeDrawerOpen(true)}
+              className="w-full sm:w-auto gap-2"
+            >
+              <Palette className="size-4" />
+              Customize Theme
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Theme Drawer */}
+      <ThemeDrawer open={themeDrawerOpen} onOpenChange={setThemeDrawerOpen} />
     </div>
   );
 }

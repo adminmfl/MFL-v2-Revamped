@@ -26,12 +26,14 @@ const updateLeagueSchema = z.object({
   auto_rest_day_enabled: z.boolean().optional(),
   normalize_points_by_capacity: z.boolean().optional(),
   normalize_points_by_team_size: z.boolean().optional(),
+  max_team_capacity: z.number().int().min(1).optional(),
   description: z.string().optional(),
 }).transform((input) => {
   const { normalize_points_by_capacity, normalize_points_by_team_size, ...rest } = input;
   return {
     ...rest,
-    normalize_points_by_capacity: normalize_points_by_capacity ?? normalize_points_by_team_size,
+    // Database column is normalize_points_by_team_size
+    normalize_points_by_team_size: normalize_points_by_team_size ?? normalize_points_by_capacity,
   };
 });
 

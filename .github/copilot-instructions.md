@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**My Fitness League (MFL)** is a Next.js 14+ fitness competition platform using App Router, Supabase (PostgreSQL), NextAuth.js, and Razorpay for payments. Users join leagues, form teams, submit workout entries, and compete through three distinct challenge types with complex normalization scoring.
+**My Fitness League (MFL)** is a Next.js 16+ fitness competition platform using App Router, Supabase (PostgreSQL), NextAuth.js, and Razorpay for payments. Users join leagues, form teams, submit workout entries, and compete through three distinct challenge types with complex normalization scoring.
 
 ## Architecture & Data Flow
 

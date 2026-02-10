@@ -39,8 +39,8 @@ export function TiersModal({
   };
 
   const content = (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {tiers.map((tier) => {
           const isSelected = selectedTierId === tier.tier_id;
           const isRecommended = recommendedTierId === tier.tier_id;
@@ -68,7 +68,7 @@ export function TiersModal({
                 }
               }}
               className={cn(
-                'relative flex flex-col gap-3 p-4 md:p-5 rounded-lg border-2 transition-all duration-200 text-left',
+                'relative flex flex-col gap-4 p-6 rounded-xl border-2 transition-all duration-200 text-left',
                 isSelectable
                   ? 'cursor-pointer hover:border-primary/50 hover:bg-primary/5 active:scale-95'
                   : 'opacity-60 cursor-not-allowed',
@@ -83,7 +83,7 @@ export function TiersModal({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className={cn(
-                      'text-base md:text-lg font-semibold truncate',
+                      'text-xl font-semibold',
                       isSelected && 'text-primary'
                     )}>
                       {tier.display_name}
@@ -121,7 +121,7 @@ export function TiersModal({
                 {tier.pricing.pricing_type === 'fixed' && tier.pricing.fixed_price ? (
                   <div>
                     <div className={cn(
-                      'text-2xl font-bold',
+                      'text-3xl font-bold',
                       isSelected ? 'text-primary' : 'text-foreground'
                     )}>
                       {formatCurrency(tier.pricing.fixed_price)}
@@ -142,9 +142,9 @@ export function TiersModal({
               </div>
 
               {/* Limits */}
-              <div className="space-y-1.5 bg-muted/30 -mx-4 -mb-4 px-4 py-3 rounded-b-[calc(0.5rem-2px)]">
-                <div className="text-xs font-semibold text-muted-foreground">Limits</div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="space-y-2 bg-muted/30 -mx-6 -mb-6 px-6 py-4 rounded-b-[calc(0.75rem-2px)]">
+                <div className="text-sm font-semibold text-muted-foreground">Limits</div>
+                <div className="grid grid-cols-2 gap-4 text-base">
                   <div>
                     <span className="text-xs text-muted-foreground">Duration</span>
                     <div className="font-semibold">{tier.max_days} days</div>
@@ -181,14 +181,20 @@ export function TiersModal({
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="p-0">
           <div className="px-4 pt-4 pb-2">
-            <DrawerHeader className="p-0">
+            <DrawerHeader className="p-0 text-left">
               <DrawerTitle className="flex items-center gap-2">
-                <Crown className="size-5 text-primary" />
+                <Crown className="size-5 text-green-600 dark:text-green-500" />
                 All Pricing Tiers
               </DrawerTitle>
-              <DrawerDescription>
-                Select the tier that best fits your league needs
+              <DrawerDescription className="text-xs text-left">
+                <li className="ml-5">
+                  Select the tier that best fits your league needs
+                </li>
+                <li className="ml-5">
+                  Not eligible for a tier? Adjust your duration or participant count to unlock more options.
+                </li>
               </DrawerDescription>
+              
             </DrawerHeader>
           </div>
           <div className="px-4 pb-6 max-h-[70vh] overflow-y-auto">
@@ -201,15 +207,18 @@ export function TiersModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Crown className="size-5 text-primary" />
+            <Crown className="size-5 text-green-600 dark:text-green-500" />
             All Pricing Tiers
           </DialogTitle>
           <DialogDescription>
             Compare all available tiers and select the one that fits your league best
           </DialogDescription>
+          <p className="text-xs text-muted-foreground mt-2 italic">
+            💡 Not eligible for a tier? Adjust your duration or participant count to unlock more options.
+          </p>
         </DialogHeader>
         <div className="mt-6">
           {content}

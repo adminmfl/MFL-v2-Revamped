@@ -12,7 +12,6 @@ import {
   Globe,
   Lock,
   Users,
-  Trophy,
   Info,
   Shield,
   Calendar,
@@ -21,13 +20,11 @@ import {
 
 import { useRole } from '@/contexts/role-context';
 import { useLeague } from '@/contexts/league-context';
-import { useLeagueActivities } from '@/hooks/use-league-activities';
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -36,6 +33,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import {
   Select,
   SelectContent,
@@ -54,7 +52,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
 
@@ -90,9 +87,6 @@ export default function LeagueSettingsPage({
   const router = useRouter();
   const { isHost } = useRole();
   const { activeLeague, refetch } = useLeague();
-  const { data: activitiesData, isLoading: activitiesLoading } = useLeagueActivities(id, {
-    includeAll: true,
-  });
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -117,6 +111,7 @@ export default function LeagueSettingsPage({
     end_date: '',
     status: 'draft' as 'draft' | 'launched' | 'active' | 'completed',
     normalize_points_by_team_size: false,
+    max_team_capacity: '10',
   });
 
   const canEditStructure = formData.status === 'draft';
@@ -201,6 +196,7 @@ export default function LeagueSettingsPage({
           end_date: league.end_date,
           status: league.status,
           normalize_points_by_team_size: !!league.normalize_points_by_team_size,
+          max_team_capacity: String(league.max_team_capacity || '10'),
         });
         setLogoUrl(league.logo_url || null);
       } catch (err) {
@@ -238,18 +234,7 @@ export default function LeagueSettingsPage({
   }
 
   if (loading) {
-    return (
-      <div className="flex flex-col gap-6 py-4 md:py-6">
-        <div className="px-4 lg:px-6">
-          <Card className="max-w-lg mx-auto">
-            <CardContent className="pt-6 text-center space-y-3">
-              <Loader2 className="size-10 animate-spin text-primary mx-auto" />
-              <p className="text-muted-foreground">Loading league settings...</p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
+    return <DumbbellLoading label="Loading league settings..." />;
   }
 
   if (loadError) {
@@ -283,6 +268,7 @@ export default function LeagueSettingsPage({
         auto_rest_day_enabled: formData.auto_rest_day_enabled,
         description: formData.description,
         normalize_points_by_team_size: formData.normalize_points_by_team_size,
+        max_team_capacity: Number(formData.max_team_capacity),
       };
 
       if (canEditStructure) {
@@ -327,24 +313,7 @@ export default function LeagueSettingsPage({
 
       await refetch();
 
-      // Show specific toast for each setting changed
-      const messages: string[] = [];
-
-      if (payload.auto_rest_day_enabled !== undefined) {
-        const status = payload.auto_rest_day_enabled ? 'enabled' : 'disabled';
-        messages.push(`Auto rest day ${status}`);
-      }
-
-      if (payload.normalize_points_by_team_size !== undefined) {
-        const status = payload.normalize_points_by_team_size ? 'enabled' : 'disabled';
-        messages.push(`Point normalization ${status}`);
-      }
-
-      if (messages.length > 0) {
-        toast.success(messages.join('. ') + '.');
-      } else {
-        toast.success('League settings updated.');
-      }
+      toast.success('League settings updated.');
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save changes');
     } finally {
@@ -376,51 +345,72 @@ export default function LeagueSettingsPage({
     <div className="flex flex-col gap-6 py-4 md:py-6">
       {/* Header */}
       <div className="flex flex-col gap-4 px-4 lg:px-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
-              <Settings className="size-6 text-primary" />
-              League Settings
-            </h1>
-            <p className="text-muted-foreground">
-              Configure your league settings and preferences
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2 items-center">
-            <Badge variant="outline" className="w-fit">
-              League ID: {id.slice(0, 8)}...
-            </Badge>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
+            <Settings className="size-6 text-primary" />
+            League Settings
             <Badge variant={formData.status === 'active' ? 'default' : 'secondary'} className="capitalize">
               {formData.status}
             </Badge>
-            <Badge variant="outline" className="flex items-center gap-1 text-xs">
-              <Calendar className="size-3" />
-              {formData.start_date || '—'} → {formData.end_date || '—'}
-            </Badge>
+          </h1>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+            <Calendar className="size-3.5" />
+            <span>
+              {formData.start_date?.split('-').reverse().join('-') || '—'} to {formData.end_date?.split('-').reverse().join('-') || '—'}
+            </span>
           </div>
+          <p className="text-muted-foreground mt-1">
+            Configure your league settings and preferences
+          </p>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="px-4 lg:px-6">
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left Column - Settings Form */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Basic Info Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Trophy className="size-5 text-primary" />
-                  Basic Information
-                  <FieldInfoButton text="Update core league details and schedule." />
-                </CardTitle>
-                <CardDescription>
-                  Update your league details and description
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="league_name">League Name</Label>
+        <div className="max-w-5xl mx-auto">
+          <Card className="overflow-hidden">
+            <CardContent className="divide-y">
+              {/* Quick Links */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 pb-5">
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Label>Manage</Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Manage teams and activities in separate screens.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="h-auto py-1.5 px-1 text-[11px] sm:text-xs gap-1.5 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 dark:border-primary/30 dark:bg-primary/15 dark:text-primary-foreground/90 whitespace-normal text-center leading-tight"
+                  >
+                    <Link href={`/leagues/${id}/team`}>
+                      <Users className="size-3.5 shrink-0" />
+                      Team Management
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="h-auto py-1.5 px-1 text-[11px] sm:text-xs gap-1.5 border-accent/30 bg-accent/10 text-accent hover:bg-accent/20 dark:border-accent/40 dark:bg-accent/15 dark:text-accent-foreground whitespace-normal text-center leading-tight"
+                  >
+                    <Link href={`/leagues/${id}/activities`}>
+                      <Activity className="size-3.5 shrink-0" />
+                      Configure Activities
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+
+              {/* League Name */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-5">
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="league_name">League Name</Label>
+                    <FieldInfoButton text="Shown across invites, leaderboard, and member views." />
+                  </div>
+                </div>
+                <div className="w-full sm:max-w-sm">
                   <Input
                     id="league_name"
                     value={formData.league_name}
@@ -435,8 +425,17 @@ export default function LeagueSettingsPage({
                     className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
+              </div>
+
+              {/* Description */}
+              <div className="flex flex-col sm:flex-row sm:items-start gap-4 py-5">
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="description">Description</Label>
+                    <FieldInfoButton text="Optional summary shown on the league page." />
+                  </div>
+                </div>
+                <div className="w-full sm:max-w-md">
                   <Textarea
                     id="description"
                     value={formData.description}
@@ -446,93 +445,211 @@ export default function LeagueSettingsPage({
                         description: e.target.value,
                       }))
                     }
-                    rows={4}
+                    rows={3}
                     placeholder="Describe your league goals and rules..."
                     className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
                   />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Start Date</Label>
-                    <Input
-                      type="date"
-                      value={formData.start_date}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, start_date: e.target.value }))
-                      }
-                      disabled={!canEditStructure}
-                      className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>End Date</Label>
-                    <Input
-                      type="date"
-                      value={formData.end_date}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, end_date: e.target.value }))
-                      }
-                      disabled={!canEditStructure}
-                      className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  <Button
-                    asChild
-                    size="sm"
-                    className="gap-2 border border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 dark:border-primary/30 dark:bg-primary/15 dark:text-primary-foreground/90"
-                  >
-                    <Link href={`/leagues/${id}/team`}>
-                      <Users className="size-4" />
-                      Team Management
-                    </Link>
-                  </Button>
-                  <Button
-                    asChild
-                    size="sm"
-                    className="gap-2 border border-accent/30 bg-accent/10 text-accent hover:bg-accent/20 dark:border-accent/40 dark:bg-accent/15 dark:text-accent-foreground"
-                  >
-                    <Link href={`/leagues/${id}/activities`}>
-                      <Activity className="size-4" />
-                      Configure Activities
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Branding / Logo */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Shield className="size-5 text-primary" />
-                  League Branding
-                  <FieldInfoButton text="Upload a square logo shown on league pages and invites." />
-                </CardTitle>
-                <CardDescription>
-                  Upload a square logo (PNG/JPEG/WebP, max 2MB)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="h-16 w-16 rounded-xl border bg-muted overflow-hidden flex items-center justify-center">
-                    {logoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={logoUrl} alt="League logo" className="h-full w-full object-cover" />
-                    ) : (
-                      <span className="text-sm text-muted-foreground">No logo</span>
-                    )}
+              {/* Dates */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-5">
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Label>Schedule</Label>
+                    <FieldInfoButton text="Start and end dates are locked after launch." />
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">
-                      Recommended: 512×512px. Transparent PNG or WebP looks best.
-                    </p>
+                </div>
+                <div className="w-full max-w-[340px] grid grid-cols-2 gap-2">
+                  <Input
+                    type="date"
+                    value={formData.start_date}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, start_date: e.target.value }))
+                    }
+                    disabled={!canEditStructure}
+                    className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
+                  />
+                  <Input
+                    type="date"
+                    value={formData.end_date}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, end_date: e.target.value }))
+                    }
+                    disabled={!canEditStructure}
+                    className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
+                  />
+                </div>
+              </div>
+
+              {/* Teams */}
+              <div className="flex items-center justify-between gap-3 py-5">
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Label>Number of Teams</Label>
+                    <FieldInfoButton text="Team count can be edited in draft mode only." />
+                  </div>
+                </div>
+                <Select
+                  value={formData.num_teams}
+                  onValueChange={(v) =>
+                    setFormData((prev) => ({ ...prev, num_teams: v }))
+                  }
+                  disabled={!canEditStructure}
+                >
+                  <SelectTrigger className="w-28 bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground text-center justify-center">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[2, 3, 4, 5, 6, 8, 10, 12, 16, 20].map((n) => (
+                      <SelectItem key={n} value={n.toString()}>
+                        {n} teams
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Max Team Capacity */}
+              <div className="flex items-center justify-between gap-3 py-5">
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="max_team_capacity">Max Team Capacity</Label>
+                    <FieldInfoButton text="Maximum members allowed per team." />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Limits team size for joining.</p>
+                </div>
+                <Input
+                  id="max_team_capacity"
+                  type="number"
+                  min="1"
+                  value={formData.max_team_capacity}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, max_team_capacity: e.target.value }))
+                  }
+                  placeholder="e.g. 10"
+                  className="w-20 bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground text-center"
+                />
+              </div>
+
+              {/* Rest Days */}
+              <div className="flex items-center justify-between gap-3 py-5">
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="rest_days">Total Rest Days</Label>
+                    <FieldInfoButton text="Total rest days per member." />
+                  </div>
+                </div>
+                <Input
+                  id="rest_days"
+                  type="number"
+                  min="0"
+                  value={formData.rest_days}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, rest_days: e.target.value }))
+                  }
+                  placeholder="e.g. 18"
+                  className="w-20 bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground text-center"
+                />
+              </div>
+
+              {/* Auto Rest Day */}
+              <div className="flex items-center justify-between gap-3 py-5">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Label>Auto Rest Day</Label>
+                    <FieldInfoButton text="When enabled, the cron job assigns a rest day for members with remaining rest days and no submission for the previous day." />
+                  </div>
+                </div>
+                <Switch
+                  checked={formData.auto_rest_day_enabled}
+                  onCheckedChange={(checked) =>
+                    setFormData((prev) => ({ ...prev, auto_rest_day_enabled: checked }))
+                  }
+                />
+              </div>
+
+              {/* Point Normalization */}
+              <div className="flex items-center justify-between gap-3 py-5">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Label>Point Normalization</Label>
+                    <FieldInfoButton text="When enabled, team points are normalized using the formula: (raw_points / team_size) × max_team_size" />
+                  </div>
+                </div>
+                <Switch
+                  checked={formData.normalize_points_by_team_size}
+                  onCheckedChange={(checked) =>
+                    setFormData((prev) => ({ ...prev, normalize_points_by_team_size: checked }))
+                  }
+                />
+              </div>
+
+              {/* Visibility */}
+              <div className="flex items-center justify-between gap-3 py-5">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Label className="flex items-center gap-2">
+                      <Globe className="size-4 text-muted-foreground" />
+                      Public League
+                    </Label>
+                    <FieldInfoButton text="Public leagues appear in discovery, anyone can find and view the league and join." />
+                  </div>
+                </div>
+                <Switch
+                  checked={formData.is_public}
+                  onCheckedChange={(checked) =>
+                    setFormData((prev) => ({ ...prev, is_public: checked }))
+                  }
+                  disabled={!canEditStructure}
+                />
+              </div>
+
+              {/* Invite Only */}
+              <div className="flex items-center justify-between gap-3 py-5">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Label className="flex items-center gap-2">
+                      <Lock className="size-4 text-muted-foreground" />
+                      Invite Only
+                    </Label>
+                    <FieldInfoButton text="Invite-only leagues require a join code." />
+                  </div>
+                </div>
+                <Switch
+                  checked={formData.is_exclusive}
+                  onCheckedChange={(checked) =>
+                    setFormData((prev) => ({ ...prev, is_exclusive: checked }))
+                  }
+                  disabled={!canEditStructure}
+                />
+              </div>
+
+              {/* Branding */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-5">
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Label>League Logo</Label>
+                    <FieldInfoButton text="logo for your league pages and invites." />
+                  </div>
+                  <p className="text-xs text-muted-foreground">PNG/JPEG/WebP, max 2MB. Recommended 512×512.</p>
+                </div>
+                <div className="w-full sm:max-w-md">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-lg border bg-muted overflow-hidden flex items-center justify-center">
+                      {logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={logoUrl} alt="League logo" className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground">No logo</span>
+                      )}
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       <Button
                         variant="outline"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={logoUploading}
+                        size="sm"
                       >
                         {logoUploading ? (
                           <>
@@ -542,7 +659,7 @@ export default function LeagueSettingsPage({
                         ) : (
                           <>
                             <Save className="mr-2 size-4" />
-                            Upload Logo
+                            Upload
                           </>
                         )}
                       </Button>
@@ -551,6 +668,7 @@ export default function LeagueSettingsPage({
                           variant="secondary"
                           onClick={handleLogoDelete}
                           disabled={logoDeleting}
+                          size="sm"
                         >
                           {logoDeleting ? (
                             <>
@@ -560,7 +678,7 @@ export default function LeagueSettingsPage({
                           ) : (
                             <>
                               <Trash2 className="mr-2 size-4" />
-                              Remove Logo
+                              Remove
                             </>
                           )}
                         </Button>
@@ -575,272 +693,50 @@ export default function LeagueSettingsPage({
                     />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Team Configuration Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Users className="size-5 text-primary" />
-                  Team Configuration
-                  <FieldInfoButton text="Adjust team count and rest day rules." />
-                </CardTitle>
-                <CardDescription>
-                  Configure team settings (changes may not apply to active
-                  leagues)
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Number of Teams</Label>
-                    <Select
-                      value={formData.num_teams}
-                      onValueChange={(v) =>
-                        setFormData((prev) => ({ ...prev, num_teams: v }))
-                      }
-                      disabled={!canEditStructure}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[2, 3, 4, 5, 6, 8, 10, 12, 16, 20].map((n) => (
-                          <SelectItem key={n} value={n.toString()}>
-                            {n} teams
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+              {/* Save */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-5">
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Label>Save Changes</Label>
+                    <FieldInfoButton text="Apply your configuration updates." />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="rest_days">Total Rest Days</Label>
-                    <Input
-                      id="rest_days"
-                      type="number"
-                      min="0"
-                      value={formData.rest_days}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, rest_days: e.target.value }))
-                      }
-                      placeholder="e.g. 18"
-                      className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
-                    />
+                  <p className="text-xs text-muted-foreground">Some settings may not take effect immediately for active leagues.</p>
+                </div>
+                <div className="w-full sm:max-w-sm">
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="w-full"
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="mr-2 size-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 size-4" />
+                        Save Changes
+                      </>
+                    )}
+                  </Button>
+                  {saveError && (
+                    <p className="text-sm text-destructive mt-2">{saveError}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Danger Zone */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-5">
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-2 text-destructive">
+                    <Label className="text-destructive">Delete League</Label>
+                    <FieldInfoButton text="Irreversible action. Deletes all data." />
                   </div>
+                  <p className="text-xs text-muted-foreground">This action cannot be undone.</p>
                 </div>
-
-                <div className="mt-4 p-3 rounded-lg bg-muted">
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm text-muted-foreground">
-                      Capacity is determined by your league tier.
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Rest day changes apply immediately, even for active leagues.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Rest Day Automation */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Shield className="size-5 text-primary" />
-                  Rest Day Automation
-                  <FieldInfoButton text="Automatically apply rest days when members miss deadlines." />
-                </CardTitle>
-                <CardDescription>
-                  Auto-assign a rest day if a member misses the daily deadline
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/60">
-                  <div className="space-y-1">
-                    <Label className="flex items-center gap-2">Auto Rest Day</Label>
-                    <p className="text-sm text-muted-foreground">
-                      When enabled, the cron job assigns a rest day for members with remaining rest days and no submission for the previous day.
-                    </p>
-                    <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">💾 Click "Save Changes" to apply</p>
-                  </div>
-                  <Switch
-                    checked={formData.auto_rest_day_enabled}
-                    onCheckedChange={(checked) =>
-                      setFormData((prev) => ({ ...prev, auto_rest_day_enabled: checked }))
-                    }
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Point Normalization */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Trophy className="size-5 text-primary" />
-                  Point Normalization
-                  <FieldInfoButton text="Normalize points to account for team size differences." />
-                </CardTitle>
-                <CardDescription>
-                  Normalize team points based on team size for fair competition
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/60">
-                  <div className="space-y-1">
-                    <Label className="flex items-center gap-2">Normalize Points by Team Size</Label>
-                    <p className="text-sm text-muted-foreground">
-                      When enabled, team points are normalized using the formula: (raw_points / team_size) × max_team_size
-                    </p>
-                    <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">💾 Click "Save Changes" to apply</p>
-                  </div>
-                  <Switch
-                    checked={formData.normalize_points_by_team_size}
-                    onCheckedChange={(checked) =>
-                      setFormData((prev) => ({ ...prev, normalize_points_by_team_size: checked }))
-                    }
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Visibility Settings Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  Visibility & Access
-                  <FieldInfoButton text="Control discoverability and invite-only access." />
-                </CardTitle>
-                <CardDescription>
-                  Control who can see and join your league
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/60">
-                  <div className="space-y-0.5">
-                    <Label className="flex items-center gap-2">
-                      <Globe className="size-4 text-muted-foreground" />
-                      Public League
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      Allow anyone to discover this league
-                    </p>
-                    <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">💾 Click "Save Changes" to apply</p>
-                  </div>
-                  <Switch
-                    checked={formData.is_public}
-                    onCheckedChange={(checked) =>
-                      setFormData((prev) => ({ ...prev, is_public: checked }))
-                    }
-                    disabled={!canEditStructure}
-                  />
-                </div>
-                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/60">
-                  <div className="space-y-0.5">
-                    <Label className="flex items-center gap-2">
-                      <Lock className="size-4 text-muted-foreground" />
-                      Invite Only
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      Require invite code to join
-                    </p>
-                    <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">💾 Click "Save Changes" to apply</p>
-                  </div>
-                  <Switch
-                    checked={formData.is_exclusive}
-                    onCheckedChange={(checked) =>
-                      setFormData((prev) => ({ ...prev, is_exclusive: checked }))
-                    }
-                    disabled={!canEditStructure}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-          </div>
-
-          {/* Right Column - Summary Sidebar */}
-          <div className="space-y-6">
-            {/* Teams Summary Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Users className="size-4 text-primary" />
-                  Teams Summary
-                  <FieldInfoButton text="Quick overview of team configuration." />
-                </CardTitle>
-                <CardDescription>Configured team settings</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Teams</span>
-                  <span className="font-medium tabular-nums">{formData.num_teams}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Rest Days</span>
-                  <span className="font-medium tabular-nums">{formData.rest_days}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Auto Rest Day</span>
-                  <span className="font-medium">{formData.auto_rest_day_enabled ? 'On' : 'Off'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Point Normalization</span>
-                  <span className="font-medium">{formData.normalize_points_by_team_size ? 'On' : 'Off'}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Activities Summary Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Activity className="size-4 text-primary" />
-                  Activities Summary
-                  <FieldInfoButton text="Summary of enabled activities and limits." />
-                </CardTitle>
-                <CardDescription>Enabled activity configuration</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Enabled</span>
-                  <span className="font-medium tabular-nums">
-                    {activitiesLoading ? '—' : activitiesData?.activities.length ?? 0}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Available</span>
-                  <span className="font-medium tabular-nums">
-                    {activitiesLoading ? '—' : activitiesData?.allActivities?.length ?? activitiesData?.activities.length ?? 0}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Weekly Limits</span>
-                  <span className="font-medium">
-                    {activitiesLoading
-                      ? '—'
-                      : activitiesData?.supportsFrequency === false
-                        ? 'Off'
-                        : 'On'}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Danger Zone Card */}
-            <Card className="border-destructive/50">
-              <CardHeader>
-                <CardTitle className="text-lg text-destructive flex items-center gap-2">
-                  <AlertTriangle className="size-5" />
-                  Danger Zone
-                  <FieldInfoButton text="Irreversible actions for this league." />
-                </CardTitle>
-                <CardDescription>
-                  Irreversible actions. Proceed with caution.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="destructive" className="w-full sm:w-auto">
@@ -874,109 +770,11 @@ export default function LeagueSettingsPage({
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              </CardContent>
-            </Card>
-
-            {/* Summary Card */}
-            <Card className="sticky top-6">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  Settings Summary
-                  <FieldInfoButton text="Review current settings before saving." />
-                </CardTitle>
-                <CardDescription>Review your changes</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">League Name</span>
-                    <span className="font-medium truncate max-w-[150px]">
-                      {formData.league_name || '—'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Status</span>
-                    <span className="font-medium capitalize">{formData.status}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Schedule</span>
-                    <span className="font-medium text-right">
-                      {formData.start_date || '—'} → {formData.end_date || '—'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Teams</span>
-                    <span className="font-medium">{formData.num_teams}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Total Rest Days</span>
-                    <span className="font-medium">{formData.rest_days}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Auto Rest Day</span>
-                    <span className="font-medium">{formData.auto_rest_day_enabled ? 'On' : 'Off'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Point Normalization</span>
-                    <span className="font-medium">{formData.normalize_points_by_team_size ? 'On' : 'Off'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Total Capacity</span>
-                    <span className="font-medium text-xs">(from tier)</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Visibility</span>
-                    <span className="font-medium">
-                      {formData.is_public ? 'Public' : 'Private'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Join Type</span>
-                    <span className="font-medium">
-                      {formData.is_exclusive ? 'Invite Only' : 'Open'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Save Button */}
-                <div className="pt-4">
-                  <Button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="w-full"
-                  >
-                    {saving ? (
-                      <>
-                        <Loader2 className="mr-2 size-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="mr-2 size-4" />
-                        Save Changes
-                      </>
-                    )}
-                  </Button>
-                  {saveError && (
-                    <p className="text-sm text-destructive mt-2">{saveError}</p>
-                  )}
-                </div>
-
-                {/* Info */}
-                <div className="pt-4 border-t">
-                  <div className="flex gap-2 text-xs text-muted-foreground">
-                    <Info className="size-4 shrink-0 mt-0.5" />
-                    <p>
-                      Some settings may not take effect immediately for active
-                      leagues.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
-    </div>
+    </div >
   );
 }

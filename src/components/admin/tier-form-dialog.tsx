@@ -116,8 +116,8 @@ export function TierFormDialog({ open, onClose, onSubmit, initialTier }: TierFor
         return;
       }
 
-      if (pricingType === "fixed" && (!candidate.fixed_price || candidate.fixed_price <= 0)) {
-        toast.error("Fixed pricing requires a fixed price greater than 0");
+      if (pricingType === "fixed" && (candidate.fixed_price === null || candidate.fixed_price === undefined || candidate.fixed_price < 0)) {
+        toast.error("Fixed pricing requires a fixed price (can be 0 for free tiers)");
         return;
       }
 

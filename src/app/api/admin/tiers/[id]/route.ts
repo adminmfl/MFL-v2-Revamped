@@ -53,7 +53,7 @@ async function checkAdminAccess(): Promise<{ success: boolean; user_id?: string;
     console.warn('tiers/[id] checkAdminAccess - admin check failed', { userId, userData, userError });
     return { success: false, error: 'Admin access required' };
   }
-  
+
   return { success: true, user_id: userId };
 }
 
@@ -221,8 +221,8 @@ export async function PATCH(
     const resolvedPerDayRate = updates.per_day_rate ?? currentPricing?.per_day_rate ?? 0;
     const resolvedPerParticipantRate = updates.per_participant_rate ?? currentPricing?.per_participant_rate ?? 0;
     if (effectivePricingType === 'fixed') {
-      if (resolvedFixedPrice === null || resolvedFixedPrice <= 0) {
-        return NextResponse.json({ error: 'Fixed pricing requires fixed_price > 0' }, { status: 400 });
+      if (resolvedFixedPrice === null || resolvedFixedPrice === undefined || resolvedFixedPrice < 0) {
+        return NextResponse.json({ error: 'Fixed pricing requires a valid fixed_price (can be 0 for free tiers)' }, { status: 400 });
       }
     }
     if (effectivePricingType === 'dynamic') {

@@ -22,9 +22,9 @@ import { useLeagueActivities } from '@/hooks/use-league-activities';
 import { ActivityMinimumDropdown } from '@/components/leagues/activity-minimum-dropdown';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import {
   Card,
   CardContent,
@@ -44,22 +44,18 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 // ============================================================================
-// Loading Skeleton
+// Loading State
 // ============================================================================
-
-function LoadingSkeleton() {
+function TrialPeriodAlert({ daysLeft }: { daysLeft: number }) {
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-10 w-32" />
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-24" />
-        ))}
-      </div>
-    </div>
+    <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+      <Info className="size-4 text-blue-600 dark:text-blue-400" />
+      <AlertTitle className="text-blue-800 dark:text-blue-300">Trial Period</AlertTitle>
+      <AlertDescription className="text-blue-700 dark:text-blue-400">
+        This league is in trial mode for {daysLeft} day{daysLeft === 1 ? '' : 's'}.
+        Submissions won’t count toward the official leaderboard until the league starts.
+      </AlertDescription>
+    </Alert>
   );
 }
 
@@ -73,26 +69,33 @@ export default function LeagueActivitiesPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: leagueId } = use(params);
-  const { isHost, isGovernor } = useRole();
   const { activeLeague } = useLeague();
-
-  // Host/Governor can see all activities to configure
+  const { isHost, isGovernor } = useRole();
   const isAdmin = isHost || isGovernor;
-  const { data, isLoading, error, refetch, addActivities, removeActivity, updateFrequency } =
-    useLeagueActivities(leagueId, { includeAll: isAdmin });
 
-  const [toggleLoading, setToggleLoading] = React.useState<string | null>(null);
+  const {
+    data,
+    isLoading,
+    error,
+    refetch,
+    addActivities,
+    removeActivity,
+    updateFrequency,
+  } = useLeagueActivities(leagueId, { includeAll: isAdmin });
+
   const [selectedCategory, setSelectedCategory] = React.useState<string>('all');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [frequencyDrafts, setFrequencyDrafts] = React.useState<Record<string, string>>({});
   const [frequencyTypeDrafts, setFrequencyTypeDrafts] = React.useState<Record<string, 'weekly' | 'monthly'>>({});
   const [isSaving, setIsSaving] = React.useState(false);
   const [resetKey, setResetKey] = React.useState(0);
+  const [openDescriptionId, setOpenDescriptionId] = React.useState<string | null>(null);
 
   // Track pending changes before saving
   const [pendingChanges, setPendingChanges] = React.useState<Map<string, { enabled?: boolean; frequency?: number | null; frequency_type?: 'weekly' | 'monthly' | null; minimums?: { min_value: number | null; age_group_overrides: Record<string, any> } }>>(new Map());
 
   const hasChanges = pendingChanges.size > 0;
+  const toggleLoading = null;
 
   const enabledActivityIds = React.useMemo(() => {
     return new Set(data?.activities.map((a) => a.activity_id) || []);
@@ -104,6 +107,18 @@ export default function LeagueActivitiesPage({
 
   const supportsFrequency = data?.supportsFrequency !== false;
 
+  const trialDaysLeft = React.useMemo(() => {
+    if (!activeLeague?.start_date) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(String(activeLeague.start_date).slice(0, 10));
+    start.setHours(0, 0, 0, 0);
+    const diffMs = start.getTime() - today.getTime();
+    if (diffMs <= 0) return null;
+    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  }, [activeLeague?.start_date]);
+
+  // Initialize frequency drafts when data changes (must be before early returns)
   React.useEffect(() => {
     if (!data?.activities) return;
     const next: Record<string, string> = {};
@@ -119,7 +134,7 @@ export default function LeagueActivitiesPage({
     setFrequencyTypeDrafts(nextTypes);
   }, [data?.activities]);
 
-  // Extract unique categories
+  // Extract unique categories (must be before early returns)
   const categories = useMemo(() => {
     if (!data) return [];
     const allActivities = isAdmin ? data.allActivities || [] : data.activities;
@@ -136,7 +151,7 @@ export default function LeagueActivitiesPage({
     );
   }, [data, isAdmin]);
 
-  // Filter activities by selected category
+  // Filter activities by selected category (must be before early returns)
   const filteredActivities = useMemo(() => {
     if (!data) return [];
     const activities = isAdmin ? data.allActivities || [] : data.activities;
@@ -161,6 +176,10 @@ export default function LeagueActivitiesPage({
       return a.activity_name.localeCompare(b.activity_name);
     });
   }, [filteredActivities, enabledActivityIds]);
+
+  if (isLoading) {
+    return <DumbbellLoading label="Loading activities..." />;
+  }
 
   const handleToggle = (activityId: string, enable: boolean) => {
     // Check if the new state matches the original state
@@ -353,8 +372,8 @@ export default function LeagueActivitiesPage({
             const nextFrequencyType = change.frequency_type !== undefined
               ? change.frequency_type
               : frequencyTypeDrafts[activityId]
-                ?? enabledActivityMap.get(activityId)?.frequency_type
-                ?? 'weekly';
+              ?? enabledActivityMap.get(activityId)?.frequency_type
+              ?? 'weekly';
 
             const success = await updateFrequency(activityId, nextFrequency, nextFrequencyType);
             if (success) successCount++;
@@ -475,7 +494,7 @@ export default function LeagueActivitiesPage({
 
         {/* Content */}
         <div className="px-4 lg:px-6">
-          {isLoading && <LoadingSkeleton />}
+          {trialDaysLeft && <TrialPeriodAlert daysLeft={trialDaysLeft} />}
 
           {error && (
             <Alert variant="destructive">
@@ -633,7 +652,7 @@ export default function LeagueActivitiesPage({
 
       {/* Content */}
       <div className="px-4 lg:px-6 space-y-6">
-        {isLoading && <LoadingSkeleton />}
+        {trialDaysLeft && <TrialPeriodAlert daysLeft={trialDaysLeft} />}
 
         {error && (
           <Alert variant="destructive">
@@ -679,16 +698,12 @@ export default function LeagueActivitiesPage({
                     <div
                       key={activity.activity_id}
                       className={cn(
-                        'flex items-start gap-3 p-4 rounded-lg border transition-all cursor-pointer',
+                        'flex items-start gap-3 p-4 rounded-lg border transition-all',
                         hasPendingChange && 'ring-2 ring-amber-400 bg-amber-50/50 dark:ring-primary/60 dark:bg-primary/10',
                         !hasPendingChange && isEnabled && 'border-primary bg-primary/5 ring-1 ring-primary',
                         !hasPendingChange && !isEnabled && 'border-border bg-card hover:border-primary/50',
                         isProcessing && 'opacity-50 pointer-events-none'
                       )}
-                      onClick={() =>
-                        !isProcessing &&
-                        handleToggle(activity.activity_id, !isEnabled)
-                      }
                     >
                       <div className="pt-0.5">
                         {isProcessing ? (
@@ -697,7 +712,7 @@ export default function LeagueActivitiesPage({
                           <Checkbox
                             checked={isEnabled}
                             disabled={isProcessing}
-                            className="pointer-events-none"
+                            onClick={() => handleToggle(activity.activity_id, !isEnabled)}
                           />
                         )}
                       </div>
@@ -717,17 +732,34 @@ export default function LeagueActivitiesPage({
                               {activity.category.display_name}
                             </Badge>
                           )}
+                          {activity.description && (
+                            <div className="relative">
+                              <Info
+                                className="size-3.5 text-muted-foreground cursor-pointer hover:text-primary transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenDescriptionId(openDescriptionId === activity.activity_id ? null : activity.activity_id);
+                                }}
+                              />
+                              {openDescriptionId === activity.activity_id && (
+                                <>
+                                  <div
+                                    className="fixed inset-0 z-40"
+                                    onClick={() => setOpenDescriptionId(null)}
+                                  />
+                                  <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 w-64 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-card p-3 text-xs text-card-foreground shadow-lg">
+                                    <p className="leading-relaxed break-words">{activity.description}</p>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
                           {hasPendingChange && (
                             <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 dark:bg-primary/10 dark:text-primary dark:border-primary/20">
                               Pending
                             </Badge>
                           )}
                         </div>
-                        {activity.description && (
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                            {activity.description}
-                          </p>
-                        )}
 
                         {isEnabled && (
                           <div onClick={(e) => e.stopPropagation()}>

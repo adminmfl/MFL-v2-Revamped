@@ -1,10 +1,18 @@
 import type { Metadata } from "next";
-import { Manrope } from "next/font/google";
+import {
+  Manrope,
+  Inter,
+  Plus_Jakarta_Sans,
+  DM_Sans,
+  Outfit,
+} from "next/font/google";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
 import { Toaster } from "sonner";
 import AuthProvider from "@/components/auth/auth-provider";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ColorThemeProvider } from "@/components/providers/color-theme-provider";
+import { FontProvider } from "@/components/providers/font-provider";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth/config";
 
@@ -14,6 +22,34 @@ const manrope = Manrope({
   display: 'swap',
   variable: "--font-manrope",
   fallback: ["system-ui", "-apple-system", "Segoe UI", "Roboto", "Helvetica", "Arial", "sans-serif"],
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: 'swap',
+  variable: "--font-inter",
+});
+
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: 'swap',
+  variable: "--font-plus-jakarta",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: 'swap',
+  variable: "--font-dm-sans",
+});
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: 'swap',
+  variable: "--font-outfit",
 });
 
 export const metadata: Metadata = {
@@ -54,7 +90,7 @@ export default async function RootLayout({
     // Continue with null session - user will need to login
   }
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${manrope.variable} ${inter.variable} ${plusJakarta.variable} ${dmSans.variable} ${outfit.variable} font-manrope`}>
       <head>
         <link rel="manifest" href="/manifest.webmanifest" />
         <meta name="theme-color" content="#0F1E46" />
@@ -62,15 +98,19 @@ export default async function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
       </head>
-      <body className={`${manrope.variable} font-sans antialiased`}>
+      <body className="antialiased">
         <ThemeProvider>
-          <AuthProvider session={session}>{children}</AuthProvider>
-          <Toaster
-            position="top-center"
-            richColors
-            closeButton
-            duration={4000}
-          />
+          <ColorThemeProvider>
+            <FontProvider>
+              <AuthProvider session={session}>{children}</AuthProvider>
+              <Toaster
+                position="top-center"
+                richColors
+                closeButton
+                duration={4000}
+              />
+            </FontProvider>
+          </ColorThemeProvider>
         </ThemeProvider>
         <Analytics />
       </body>

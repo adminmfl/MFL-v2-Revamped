@@ -167,6 +167,7 @@ export function LeagueFormSection({
                 const val = e.target.value === '' ? 0 : parseInt(e.target.value);
                 onDurationChange(val);
               }}
+              placeholder="e.g., 30"
               required
               className="h-10"
             />
@@ -213,6 +214,29 @@ export function LeagueFormSection({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Max Participants - First since it affects tier recommendations */}
+          <div className="space-y-2">
+            <Label htmlFor="max_participants" className="font-semibold flex items-center gap-2">
+              <UserPlus className="size-4 text-primary" />
+              Total Participants (Max) *
+            </Label>
+            <Input
+              id="max_participants"
+              type="number"
+              name="max_participants"
+              min="1"
+              value={formData.max_participants}
+              onChange={onFormChange}
+              placeholder="e.g., 20"
+              required
+              className="h-10"
+            />
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Users className="size-3" />
+              Maximum number of people who can join (divided evenly across teams)
+            </p>
+          </div>
+
           {/* Number of Teams */}
           <div className="space-y-2">
             <Label htmlFor="num_teams" className="font-semibold flex items-center gap-2">
@@ -226,34 +250,13 @@ export function LeagueFormSection({
               min="2"
               value={formData.num_teams}
               onChange={onFormChange}
+              placeholder="e.g., 4"
               required
               className="h-10"
             />
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <Info className="size-3" />
               Minimum 2 teams required
-            </p>
-          </div>
-
-          {/* Max Participants */}
-          <div className="space-y-2">
-            <Label htmlFor="max_participants" className="font-semibold flex items-center gap-2">
-              <UserPlus className="size-4 text-primary" />
-              Total Participants (Max) *
-            </Label>
-            <Input
-              id="max_participants"
-              type="number"
-              name="max_participants"
-              min="1"
-              value={formData.max_participants}
-              onChange={onFormChange}
-              required
-              className="h-10"
-            />
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <Users className="size-3" />
-              Maximum number of people who can join (divided evenly across teams)
             </p>
           </div>
 
@@ -270,6 +273,7 @@ export function LeagueFormSection({
               min="0"
               value={formData.rest_days}
               onChange={onFormChange}
+              placeholder="e.g., 6"
               required
               className="h-10"
             />
@@ -279,29 +283,6 @@ export function LeagueFormSection({
             </p>
           </div>
 
-          {/* Summary */}
-          {formData.num_teams && formData.max_participants && (
-            <div className="bg-primary/5 rounded-lg p-3 border border-primary/10">
-              <div className="text-sm space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground flex items-center gap-1.5">
-                    <UsersRound className="size-3.5" />
-                    Teams:
-                  </span>
-                  <span className="font-semibold">{formData.num_teams}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground flex items-center gap-1.5">
-                    <Users className="size-3.5" />
-                    Avg per team:
-                  </span>
-                  <span className="font-semibold">
-                    {Math.round(parseInt(formData.max_participants) / parseInt(formData.num_teams))} participants
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 

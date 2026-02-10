@@ -46,6 +46,32 @@ export async function GET(
   return NextResponse.json({ success: true, data: { url: link?.logo_url || null } })
 }
 
+// Helper to check if user is captain of this specific team
+async function isTeamCaptain(userId: string, leagueId: string, teamId: string): Promise<boolean> {
+  const supabase = getSupabaseServiceRole()
+
+  // First check if user is on this team
+  const { data: member } = await supabase
+    .from('leaguemembers')
+    .select('league_member_id')
+    .eq('user_id', userId)
+    .eq('league_id', leagueId)
+    .eq('team_id', teamId)
+    .maybeSingle()
+
+  if (!member) return false
+
+  // Then check if user has captain role for this league
+  const { data: roleData } = await supabase
+    .from('assignedrolesforleague')
+    .select('roles!inner(role_name)')
+    .eq('user_id', userId)
+    .eq('league_id', leagueId)
+
+  const roles = (roleData || []).map((r: any) => r.roles?.role_name).filter(Boolean)
+  return roles.includes('captain')
+}
+
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; teamId: string }> }
@@ -58,8 +84,10 @@ export async function DELETE(
 
     const supabase = getSupabaseServiceRole()
 
+    // Allow host OR captain of this team
     const isHost = await userHasAnyRole(userId, leagueId, ['host'])
-    if (!isHost) return buildError('Only the league host can manage team logos', 403)
+    const isCaptain = await isTeamCaptain(userId, leagueId, teamId)
+    if (!isHost && !isCaptain) return buildError('Only the host or team captain can manage team logos', 403)
 
     const { data: link } = await supabase
       .from('teamleagues')
@@ -108,8 +136,10 @@ export async function POST(
 
     const supabase = getSupabaseServiceRole()
 
+    // Allow host OR captain of this team
     const isHost = await userHasAnyRole(userId, leagueId, ['host'])
-    if (!isHost) return buildError('Only the league host can manage team logos', 403)
+    const isCaptain = await isTeamCaptain(userId, leagueId, teamId)
+    if (!isHost && !isCaptain) return buildError('Only the host or team captain can manage team logos', 403)
 
     const formData = await req.formData()
     const file = formData.get('file') as File | null
@@ -136,20 +166,30 @@ export async function POST(
     }
 
     const { data: publicData } = supabase.storage.from(BUCKET).getPublicUrl(fileName)
-    const logoUrl = publicData.publicUrl
+    // Append timestamp to bust CDN/browser cache
+    const logoUrl = `${publicData.publicUrl}?v=${Date.now()}`
 
-    const { error: updateError } = await supabase
+    console.log('[Team Logo] Updating DB:', { teamId, leagueId, logoUrl })
+
+    const { data: updateData, error: updateError } = await supabase
       .from('teamleagues')
-      .update({
-        logo_url: logoUrl,
-      })
+      .update({ logo_url: logoUrl })
       .eq('team_id', teamId)
       .eq('league_id', leagueId)
+      .select()
+
+    console.log('[Team Logo] DB update result:', { updateData, updateError })
 
     if (updateError) {
       console.error('[Team Logo] upload DB update error', updateError)
       await supabase.storage.from(BUCKET).remove([fileName])
       return buildError('Failed to persist team logo reference', 500)
+    }
+
+    if (!updateData || updateData.length === 0) {
+      console.error('[Team Logo] No teamleagues row found for', { teamId, leagueId })
+      await supabase.storage.from(BUCKET).remove([fileName])
+      return buildError('Team not found in league', 404)
     }
 
     return NextResponse.json({

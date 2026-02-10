@@ -98,7 +98,7 @@ export default function MyTeamViewPage({
 }) {
   const { id: leagueId } = use(params);
   const { activeLeague } = useLeague();
-  const { activeRole, canSubmitWorkouts, isCaptain } = useRole();
+  const { activeRole, canSubmitWorkouts } = useRole();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
@@ -406,7 +406,7 @@ export default function MyTeamViewPage({
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableHead className="w-12 hidden sm:table-cell">#</TableHead>
+                <TableHead className="w-12">#</TableHead>
                 <TableHead>Member</TableHead>
                 <TableHead className="hidden sm:table-cell">Role</TableHead>
                 <TableHead className="text-center">Rest Days</TableHead>
@@ -417,7 +417,7 @@ export default function MyTeamViewPage({
               {paginatedMembers.length > 0 ? (
                 paginatedMembers.map((member, index) => (
                   <TableRow key={member.league_member_id}>
-                    <TableCell className="text-muted-foreground hidden sm:table-cell">
+                    <TableCell className="text-muted-foreground">
                       {pagination.pageIndex * pagination.pageSize + index + 1}
                     </TableCell>
                     <TableCell>
@@ -457,17 +457,17 @@ export default function MyTeamViewPage({
                         <Badge variant="outline">Player</Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-center text-muted-foreground text-sm">
+                    <TableCell className="text-center text-muted-foreground tabular-nums">
                       {(member as any).rest_days_used ?? 0}
                     </TableCell>
-                    <TableCell className="text-center text-muted-foreground text-sm">
+                    <TableCell className="text-center font-medium tabular-nums">
                       {(member as any).points ?? 0}
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
+                  <TableCell colSpan={5} className="h-24 text-center">
                     {searchQuery
                       ? 'No members found matching your search.'
                       : 'No members in this team yet.'}
@@ -571,3 +571,4 @@ export default function MyTeamViewPage({
     </div>
   );
 }
+

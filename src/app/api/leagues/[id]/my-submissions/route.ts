@@ -127,18 +127,62 @@ export async function GET(
       );
     }
 
+    // List of standard workout types to avoid unnecessary UUID checks
+    const standardTypes = ['run', 'walk', 'cycling', 'swimming', 'yoga', 'strength', 'hiit', 'pilates', 'dance', 'rowing', 'elliptical', 'stair_stepper', 'hiking', 'kickboxing', 'tennis', 'basketball', 'soccer', 'volleyball', 'golf', 'baseball', 'football', 'rugby', 'cricket', 'hockey', 'badminton', 'table_tennis', 'squash', 'martial_arts', 'boxing', 'others'];
+
+    // Post-process submissions to attach custom activity names
+    const customActivityIds = new Set<string>();
+    
+    // Identify potential custom activity IDs (UUIDs)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    
+    (submissions || []).forEach(sub => {
+      if (sub.workout_type && !standardTypes.includes(sub.workout_type)) {
+        if (uuidRegex.test(sub.workout_type)) {
+          customActivityIds.add(sub.workout_type);
+        }
+      }
+    });
+
+    let activityMap = new Map<string, string>();
+
+    // Fetch names for custom activities
+    if (customActivityIds.size > 0) {
+      const { data: customActivities, error: caError } = await supabase
+        .from('custom_activities')
+        .select('custom_activity_id, activity_name')
+        .in('custom_activity_id', Array.from(customActivityIds));
+      
+      if (!caError && customActivities) {
+        customActivities.forEach(ca => {
+          activityMap.set(ca.custom_activity_id, ca.activity_name);
+        });
+      } else if (caError) {
+        console.error('Error fetching custom activity names:', caError);
+      }
+    }
+
+    // Attach names to submissions
+    const enrichedSubmissions = (submissions || []).map(sub => {
+      const customName = sub.workout_type ? activityMap.get(sub.workout_type) : undefined;
+      return {
+        ...sub,
+        custom_activity_name: customName // Add this field
+      };
+    });
+
     // Calculate summary stats
     const stats = {
-      total: submissions?.length || 0,
-      pending: submissions?.filter((s) => s.status === 'pending').length || 0,
-      approved: submissions?.filter((s) => s.status === 'approved').length || 0,
-      rejected: submissions?.filter((s) => ['rejected', 'rejected_resubmit', 'rejected_permanent'].includes(s.status)).length || 0,
+      total: enrichedSubmissions?.length || 0,
+      pending: enrichedSubmissions?.filter((s) => s.status === 'pending').length || 0,
+      approved: enrichedSubmissions?.filter((s) => s.status === 'approved').length || 0,
+      rejected: enrichedSubmissions?.filter((s) => ['rejected', 'rejected_resubmit', 'rejected_permanent'].includes(s.status)).length || 0,
     };
 
     return NextResponse.json({
       success: true,
       data: {
-        submissions: submissions as MySubmission[],
+        submissions: enrichedSubmissions as (MySubmission & { custom_activity_name?: string })[],
         stats,
         leagueMemberId: leagueMember.league_member_id,
         teamId: leagueMember.team_id,

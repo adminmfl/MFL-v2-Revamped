@@ -9,7 +9,6 @@ export interface LeagueWithNormalization {
   league_id: string;
   league_name: string;
   normalize_points_by_team_size: boolean;
-  team_size?: number; // Configured baseline team size
 }
 
 export interface TeamWithNormalization {

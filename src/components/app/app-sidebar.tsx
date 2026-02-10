@@ -11,11 +11,13 @@ import {
   ChevronRight,
   MoreVertical,
   CreditCard,
+  Palette,
 } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
 import { useRole } from '@/contexts/role-context';
 import { getSidebarNavItems, NavSection } from '@/lib/navigation/sidebar-config';
+import { ThemeDrawer } from '@/components/theme-drawer';
 import { LeagueSwitcher } from './league-switcher';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -70,6 +72,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
   const { activeRole, isAlsoPlayer } = useRole();
   const { state, setOpenMobile } = useSidebar();
   const isCollapsed = state === 'collapsed';
+  const [themeDrawerOpen, setThemeDrawerOpen] = React.useState(false);
 
   // Get navigation items based on current context
   const navSections = getSidebarNavItems(
@@ -175,6 +178,13 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                       Profile Settings
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() => setThemeDrawerOpen(true)}
+                  >
+                    <Palette className="mr-2 size-4" />
+                    Customize Theme
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild className="cursor-pointer">
                     <Link href="/help" onClick={() => setOpenMobile(false)}>
                       <HelpCircle className="mr-2 size-4" />
@@ -201,6 +211,9 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+
+      {/* Theme Customization Drawer */}
+      <ThemeDrawer open={themeDrawerOpen} onOpenChange={setThemeDrawerOpen} />
     </Sidebar>
   );
 }
@@ -230,8 +243,11 @@ function NavSectionGroup({
       <SidebarMenu>
         {section.items.map((item) => {
           const isLeagueRoot = leagueId ? item.url === `/leagues/${leagueId}` : false;
-          const isActive =
-            pathname === item.url ||
+          // Use exact match for team pages to avoid conflicts between /my-team and /my-team-view
+          const isTeamPage = item.url.includes('/my-team');
+          const isActive = isTeamPage
+            ? pathname === item.url
+            : pathname === item.url ||
             (!isLeagueRoot && item.url !== '/dashboard' && pathname?.startsWith(item.url));
 
           return (

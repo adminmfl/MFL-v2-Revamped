@@ -54,26 +54,28 @@ function TierRow({ tier, onEdit, onDelete, onToggleActive }: {
 }) {
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div className="space-y-1">
-          <CardTitle className="flex items-center gap-3">
-            <span>{tier.display_name}</span>
-            <PricingBadge type={tier.pricing_type} />
-            <StatusBadge active={tier.is_active} />
-            {tier.is_featured ? <Badge variant="secondary">Featured</Badge> : null}
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">{tier.description || "No description"}</p>
-        </div>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => onEdit(tier)}>
-            Edit
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => onToggleActive(tier)}>
-            {tier.is_active ? "Deactivate" : "Activate"}
-          </Button>
-          <Button size="sm" variant="destructive" onClick={() => onDelete(tier)}>
-            Delete
-          </Button>
+      <CardHeader className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="space-y-1 flex-1 min-w-0">
+            <CardTitle className="flex flex-wrap items-center gap-2">
+              <span className="break-words">{tier.display_name}</span>
+              <PricingBadge type={tier.pricing_type} />
+              <StatusBadge active={tier.is_active} />
+              {tier.is_featured ? <Badge variant="secondary">Featured</Badge> : null}
+            </CardTitle>
+            <p className="text-sm text-muted-foreground break-words">{tier.description || "No description"}</p>
+          </div>
+          <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+            <Button size="sm" variant="outline" onClick={() => onEdit(tier)}>
+              Edit
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => onToggleActive(tier)}>
+              {tier.is_active ? "Deactivate" : "Activate"}
+            </Button>
+            <Button size="sm" variant="destructive" onClick={() => onDelete(tier)}>
+              Delete
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -93,7 +95,9 @@ function TierRow({ tier, onEdit, onDelete, onToggleActive }: {
           {tier.pricing_type === "fixed" ? (
             <div>
               <Label className="text-xs text-muted-foreground">Fixed Price</Label>
-              <div className="font-medium">₹{(tier.fixed_price ?? 0).toFixed(2)}</div>
+              <div className="font-medium">
+                {(tier.fixed_price ?? 0) === 0 ? 'Free' : `₹${(tier.fixed_price ?? 0).toFixed(2)}`}
+              </div>
             </div>
           ) : (
             <>
