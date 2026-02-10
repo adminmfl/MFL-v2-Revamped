@@ -93,17 +93,19 @@ export function TournamentStandingsTable({ matches, leagueId, loading: matchesLo
             // Result
             if (match.score1 > match.score2) {
                 team1.won += 1;
-                team1.points += 1;
+                team1.points += 3;
                 team2.lost += 1;
+                team2.points += 1;
             } else if (match.score2 > match.score1) {
                 team2.won += 1;
-                team2.points += 1;
+                team2.points += 3;
                 team1.lost += 1;
+                team1.points += 1;
             } else {
                 team1.drawn += 1;
-                team1.points += 1;
+                team1.points += 2;
                 team2.drawn += 1;
-                team2.points += 1;
+                team2.points += 2;
             }
         });
 
@@ -129,7 +131,7 @@ export function TournamentStandingsTable({ matches, leagueId, loading: matchesLo
                         <PopoverTrigger asChild>
                             <Info className="h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground" />
                         </PopoverTrigger>
-                        <PopoverContent className="w-64 p-4 text-sm space-y-2">
+                        <PopoverContent className="w-72 p-4 text-sm space-y-3">
                             <h4 className="font-medium mb-1">Legend</h4>
                             <div className="grid grid-cols-[30px_1fr] gap-1">
                                 <span className="font-bold">P</span> <span className="text-muted-foreground">Played</span>
@@ -137,6 +139,13 @@ export function TournamentStandingsTable({ matches, leagueId, loading: matchesLo
                                 <span className="font-bold">D</span> <span className="text-muted-foreground">Drawn</span>
                                 <span className="font-bold">L</span> <span className="text-muted-foreground">Lost</span>
                                 <span className="font-bold">Pts</span> <span className="text-muted-foreground">Points</span>
+                            </div>
+                            <hr className="border-border" />
+                            <h4 className="font-medium mb-1">Points System</h4>
+                            <div className="grid grid-cols-[1fr_auto] gap-1">
+                                <span className="text-muted-foreground">Win</span> <span className="font-bold text-green-600">+3 pts</span>
+                                <span className="text-muted-foreground">Draw</span> <span className="font-bold text-yellow-600">+2 pts</span>
+                                <span className="text-muted-foreground">Participated / Loss</span> <span className="font-bold text-red-600">+1 pt</span>
                             </div>
                         </PopoverContent>
                     </Popover>
