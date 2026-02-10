@@ -15,6 +15,7 @@ import {
   Activity,
   UserCheck,
   HeartHandshake,
+  FileText,
   LucideIcon,
   BookOpen,
 } from 'lucide-react';
@@ -102,43 +103,44 @@ export function getSidebarNavItems(
   const leagueUrl = (path: string) => `/leagues/${leagueId}${path}`;
 
   // ========================================
-  // PLAYER-FIRST PRIMARY Section
-  // Flattened list without player/league headers
+  // PLAYER Section (Player view only)
   // ========================================
-  const primaryItems: NavItem[] = [
-    {
-      title: 'My Activities',
-      url: leagueUrl(''),
-      icon: Trophy,
-      viewOnly: role === 'player',
-    },
-    {
-      title: 'My Challenges',
-      url: leagueUrl('/challenges'),
-      icon: Flag,
-      viewOnly: role === 'governor' || role === 'player',
-    },
-    {
-      title: 'My Team',
-      url: leagueUrl('/my-team-view'),
-      icon: Users,
-    },
-    {
-      title: 'Leaderboard',
-      url: leagueUrl('/leaderboard'),
-      icon: BarChart3,
-    },
-    {
-      title: 'Rules',
-      url: leagueUrl('/rules'),
-      icon: BookOpen,
-    },
-  ];
+  if (role === 'player') {
+    const primaryItems: NavItem[] = [
+      {
+        title: 'My Activities',
+        url: leagueUrl(''),
+        icon: Trophy,
+        viewOnly: true,
+      },
+      {
+        title: 'My Challenges',
+        url: leagueUrl('/challenges'),
+        icon: Flag,
+        viewOnly: true,
+      },
+      {
+        title: 'My Team',
+        url: leagueUrl('/my-team-view'),
+        icon: Users,
+      },
+      {
+        title: 'Leaderboard',
+        url: leagueUrl('/leaderboard'),
+        icon: BarChart3,
+      },
+      {
+        title: 'Rules',
+        url: leagueUrl('/rules'),
+        icon: BookOpen,
+      },
+    ];
 
-  sections.push({
-    title: '',
-    items: primaryItems,
-  });
+    sections.push({
+      title: '',
+      items: primaryItems,
+    });
+  }
 
   // ========================================
   // Host/Governor extras (keep scoped to admin section below)
@@ -150,6 +152,14 @@ export function getSidebarNavItems(
       title: 'League Settings',
       url: leagueUrl('/settings'),
       icon: Settings,
+    });
+  }
+
+  if (role === 'host' || role === 'governor') {
+    leagueAdminItems.push({
+      title: 'Manage Rules',
+      url: leagueUrl('/rules/manage'),
+      icon: FileText,
     });
   }
 
@@ -262,18 +272,15 @@ export function getMobileTabItems(
 
   const leagueUrl = (path: string) => `/leagues/${leagueId}${path}`;
 
-  // Base tabs for all roles
-  const tabs: NavItem[] = [
-    {
-      title: 'My Activity',
-      url: leagueUrl(''),
-      icon: Trophy,
-    },
-  ];
+  const tabs: NavItem[] = [];
 
-  // Player-first tabs
   if (role === 'player') {
     tabs.push(
+      {
+        title: 'My Activity',
+        url: leagueUrl(''),
+        icon: Trophy,
+      },
       {
         title: 'My Team',
         url: leagueUrl('/my-team-view'),
@@ -283,59 +290,71 @@ export function getMobileTabItems(
         title: 'My Challenges',
         url: leagueUrl('/challenges'),
         icon: Flag,
+      },
+      {
+        title: 'Leaderboard',
+        url: leagueUrl('/leaderboard'),
+        icon: BarChart3,
+      },
+      {
+        title: 'Submit',
+        url: leagueUrl('/submit'),
+        icon: Dumbbell,
       }
     );
-  }
-
-  tabs.push({
-    title: 'Leaderboard',
-    url: leagueUrl('/leaderboard'),
-    icon: BarChart3,
-  });
-
-  // Role-specific tabs
-  if (role === 'host' || role === 'governor') {
-    tabs.push({
-      title: 'My Team',
-      url: leagueUrl('/my-team-view'),
-      icon: Users,
-    });
-    tabs.push({
-      title: 'Validate',
-      url: leagueUrl('/submissions'),
-      icon: ClipboardCheck,
-    });
+  } else if (role === 'host' || role === 'governor') {
+    if (role === 'host') {
+      tabs.push({
+        title: 'Settings',
+        url: leagueUrl('/settings'),
+        icon: Settings,
+      });
+    }
+    tabs.push(
+      {
+        title: 'Rules',
+        url: leagueUrl('/rules/manage'),
+        icon: FileText,
+      },
+      {
+        title: 'Validate',
+        url: leagueUrl('/submissions'),
+        icon: ClipboardCheck,
+      },
+      {
+        title: 'Challenges',
+        url: leagueUrl('/configure-challenges'),
+        icon: Flag,
+      },
+      {
+        title: 'Manual Entry',
+        url: leagueUrl('/manual-entry'),
+        icon: UserCheck,
+      },
+      {
+        title: 'Donations',
+        url: leagueUrl('/rest-day-donations'),
+        icon: HeartHandshake,
+      }
+    );
   } else if (role === 'captain') {
-    tabs.push({
-      title: 'My Team',
-      url: leagueUrl('/my-team-view'),
-      icon: Users,
-    });
-    tabs.push({
-      title: 'My Challenges',
-      url: leagueUrl('/challenges'),
-      icon: Flag,
-    });
-    tabs.push({
-      title: 'Validate',
-      url: leagueUrl('/my-team/submissions'),
-      icon: ClipboardCheck,
-    });
-  }
-
-  // Submit tab for players (and hosts/governors)
-  const showSubmit =
-    role === 'player' ||
-    role === 'captain' ||
-    role === 'host' ||
-    role === 'governor';
-
-  if (showSubmit) {
-    tabs.push({
-      title: 'Submit',
-      url: leagueUrl('/submit'),
-      icon: Dumbbell,
-    });
+    tabs.push(
+      {
+        title: 'Team',
+        url: leagueUrl('/my-team'),
+        icon: Users,
+      },
+      {
+        title: 'Team Logs',
+        url: leagueUrl('/my-team/submissions'),
+        icon: ClipboardCheck,
+      },
+      {
+        title: 'Donations',
+        url: leagueUrl('/rest-day-donations'),
+        icon: HeartHandshake,
+      }
+    );
   }
 
   // Limit to 5 tabs max for mobile
