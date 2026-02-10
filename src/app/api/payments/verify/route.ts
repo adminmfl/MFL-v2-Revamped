@@ -43,13 +43,24 @@ export async function POST(req: NextRequest) {
 
     // Create league if league data exists in notes
     let leagueId = paymentRecord.league_id;
-    
+
+    // Update existing league with payment info
+    if (leagueId) {
+      await supabase
+        .from('leagues')
+        .update({
+          price_paid: paymentRecord.total_amount,
+          payment_status: 'completed',
+        })
+        .eq('league_id', leagueId);
+    }
+
     if (!leagueId && paymentRecord.notes?.leagueData) {
       const leagueData = paymentRecord.notes.leagueData;
-      
+
       // Import createLeague function
       const { createLeague } = await import('@/lib/services/leagues');
-      
+
       // Create the league now that payment is successful
       const league = await createLeague(leagueData.created_by, {
         league_name: leagueData.league_name,
@@ -63,6 +74,8 @@ export async function POST(req: NextRequest) {
         rest_days: leagueData.rest_days,
         is_public: leagueData.is_public,
         is_exclusive: leagueData.is_exclusive,
+        price_paid: paymentRecord.total_amount,
+        payment_status: 'completed',
       });
 
       if (!league) {

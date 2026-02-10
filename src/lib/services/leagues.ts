@@ -23,6 +23,8 @@ export interface LeagueInput {
   is_public?: boolean;
   is_exclusive?: boolean;
   max_team_capacity?: number;
+  price_paid?: number;
+  payment_status?: 'pending' | 'completed' | 'failed';
 }
 
 export interface League extends LeagueInput {
@@ -188,6 +190,8 @@ export async function createLeague(userId: string, data: LeagueInput): Promise<L
         invite_code: generateInviteCode(),
         status: initialStatus,
         created_by: userId,
+        price_paid: data.price_paid || null,
+        payment_status: data.payment_status || 'pending',
       })
       .select()
       .single();
