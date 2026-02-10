@@ -59,6 +59,18 @@ function LoadingSkeleton() {
     </div>
   );
 }
+function TrialPeriodAlert({ daysLeft }: { daysLeft: number }) {
+  return (
+    <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+      <Info className="size-4 text-blue-600 dark:text-blue-400" />
+      <AlertTitle className="text-blue-800 dark:text-blue-300">Trial Period</AlertTitle>
+      <AlertDescription className="text-blue-700 dark:text-blue-400">
+        This league is in trial mode for {daysLeft} day{daysLeft === 1 ? '' : 's'}.
+        Submissions won’t count toward the official leaderboard until the league starts.
+      </AlertDescription>
+    </Alert>
+  );
+}
 
 // ============================================================================
 // League Activities Page
@@ -101,6 +113,17 @@ export default function LeagueActivitiesPage({
   }, [data?.activities]);
 
   const supportsFrequency = data?.supportsFrequency !== false;
+
+  const trialDaysLeft = React.useMemo(() => {
+    if (!activeLeague?.start_date) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(String(activeLeague.start_date).slice(0, 10));
+    start.setHours(0, 0, 0, 0);
+    const diffMs = start.getTime() - today.getTime();
+    if (diffMs <= 0) return null;
+    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  }, [activeLeague?.start_date]);
 
   // Initialize frequency drafts when data changes (must be before early returns)
   React.useEffect(() => {
@@ -484,6 +507,8 @@ export default function LeagueActivitiesPage({
 
         {/* Content */}
         <div className="px-4 lg:px-6">
+          {trialDaysLeft && <TrialPeriodAlert daysLeft={trialDaysLeft} />}
+
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="size-4" />
@@ -640,6 +665,8 @@ export default function LeagueActivitiesPage({
 
       {/* Content */}
       <div className="px-4 lg:px-6 space-y-6">
+        {trialDaysLeft && <TrialPeriodAlert daysLeft={trialDaysLeft} />}
+
         {error && (
           <Alert variant="destructive">
             <AlertCircle className="size-4" />

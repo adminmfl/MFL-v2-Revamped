@@ -173,6 +173,15 @@ export default function LeagueDashboardPage({
   const [selectedSubmission, setSelectedSubmission] = React.useState<MySubmission | null>(null);
   const [mySummaryLoading, setMySummaryLoading] = React.useState(true);
 
+  const isTrialPeriod = React.useMemo(() => {
+    if (!league?.start_date) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(String(league.start_date).slice(0, 10));
+    start.setHours(0, 0, 0, 0);
+    return today < start;
+  }, [league?.start_date]);
+
 
   const { user } = useAuth();
 
@@ -814,6 +823,11 @@ export default function LeagueDashboardPage({
             )}
           </div>
           <p className="text-muted-foreground">One workout closer to your best self !</p>
+          {isTrialPeriod && (
+            <Badge className="mt-2 bg-amber-50 text-amber-700 border-amber-200">
+              Trial Period
+            </Badge>
+          )}
           {/* {hostName && (
             <Badge className="mt-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-0 px-3 py-1.5 hover:from-blue-600 hover:to-cyan-600 transition-all shadow-sm">
               <Crown className="size-3.5 mr-1.5" />
