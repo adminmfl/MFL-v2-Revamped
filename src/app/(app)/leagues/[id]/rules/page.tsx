@@ -193,9 +193,9 @@ export default function RulesPage({
           </div>
           <div className="flex gap-2">
             <Button variant="outline" asChild>
-              <Link href={`/leagues/${id}/mfl-roles`}>
+              <Link href={`/leagues/${id}/mfl-rules`}>
                 <Info className="size-4 mr-2" />
-                MFL Roles
+                MFL Rules
               </Link>
             </Button>
           </div>
@@ -240,22 +240,6 @@ export default function RulesPage({
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-semibold group-hover:text-primary transition-colors">View Allowed Activities</h3>
                     <p className="text-xs text-muted-foreground">See which activities count</p>
-                  </div>
-                  <ArrowRight className="size-4 text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all" />
-                </CardContent>
-              </Card>
-            </Link>
-
-            {/* MFL Roles Link */}
-            <Link href={`/leagues/${id}/mfl-roles`}>
-              <Card className="hover:shadow-md transition-all hover:border-primary/30 cursor-pointer group">
-                <CardContent className="p-3 flex items-center gap-3">
-                  <div className="size-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-md shrink-0">
-                    <Info className="size-5 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold group-hover:text-primary transition-colors">MFL Roles</h3>
-                    <p className="text-xs text-muted-foreground">Understand roles and responsibilities</p>
                   </div>
                   <ArrowRight className="size-4 text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all" />
                 </CardContent>
