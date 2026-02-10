@@ -46,8 +46,8 @@ const roleConfigs: Record<Role, RoleConfig> = {
   },
   captain: {
     icon: Users,
-    label: 'Captain',
-    description: 'Team leader',
+    label: 'Player (C)',
+    description: 'Captain view',
     color: 'text-blue-600 dark:text-blue-400',
     bgColor: 'bg-blue-100 dark:bg-blue-900/30',
   },

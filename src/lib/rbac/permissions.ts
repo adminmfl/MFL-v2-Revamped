@@ -92,7 +92,7 @@ export function getRoleDisplayName(role: Role): string {
   const names: Record<Role, string> = {
     host: 'Host',
     governor: 'Governor',
-    captain: 'Captain',
+    captain: 'Player (C)',
     player: 'Player',
   };
   return names[role];

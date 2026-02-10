@@ -109,17 +109,11 @@ export function RoleProvider({ children }: RoleProviderProps) {
       value={{
         activeRole: currentRole,
         availableRoles: availableRoles.filter(role => {
-          const hasHostOrGovernor = availableRoles.some(r => r === 'host' || r === 'governor');
           const hasCaptain = availableRoles.includes('captain');
 
           if (role === 'player') {
-            // Player-only should remain visible
-            if (!hasHostOrGovernor && !hasCaptain) return true;
-
-            // Captain-only view should not show Player
-            if (hasCaptain && !hasHostOrGovernor) return false;
-
-            // Host/Governor can switch into Player view if they have it
+            // If captain role exists, show Player(C) instead of Player
+            if (hasCaptain) return false;
             return true;
           }
 

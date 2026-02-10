@@ -103,9 +103,9 @@ export function getSidebarNavItems(
   const leagueUrl = (path: string) => `/leagues/${leagueId}${path}`;
 
   // ========================================
-  // PLAYER Section (Player view only)
+  // PLAYER Section (Player view + Captain view)
   // ========================================
-  if (role === 'player') {
+  if (role === 'player' || role === 'captain') {
     const primaryItems: NavItem[] = [
       {
         title: 'My Activities',
@@ -274,7 +274,7 @@ export function getMobileTabItems(
 
   const tabs: NavItem[] = [];
 
-  if (role === 'player') {
+  if (role === 'player' || role === 'captain') {
     tabs.push(
       {
         title: 'My Activity',
@@ -302,6 +302,20 @@ export function getMobileTabItems(
         icon: Dumbbell,
       }
     );
+    if (role === 'captain') {
+      tabs.push(
+        {
+          title: 'Team Logs',
+          url: leagueUrl('/my-team/submissions'),
+          icon: ClipboardCheck,
+        },
+        {
+          title: 'Donations',
+          url: leagueUrl('/rest-day-donations'),
+          icon: HeartHandshake,
+        }
+      );
+    }
   } else if (role === 'host' || role === 'governor') {
     if (role === 'host') {
       tabs.push({
@@ -330,24 +344,6 @@ export function getMobileTabItems(
         title: 'Manual Entry',
         url: leagueUrl('/manual-entry'),
         icon: UserCheck,
-      },
-      {
-        title: 'Donations',
-        url: leagueUrl('/rest-day-donations'),
-        icon: HeartHandshake,
-      }
-    );
-  } else if (role === 'captain') {
-    tabs.push(
-      {
-        title: 'Team',
-        url: leagueUrl('/my-team'),
-        icon: Users,
-      },
-      {
-        title: 'Team Logs',
-        url: leagueUrl('/my-team/submissions'),
-        icon: ClipboardCheck,
       },
       {
         title: 'Donations',
@@ -413,7 +409,7 @@ export function getRoleDisplay(role: LeagueRole): {
       color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30',
     },
     captain: {
-      label: 'Captain',
+      label: 'Player (C)',
       icon: Target,
       color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30',
     },
