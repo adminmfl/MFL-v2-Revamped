@@ -36,7 +36,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { Skeleton } from '@/components/ui/skeleton';
+import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 // ============================================================================
@@ -341,40 +341,9 @@ function LeaguesEmptyState() {
 // ============================================================================
 
 function SectionCardsSkeleton() {
-  return (
-    <div className="grid grid-cols-2 gap-2 px-4 lg:px-6 sm:grid-cols-2 lg:grid-cols-3">
-      {[1, 2, 3].map((i) => (
-        <Card key={i} className="p-2.5 sm:p-4">
-          <CardHeader className="p-0 sm:p-4 sm:pb-1.5">
-            <Skeleton className="h-3 w-24" />
-            <Skeleton className="h-6 w-16 mt-1.5" />
-          </CardHeader>
-          <CardFooter className="flex-col items-start gap-1 p-0 pt-1.5 sm:p-4 sm:pt-0">
-            <Skeleton className="h-3 w-28" />
-            <Skeleton className="h-2.5 w-36" />
-          </CardFooter>
-        </Card>
-      ))}
-    </div>
-  );
+  return <DumbbellLoading label="Loading dashboard..." />;
 }
 
 function LeagueGridSkeleton() {
-  return (
-    <div className="grid gap-2 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3">
-      {[1, 2, 3, 4, 5, 6].map((i) => (
-        <Card key={i} className="h-full overflow-hidden">
-          <div className="h-16 lg:h-28 bg-muted animate-pulse" />
-          <div className="p-2.5 lg:p-4 space-y-2 lg:space-y-3">
-            <Skeleton className="h-3 lg:h-4 w-3/4" />
-            <Skeleton className="h-2.5 lg:h-3 w-full" />
-            <div className="flex gap-2">
-              <Skeleton className="h-4 lg:h-5 w-14 lg:w-16" />
-              <Skeleton className="h-4 lg:h-5 w-14 lg:w-16" />
-            </div>
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
+  return <DumbbellLoading label="Loading leagues..." />;
 }

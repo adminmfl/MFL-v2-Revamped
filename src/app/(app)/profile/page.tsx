@@ -51,7 +51,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
+import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import { ThemeDrawer } from '@/components/theme-drawer';
 
 // ============================================================================
@@ -889,20 +889,7 @@ export default function ProfilePage() {
         </h2>
       </div>
       {leaguesLoading ? (
-        <div className="grid grid-cols-2 gap-3 px-4 lg:px-6 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-8 w-16 mt-2" />
-              </CardHeader>
-              <CardFooter className="flex-col items-start gap-1.5">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-3 w-40" />
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+        <DumbbellLoading label="Loading league stats..." />
       ) : (
         <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-2 gap-3 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
           {leagueStatCards.map((stat, index) => {
@@ -1024,46 +1011,5 @@ export default function ProfilePage() {
 // ============================================================================
 
 function ProfileSkeleton() {
-  return (
-    <div className="flex flex-col gap-6 py-4 md:py-6">
-      <div className="flex flex-col gap-4 px-4 lg:px-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-4 w-72" />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 sm:grid-cols-2 lg:grid-cols-4">
-        {[1, 2, 3, 4].map((i) => (
-          <Card key={i}>
-            <CardHeader>
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-8 w-16 mt-2" />
-            </CardHeader>
-            <CardFooter className="flex-col items-start gap-1.5">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-3 w-40" />
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
-
-      <div className="px-4 lg:px-6">
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-40" />
-            <Skeleton className="h-4 w-60" />
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-start gap-6 p-4 rounded-lg bg-muted/30">
-              <Skeleton className="size-24 rounded-full" />
-              <div className="space-y-2">
-                <Skeleton className="h-6 w-32" />
-                <Skeleton className="h-4 w-48" />
-                <Skeleton className="h-6 w-24 mt-2" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
+  return <DumbbellLoading label="Loading profile..." />;
 }

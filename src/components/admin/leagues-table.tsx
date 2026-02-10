@@ -67,7 +67,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Skeleton } from "@/components/ui/skeleton";
+import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import { LeagueFormDialog } from "./league-form-dialog";
 import { useAdminLeagues } from "@/hooks/admin";
 import type { AdminLeague, LeagueStatus } from "@/types/admin";
@@ -96,33 +96,7 @@ function StatusBadge({ status }: { status: LeagueStatus }) {
 // ============================================================================
 
 function TableSkeleton() {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-10 w-32" />
-      </div>
-      <div className="flex gap-4">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-10 w-32" />
-        <Skeleton className="h-10 w-32" />
-      </div>
-      <div className="rounded-lg border">
-        <div className="p-4 space-y-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4">
-              <Skeleton className="h-10 w-10 rounded-lg" />
-              <Skeleton className="h-4 w-48" />
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-16" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+  return <DumbbellLoading label="Loading leagues..." />;
 }
 
 // ============================================================================
