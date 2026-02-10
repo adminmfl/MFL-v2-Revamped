@@ -194,7 +194,7 @@ export function getSidebarNavItems(
 
     // Include league admin items here to keep all host/governor tools together
     sections.push({
-      title: 'Host/Governor Actions',
+      title: role === 'host' ? 'Host Actions' : 'Governor Actions',
       items: [...leagueAdminItems, ...oversightItems],
     });
   }
