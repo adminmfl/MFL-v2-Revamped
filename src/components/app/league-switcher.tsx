@@ -209,7 +209,9 @@ export function LeagueSwitcher({ trigger, onOpenChange }: LeagueSwitcherProps) {
                 <div className="flex-1 min-w-0">
                   <div className="truncate font-medium text-sm">{league.name}</div>
                   <div className="flex items-center gap-0.5 mt-0.5">
-                    {league.roles.map((role) => (
+                    {league.roles
+                      .filter((role) => !(role === 'player' && league.roles.includes('captain')))
+                      .map((role) => (
                       <Badge
                         key={role}
                         variant="outline"
@@ -313,7 +315,10 @@ export function LeagueSwitcher({ trigger, onOpenChange }: LeagueSwitcherProps) {
                   <div className="flex-1 min-w-0">
                     <div className="truncate font-medium">{league.name}</div>
                     <div className="flex items-center gap-1 mt-0.5">
-                      {league.roles.slice(0, 2).map((role) => (
+                      {league.roles
+                        .filter((role) => !(role === 'player' && league.roles.includes('captain')))
+                        .slice(0, 2)
+                        .map((role) => (
                         <Badge
                           key={role}
                           variant="outline"
