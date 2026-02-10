@@ -19,7 +19,6 @@ import {
   Calendar,
   CheckCircle,
   FileCheck,
-  Lock,
 } from "lucide-react";
 import {
   flexRender,
@@ -179,22 +178,6 @@ export function ChallengesTable({ data: initialData, leagueId }: ChallengesTable
     }
   };
 
-  const handleCloseChallenge = async (challenge: Challenge) => {
-    try {
-      const res = await fetch(`/api/leagues/${leagueId}/challenges/${challenge.id}/close`, {
-        method: "POST",
-      });
-      const result = await res.json();
-      if (result.success) {
-        toast.success("Challenge closed successfully");
-        setData(data.map((c) => (c.id === challenge.id ? { ...c, status: "closed" } : c)));
-      } else {
-        toast.error(result.error || "Failed to close challenge");
-      }
-    } catch (error) {
-      toast.error("Failed to close challenge");
-    }
-  };
 
   const handleFormSubmit = (challengeData: Partial<Challenge>) => {
     if (challengeData.id) {
@@ -316,12 +299,6 @@ export function ChallengesTable({ data: initialData, leagueId }: ChallengesTable
               <DropdownMenuItem onClick={() => handlePublishScores(row.original)}>
                 <CheckCircle className="mr-2 size-4 text-green-600" />
                 Publish Scores
-              </DropdownMenuItem>
-            )}
-            {row.original.status === "published" && (
-              <DropdownMenuItem onClick={() => handleCloseChallenge(row.original)}>
-                <Lock className="mr-2 size-4 text-gray-600" />
-                Close Challenge
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
