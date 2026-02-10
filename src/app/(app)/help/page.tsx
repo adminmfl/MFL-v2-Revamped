@@ -130,8 +130,8 @@ export default function HelpPage() {
           answer: 'After submissions close, open the Review section for that challenge. You can view each submission, award points, reject it, or request changes. Approved submissions contribute to the leaderboard standings.',
         },
         {
-          question: 'What does "finalize and close a challenge" mean?',
-          answer: 'Finalizing closes a challenge for further submissions and locks the results. This should be done after all scores are published and you are satisfied with the final rankings. This action cannot be undone.',
+          question: 'Can I update challenge scores after publishing?',
+          answer: 'Yes. Hosts and governors can edit challenge scores at any time. Publishing scores does not lock them, so you can make adjustments whenever needed.',
         },
         {
           question: 'Can I edit league rules after creation?',
