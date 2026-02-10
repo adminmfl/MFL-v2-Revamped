@@ -363,7 +363,13 @@ export default function LeagueSettingsPage({
               {formData.status}
             </Badge>
           </h1>
-          <p className="text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+            <Calendar className="size-3.5" />
+            <span>
+              {formData.start_date?.split('-').reverse().join('-') || '—'} to {formData.end_date?.split('-').reverse().join('-') || '—'}
+            </span>
+          </div>
+          <p className="text-muted-foreground mt-1">
             Configure your league settings and preferences
           </p>
         </div>
@@ -382,24 +388,24 @@ export default function LeagueSettingsPage({
                   </div>
                   <p className="text-xs text-muted-foreground">Manage teams and activities in separate screens.</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
                   <Button
                     asChild
-                    size="sm"
-                    className="gap-2 border border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 dark:border-primary/30 dark:bg-primary/15 dark:text-primary-foreground/90"
+                    variant="outline"
+                    className="h-auto py-1.5 px-1 text-[11px] sm:text-xs gap-1.5 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 dark:border-primary/30 dark:bg-primary/15 dark:text-primary-foreground/90 whitespace-normal text-center leading-tight"
                   >
                     <Link href={`/leagues/${id}/team`}>
-                      <Users className="size-4" />
+                      <Users className="size-3.5 shrink-0" />
                       Team Management
                     </Link>
                   </Button>
                   <Button
                     asChild
-                    size="sm"
-                    className="gap-2 border border-accent/30 bg-accent/10 text-accent hover:bg-accent/20 dark:border-accent/40 dark:bg-accent/15 dark:text-accent-foreground"
+                    variant="outline"
+                    className="h-auto py-1.5 px-1 text-[11px] sm:text-xs gap-1.5 border-accent/30 bg-accent/10 text-accent hover:bg-accent/20 dark:border-accent/40 dark:bg-accent/15 dark:text-accent-foreground whitespace-normal text-center leading-tight"
                   >
                     <Link href={`/leagues/${id}/activities`}>
-                      <Activity className="size-4" />
+                      <Activity className="size-3.5 shrink-0" />
                       Configure Activities
                     </Link>
                   </Button>
@@ -464,7 +470,7 @@ export default function LeagueSettingsPage({
                     <FieldInfoButton text="Start and end dates are locked after launch." />
                   </div>
                 </div>
-                <div className="w-full sm:max-w-md grid grid-cols-2 gap-2">
+                <div className="w-full max-w-[340px] grid grid-cols-2 gap-2">
                   <Input
                     type="date"
                     value={formData.start_date}
@@ -487,80 +493,74 @@ export default function LeagueSettingsPage({
               </div>
 
               {/* Teams */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-5">
-                <div className="flex-1 space-y-1">
+              <div className="flex items-center justify-between gap-3 py-5">
+                <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex items-center gap-2">
                     <Label>Number of Teams</Label>
                     <FieldInfoButton text="Team count can be edited in draft mode only." />
                   </div>
                 </div>
-                <div className="w-full sm:max-w-sm">
-                  <Select
-                    value={formData.num_teams}
-                    onValueChange={(v) =>
-                      setFormData((prev) => ({ ...prev, num_teams: v }))
-                    }
-                    disabled={!canEditStructure}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[2, 3, 4, 5, 6, 8, 10, 12, 16, 20].map((n) => (
-                        <SelectItem key={n} value={n.toString()}>
-                          {n} teams
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Select
+                  value={formData.num_teams}
+                  onValueChange={(v) =>
+                    setFormData((prev) => ({ ...prev, num_teams: v }))
+                  }
+                  disabled={!canEditStructure}
+                >
+                  <SelectTrigger className="w-28 bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground text-center justify-center">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[2, 3, 4, 5, 6, 8, 10, 12, 16, 20].map((n) => (
+                      <SelectItem key={n} value={n.toString()}>
+                        {n} teams
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Max Team Capacity */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-5">
-                <div className="flex-1 space-y-1">
+              <div className="flex items-center justify-between gap-3 py-5">
+                <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex items-center gap-2">
                     <Label htmlFor="max_team_capacity">Max Team Capacity</Label>
                     <FieldInfoButton text="Maximum members allowed per team." />
                   </div>
                   <p className="text-xs text-muted-foreground">Limits team size for joining.</p>
                 </div>
-                <div className="w-full sm:max-w-sm">
-                  <Input
-                    id="max_team_capacity"
-                    type="number"
-                    min="1"
-                    value={formData.max_team_capacity}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, max_team_capacity: e.target.value }))
-                    }
-                    placeholder="e.g. 10"
-                    className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
-                  />
-                </div>
+                <Input
+                  id="max_team_capacity"
+                  type="number"
+                  min="1"
+                  value={formData.max_team_capacity}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, max_team_capacity: e.target.value }))
+                  }
+                  placeholder="e.g. 10"
+                  className="w-20 bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground text-center"
+                />
               </div>
 
               {/* Rest Days */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-5">
-                <div className="flex-1 space-y-1">
+              <div className="flex items-center justify-between gap-3 py-5">
+                <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex items-center gap-2">
                     <Label htmlFor="rest_days">Total Rest Days</Label>
                     <FieldInfoButton text="Total rest days per member." />
                   </div>
                 </div>
-                <div className="w-full sm:max-w-sm">
-                  <Input
-                    id="rest_days"
-                    type="number"
-                    min="0"
-                    value={formData.rest_days}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, rest_days: e.target.value }))
-                    }
-                    placeholder="e.g. 18"
-                    className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
-                  />
-                </div>
+                <Input
+                  id="rest_days"
+                  type="number"
+                  min="0"
+                  value={formData.rest_days}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, rest_days: e.target.value }))
+                  }
+                  placeholder="e.g. 18"
+                  className="w-20 bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground text-center"
+                />
               </div>
 
               {/* Auto Rest Day */}
@@ -584,7 +584,7 @@ export default function LeagueSettingsPage({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <Label>Point Normalization</Label>
-                    <FieldInfoButton text="When enabled, team points are normalized using the formula: (raw_points / team_size) × max_team_size"/>
+                    <FieldInfoButton text="When enabled, team points are normalized using the formula: (raw_points / team_size) × max_team_size" />
                   </div>
                 </div>
                 <Switch
@@ -785,6 +785,6 @@ export default function LeagueSettingsPage({
           </Card>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
