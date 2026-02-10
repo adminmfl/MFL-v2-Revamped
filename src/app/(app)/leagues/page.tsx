@@ -27,7 +27,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -275,7 +275,7 @@ export default function LeaguesPage() {
       {/* Leagues Table */}
       <div className="px-4 lg:px-6">
         {isLoading ? (
-          <LeaguesTableSkeleton />
+          <DumbbellLoading label="Loading leagues..." />
         ) : filteredLeagues.length === 0 ? (
           <EmptyState
             hasLeagues={userLeagues.length > 0}
@@ -505,46 +505,5 @@ function EmptyState({
 // ============================================================================
 
 function LeaguesTableSkeleton() {
-  return (
-    <div className="overflow-hidden rounded-lg border">
-      <Table>
-        <TableHeader className="bg-muted">
-          <TableRow>
-            <TableHead>League</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Your Role</TableHead>
-            <TableHead>Team</TableHead>
-            <TableHead className="w-12"></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {[1, 2, 3].map((i) => (
-            <TableRow key={i}>
-              <TableCell>
-                <div className="flex items-center gap-3">
-                  <Skeleton className="size-10 rounded-lg" />
-                  <div className="space-y-1">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-3 w-48" />
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-5 w-16" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-20" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-24" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="size-8 rounded" />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
+  return <DumbbellLoading label="Loading leagues..." />;
 }

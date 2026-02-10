@@ -4,7 +4,7 @@ import * as React from "react";
 
 import { RevenueSectionCards } from "@/components/admin/revenue-section-cards";
 import { RevenueChart } from "@/components/admin/revenue-chart";
-import { Skeleton } from "@/components/ui/skeleton";
+import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import { Card, CardFooter, CardHeader } from "@/components/ui/card";
 import { useRevenueStats } from "@/hooks/admin";
 
@@ -48,22 +48,7 @@ const defaultRevenueStats = [
 // ============================================================================
 
 function RevenueStatsSkeleton() {
-  return (
-    <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-      {[1, 2, 3, 4].map((i) => (
-        <Card key={i} className="@container/card">
-          <CardHeader>
-            <Skeleton className="h-4 w-28" />
-            <Skeleton className="h-8 w-24 mt-2" />
-          </CardHeader>
-          <CardFooter className="flex-col items-start gap-1.5">
-            <Skeleton className="h-4 w-36" />
-            <Skeleton className="h-3 w-44" />
-          </CardFooter>
-        </Card>
-      ))}
-    </div>
-  );
+  return <DumbbellLoading label="Loading revenue stats..." />;
 }
 
 // ============================================================================

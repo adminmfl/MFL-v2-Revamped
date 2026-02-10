@@ -4,7 +4,7 @@ import * as React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { TierFormDialog } from "./tier-form-dialog";
@@ -27,23 +27,7 @@ function StatusBadge({ active }: { active: boolean }) {
 }
 
 function TiersSkeleton() {
-  return (
-    <div className="space-y-4">
-      <Skeleton className="h-10 w-40" />
-      {Array.from({ length: 3 }).map((_, idx) => (
-        <Card key={idx}>
-          <CardHeader>
-            <Skeleton className="h-5 w-48" />
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-4 w-56" />
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
+  return <DumbbellLoading label="Loading tiers..." />;
 }
 
 function TierRow({ tier, onEdit, onDelete, onToggleActive }: {

@@ -172,8 +172,18 @@ export function LeagueSwitcher({ trigger, onOpenChange }: LeagueSwitcherProps) {
                   )}
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <div className="truncate font-medium text-sm">{league.name}</div>
-                  <div className="flex items-center gap-0.5 mt-0.5">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="truncate font-medium text-sm">{league.name}</span>
+                    {league.status === 'completed' && (
+                      <Badge
+                        variant="secondary"
+                        className="text-[12px] px-1.5 py-0.5 h-4"
+                      >
+                        Completed
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-0.5 mt-0.5 flex-wrap">
                     {league.roles.map((role) => (
                       <Badge
                         key={role}
@@ -265,8 +275,10 @@ export function LeagueSwitcher({ trigger, onOpenChange }: LeagueSwitcherProps) {
                     )}
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <div className="truncate font-medium">{league.name}</div>
-                    <div className="flex items-center gap-1 mt-0.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="truncate font-medium">{league.name}</span>
+                    </div>
+                    <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                       {league.roles.slice(0, 2).map((role) => (
                         <Badge
                           key={role}
@@ -276,6 +288,14 @@ export function LeagueSwitcher({ trigger, onOpenChange }: LeagueSwitcherProps) {
                           {capitalize(role)}
                         </Badge>
                       ))}
+                      {league.status === 'completed' && (
+                        <Badge
+                          variant="secondary"
+                          className="text-xs px-2 py-0.5 h-5"
+                        >
+                          Completed
+                        </Badge>
+                      )}
                       {league.roles.length > 2 && (
                         <span className="text-[10px] text-muted-foreground">
                           +{league.roles.length - 2}
