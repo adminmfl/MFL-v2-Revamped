@@ -22,13 +22,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const normalizedCode = code.replace(/\s+/g, '').toUpperCase();
+    if (!normalizedCode) {
+      return NextResponse.json(
+        { error: 'Invite code is required' },
+        { status: 400 }
+      );
+    }
+
     const supabase = getSupabaseServiceRole();
 
     // Find league by invite_code (no embedded join)
     const { data: league, error: leagueError } = await supabase
       .from('leagues')
       .select('*')
-      .eq('invite_code', code.trim().toUpperCase())
+      .ilike('invite_code', normalizedCode)
       .single();
 
     if (leagueError || !league) {

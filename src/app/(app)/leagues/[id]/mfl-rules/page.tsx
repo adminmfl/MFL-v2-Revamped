@@ -24,6 +24,60 @@ export default function MFLRolesPage() {
 
             {/* Content */}
             <div className="px-4 lg:px-6 max-w-4xl mx-auto w-full space-y-4">
+                {/* Universal Principles */}
+                <Card className="border-primary/50 bg-primary/5 shadow-sm">
+                    <CardHeader className="pb-3">
+                        <div className="flex items-start gap-3">
+                            <div className="size-9 sm:size-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-sm shrink-0">
+                                <Info className="size-4.5 sm:size-5 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <CardTitle className="text-base sm:text-lg">Universal MFL Principles</CardTitle>
+                                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                                    Applies unless explicitly overridden
+                                </p>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
+                            <li>If it's not logged correctly in the app, it doesn't count</li>
+                            <li>Fair play and honesty matter more than rankings</li>
+                            <li>Authority flows: Player → Captain → Governor</li>
+                            <li>Governors safeguard trust so Hosts can run league</li>
+                            <li>Rules are fixed once announced; changes are rare and explicit</li>
+                        </ul>
+                    </CardContent>
+                </Card>
+
+                {/* Accepted Proofs */}
+                <Card className="border-emerald-500/40 bg-emerald-50/40 dark:bg-emerald-500/10 shadow-sm">
+                    <CardHeader className="pb-3">
+                        <div className="flex items-start gap-3">
+                            <div className="size-9 sm:size-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm shrink-0">
+                                <Info className="size-4.5 sm:size-5 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <CardTitle className="text-base sm:text-lg">Accepted Proofs (Wearable Mandatory)</CardTitle>
+                                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                                    Proof rules and medical exceptions
+                                </p>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
+                            <li>Screenshot from a fitness app posted same day by all participants.</li>
+                            <li>Screenshot must clearly show: 1. Date 2. Activity type 3. Duration 4. Distance/Steps (add Heart rate & calories if available or when any of above 4 missing).</li>
+                            <li>Golf proof required: a photo of player at the course - tee, green, or club sign, PLUS either a scorecard photo or a golf app screenshot showing date and holes played.</li>
+                            <li>Keep full 90-day history on your device for final tally.</li>
+                            <li>For kids under 18 that are not allowed to use watch in school, but do their approved workout in school hours – they can say so (day, activity & mins) in Team’s whatsapp group and use that screenshot as proof.</li>
+                            <li>No dropouts are expected during the tournament, except for Medical Emergency (ME). Otherwise, dropouts will affect the team score.</li>
+                            <li>PFL Medical Emergency (ME) Rule: If a player has a verified Medical Emergency (7+ days of being unable to do any approved workout, and approved by Governors), their rest days are used first. If more days are needed, other PFL players may voluntarily donate unused rest days to support the ME player — in the true spirit of Pristine.</li>
+                        </ul>
+                    </CardContent>
+                </Card>
+
                 {/* Player Role */}
                 <Card className="shadow-sm">
                     <CardHeader className="pb-3">
@@ -184,32 +238,6 @@ export default function MFLRolesPage() {
                                 League setup, event creation, announcements, full league visibility
                             </p>
                         </div>
-                    </CardContent>
-                </Card>
-
-                {/* Universal Principles */}
-                <Card className="border-primary/50 bg-primary/5 shadow-sm">
-                    <CardHeader className="pb-3">
-                        <div className="flex items-start gap-3">
-                            <div className="size-9 sm:size-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-sm shrink-0">
-                                <Info className="size-4.5 sm:size-5 text-white" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <CardTitle className="text-base sm:text-lg">Universal MFL Principles</CardTitle>
-                                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                                    Applies unless explicitly overridden
-                                </p>
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
-                            <li>If it's not logged correctly in the app, it doesn't count</li>
-                            <li>Fair play and honesty matter more than rankings</li>
-                            <li>Authority flows: Player → Captain → Governor</li>
-                            <li>Governors safeguard trust so Hosts can run league</li>
-                            <li>Rules are fixed once announced; changes are rare and explicit</li>
-                        </ul>
                     </CardContent>
                 </Card>
             </div>

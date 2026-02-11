@@ -65,7 +65,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Skeleton } from "@/components/ui/skeleton";
+import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import { RoleFormDialog } from "./role-form-dialog";
 import { useAdminRoles } from "@/hooks/admin";
 import type { AdminRole } from "@/types/admin";
@@ -78,29 +78,7 @@ const SYSTEM_ROLES = ["host", "governor", "captain", "player"];
 // ============================================================================
 
 function TableSkeleton() {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-10 w-32" />
-      </div>
-      <div className="flex gap-4">
-        <Skeleton className="h-10 w-64" />
-      </div>
-      <div className="rounded-lg border">
-        <div className="p-4 space-y-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4">
-              <Skeleton className="h-10 w-10 rounded-lg" />
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-4 w-16" />
-              <Skeleton className="h-4 w-24" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+  return <DumbbellLoading label="Loading roles..." />;
 }
 
 // ============================================================================

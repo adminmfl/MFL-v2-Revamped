@@ -109,11 +109,14 @@ export function RoleProvider({ children }: RoleProviderProps) {
       value={{
         activeRole: currentRole,
         availableRoles: availableRoles.filter(role => {
-          // If user has any higher role (host, governor, captain), hide player role
-          const hasHigherRole = availableRoles.some(r => ['host', 'governor', 'captain'].includes(r));
-          if (hasHigherRole && role === 'player') {
-            return false;
+          const hasCaptain = availableRoles.includes('captain');
+
+          if (role === 'player') {
+            // If captain role exists, show Player(C) instead of Player
+            if (hasCaptain) return false;
+            return true;
           }
+
           return true;
         }),
         setActiveRole: setCurrentRole,

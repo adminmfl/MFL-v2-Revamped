@@ -4,7 +4,7 @@
 import * as React from "react";
 
 import { SectionCards } from "@/components/dashboard/section-cards";
-import { Skeleton } from "@/components/ui/skeleton";
+import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAdminStats, useRecentActivity } from "@/hooks/admin";
 import { Badge } from "@/components/ui/badge";
@@ -46,52 +46,15 @@ const defaultStats = [
 ];
 
 // ============================================================================
-// Loading Skeleton for Stats
+// Loading States
 // ============================================================================
 
 function StatsSkeleton() {
-  return (
-    <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-2 gap-3 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 sm:grid-cols-2 sm:gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-      {[1, 2, 3, 4].map((i) => (
-        <Card key={i} className="@container/card">
-          <CardHeader>
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-8 w-20 mt-2" />
-          </CardHeader>
-          <CardFooter className="flex-col items-start gap-1.5">
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-3 w-40" />
-          </CardFooter>
-        </Card>
-      ))}
-    </div>
-  );
+  return <DumbbellLoading label="Loading admin stats..." />;
 }
 
 function RecentActivitySkeleton() {
-  return (
-    <div className="grid gap-4 md:grid-cols-2 px-4 lg:px-6">
-      {[1, 2].map((i) => (
-        <Card key={i}>
-          <CardHeader>
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="h-4 w-48 mt-1" />
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {[1, 2, 3, 4, 5].map((j) => (
-              <div key={j} className="flex items-center gap-3">
-                <Skeleton className="h-8 w-8 rounded-full" />
-                <div className="flex-1 space-y-1">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-24" />
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
+  return <DumbbellLoading label="Loading recent activity..." />;
 }
 
 // ============================================================================

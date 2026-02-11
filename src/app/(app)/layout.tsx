@@ -114,7 +114,10 @@ export default function AppLayout({
             {/* Page Content */}
             <main className="flex-1 overflow-auto pb-20 md:pb-0">
               <div className="p-4 lg:p-6">
-                {pathname !== '/dashboard' && !/^\/leagues\/[^/]+$/.test(pathname || '') && !/^\/leagues\/[^/]+\/submit$/.test(pathname || '') && (
+                {pathname !== '/dashboard'
+                  && !/^\/leagues\/[^/]+$/.test(pathname || '')
+                  && !/^\/leagues\/[^/]+\/submit$/.test(pathname || '')
+                  && !/^\/leagues\/[^/]+\/settings$/.test(pathname || '') && (
                   <Button variant="outline" size="sm" className="mb-4 gap-2" onClick={handleBackClick}>
                     <ArrowLeft className="size-4" />
                     Back

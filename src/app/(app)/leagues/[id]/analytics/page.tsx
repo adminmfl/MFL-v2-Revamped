@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Skeleton } from '@/components/ui/skeleton';
+import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   LineChart,
@@ -53,17 +53,7 @@ const CACHE_TTL_MS = 10 * 60 * 1000;
 const analyticsCache = new Map<string, { data: AnalyticsData; fetchedAt: number; generatedAt?: string }>();
 
 function AnalyticsSkeleton() {
-  return (
-    <div className="flex flex-col gap-6">
-      <Skeleton className="h-10 w-48" />
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-24" />
-        ))}
-      </div>
-      <Skeleton className="h-96" />
-    </div>
-  );
+  return <DumbbellLoading label="Loading analytics..." />;
 }
 
 export default function LeagueAnalyticsPage({ params }: { params: Promise<{ id: string }> }) {

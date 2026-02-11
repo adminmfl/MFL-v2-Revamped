@@ -35,7 +35,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Skeleton } from '@/components/ui/skeleton';
+import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import {
   Collapsible,
   CollapsibleContent,
@@ -95,13 +95,7 @@ function calculateWeekPresets(leagueStartDate: string, leagueEndDate: string): W
 // ============================================================================
 
 function LoadingSkeleton() {
-  return (
-    <div className="@container/main flex flex-1 flex-col gap-4 p-4 lg:p-6">
-      <Skeleton className="h-8 w-48 mb-2" />
-      <Skeleton className="h-12 w-full" />
-      <Skeleton className="h-[400px]" />
-    </div>
-  );
+  return <DumbbellLoading label="Loading leaderboard..." />;
 }
 
 // ============================================================================
