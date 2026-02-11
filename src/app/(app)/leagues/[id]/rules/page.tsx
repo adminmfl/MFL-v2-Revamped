@@ -1,8 +1,7 @@
 'use client';
 
-import React, { use, useEffect, useState, useRef } from 'react';
+import React, { use, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRole } from '@/contexts/role-context';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -11,32 +10,15 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import {
   FileText,
   Download,
-  Upload,
-  Loader2,
-  Edit3,
-  Trash2,
-  FileIcon,
   AlertCircle,
   Activity,
   ArrowRight,
   Crown,
   Info,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 
@@ -48,225 +30,6 @@ interface RulesData {
   rules_summary: string | null;
   rules_doc_url: string | null;
   file_type: 'pdf' | 'doc' | 'docx' | 'document' | 'unknown';
-}
-
-// ============================================================================
-// Rules Editor Dialog Component
-// ============================================================================
-
-function RulesEditorDialog({
-  leagueId,
-  currentData,
-  open,
-  onOpenChange,
-  onSaved,
-}: {
-  leagueId: string;
-  currentData: RulesData | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSaved: () => void;
-}) {
-  const [summary, setSummary] = useState(currentData?.rules_summary || '');
-  const [file, setFile] = useState<File | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (open) {
-      setSummary(currentData?.rules_summary || '');
-      setFile(null);
-    }
-  }, [open, currentData]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      // Validate file type
-      const validTypes = [
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      ];
-      if (!validTypes.includes(selectedFile.type)) {
-        toast.error('Please upload a PDF, DOC, or DOCX file');
-        return;
-      }
-      // Validate file size (10MB)
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        toast.error('File size must be less than 10MB');
-        return;
-      }
-      setFile(selectedFile);
-    }
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const formData = new FormData();
-      formData.append('rules_summary', summary);
-      if (file) {
-        formData.append('file', file);
-      }
-
-      const res = await fetch(`/api/leagues/${leagueId}/rules`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || 'Failed to save rules');
-      }
-
-      toast.success('League rules saved successfully');
-      onSaved();
-      onOpenChange(false);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to save rules');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteDocument = async () => {
-    if (!currentData?.rules_doc_url) return;
-
-    setDeleting(true);
-    try {
-      const res = await fetch(`/api/leagues/${leagueId}/rules`, {
-        method: 'DELETE',
-      });
-
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || 'Failed to delete document');
-      }
-
-      toast.success('Rules document deleted');
-      onSaved();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to delete document');
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Edit3 className="size-5" />
-            Edit League Rules
-          </DialogTitle>
-          <DialogDescription>
-            Add a brief summary and upload a rules document (PDF, DOC, DOCX).
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          {/* Rules Summary */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="rules_summary">Rules Summary</Label>
-              <span className="text-xs text-muted-foreground">
-                {summary.length}/200
-              </span>
-            </div>
-            <Textarea
-              id="rules_summary"
-              value={summary}
-              onChange={(e) => setSummary(e.target.value.slice(0, 200))}
-              placeholder="Brief overview of league rules..."
-              rows={3}
-            />
-          </div>
-
-          {/* File Upload */}
-          <div className="space-y-2">
-            <Label>Rules Document</Label>
-
-            {currentData?.rules_doc_url && !file && (
-              <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
-                <div className="flex items-center gap-2">
-                  <FileIcon className="size-5 text-primary" />
-                  <span className="text-sm">
-                    Current: {currentData.file_type.toUpperCase()} document
-                  </span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleDeleteDocument}
-                  disabled={deleting}
-                >
-                  {deleting ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="size-4 text-destructive" />
-                  )}
-                </Button>
-              </div>
-            )}
-
-            {file && (
-              <div className="flex items-center justify-between p-3 rounded-lg border bg-green-50 dark:bg-green-950">
-                <div className="flex items-center gap-2">
-                  <FileIcon className="size-5 text-green-600" />
-                  <span className="text-sm truncate max-w-[280px]">{file.name}</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setFile(null)}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-            )}
-
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="size-4 mr-2" />
-              {file ? 'Change File' : currentData?.rules_doc_url ? 'Replace Document' : 'Upload Document'}
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              onChange={handleFileChange}
-            />
-            <p className="text-xs text-muted-foreground">
-              Accepted formats: PDF, DOC, DOCX. Max size: 10MB
-            </p>
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? (
-              <>
-                <Loader2 className="size-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              'Save Rules'
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
 }
 
 // ============================================================================
@@ -335,12 +98,10 @@ export default function RulesPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { isHost } = useRole();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rulesData, setRulesData] = useState<RulesData | null>(null);
-  const [editorOpen, setEditorOpen] = useState(false);
   const [hostName, setHostName] = useState<string | null>(null);
 
   const fetchRules = async () => {
@@ -431,16 +192,10 @@ export default function RulesPage({
             )}
           </div>
           <div className="flex gap-2">
-            {isHost && (
-              <Button onClick={() => setEditorOpen(true)}>
-                <Edit3 className="size-4 mr-2" />
-                {hasRules ? 'Edit Rules' : 'Add Rules'}
-              </Button>
-            )}
             <Button variant="outline" asChild>
-              <Link href={`/leagues/${id}/mfl-roles`}>
+              <Link href={`/leagues/${id}/mfl-rules`}>
                 <Info className="size-4 mr-2" />
-                MFL Roles
+                MFL Rules
               </Link>
             </Button>
           </div>
@@ -455,16 +210,8 @@ export default function RulesPage({
               <FileText className="size-12 mx-auto mb-3 text-muted-foreground" />
               <h3 className="text-base font-semibold mb-1.5">No Rules Set</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                {isHost
-                  ? 'Add league rules and guidelines for your participants.'
-                  : 'The league host has not added any rules yet.'}
+                The league host has not added any rules yet.
               </p>
-              {isHost && (
-                <Button onClick={() => setEditorOpen(true)} size="sm">
-                  <Edit3 className="size-3.5 mr-2" />
-                  Add Rules
-                </Button>
-              )}
             </CardContent>
           </Card>
         ) : (
@@ -499,22 +246,6 @@ export default function RulesPage({
               </Card>
             </Link>
 
-            {/* MFL Roles Link */}
-            <Link href={`/leagues/${id}/mfl-roles`}>
-              <Card className="hover:shadow-md transition-all hover:border-primary/30 cursor-pointer group">
-                <CardContent className="p-3 flex items-center gap-3">
-                  <div className="size-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-md shrink-0">
-                    <Info className="size-5 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold group-hover:text-primary transition-colors">MFL Roles</h3>
-                    <p className="text-xs text-muted-foreground">Understand roles and responsibilities</p>
-                  </div>
-                  <ArrowRight className="size-4 text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all" />
-                </CardContent>
-              </Card>
-            </Link>
-
             {/* Document Viewer */}
             {rulesData?.rules_doc_url && (
               <div className="space-y-3 mt-6">
@@ -542,14 +273,6 @@ export default function RulesPage({
         )}
       </div>
 
-      {/* Editor Dialog */}
-      <RulesEditorDialog
-        leagueId={id}
-        currentData={rulesData}
-        open={editorOpen}
-        onOpenChange={setEditorOpen}
-        onSaved={fetchRules}
-      />
     </div>
   );
 }

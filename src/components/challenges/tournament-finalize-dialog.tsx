@@ -35,9 +35,9 @@ export function TournamentFinalizeDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Finalize Scores: {challengeName}</DialogTitle>
+                    <DialogTitle>Edit Scores: {challengeName}</DialogTitle>
                     <DialogDescription>
-                        Assign leaderboard points to teams based on their tournament performance.
+                        Update leaderboard points for teams based on tournament performance.
                     </DialogDescription>
                 </DialogHeader>
                 <FinalizeContent

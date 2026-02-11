@@ -1,9 +1,11 @@
 'use client';
 
 import { useRole, Role } from '@/contexts/role-context';
+import { useLeague } from '@/contexts/league-context';
 import { getRoleDisplayName, getRoleDescription } from '@/lib/rbac/permissions';
 import { ChevronDown, Shield, Users, Crown, User } from 'lucide-react';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 const roleIcons: Record<Role, React.ComponentType<{ className?: string }>> = {
   host: Crown,
@@ -22,6 +24,8 @@ const roleColors: Record<Role, string> = {
 export function RoleSwitcher() {
   const { activeRole, availableRoles, setActiveRole, isLoading } = useRole();
   const [isOpen, setIsOpen] = useState(false);
+  const router = useRouter();
+  const { activeLeague } = useLeague();
 
   if (isLoading || !activeRole || availableRoles.length <= 1) {
     return null;
@@ -76,6 +80,15 @@ export function RoleSwitcher() {
                     onClick={() => {
                       setActiveRole(role);
                       setIsOpen(false);
+                      if (activeLeague?.league_id) {
+                        if (role === 'host') {
+                          router.push(`/leagues/${activeLeague.league_id}/settings`);
+                        } else if (role === 'governor') {
+                          router.push(`/leagues/${activeLeague.league_id}/submissions`);
+                        } else if (role === 'player' || role === 'captain') {
+                          router.push(`/leagues/${activeLeague.league_id}`);
+                        }
+                      }
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors ${isActive
                       ? 'bg-primary text-white'

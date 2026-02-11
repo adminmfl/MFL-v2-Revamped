@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Skeleton } from "@/components/ui/skeleton";
+import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 
 // ============================================================================
 // Chart Config
@@ -49,17 +49,7 @@ const chartConfig = {
 // ============================================================================
 
 function ChartSkeleton() {
-  return (
-    <Card className="@container/card">
-      <CardHeader>
-        <Skeleton className="h-6 w-40" />
-        <Skeleton className="h-4 w-64 mt-1" />
-      </CardHeader>
-      <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
-        <Skeleton className="h-[300px] w-full" />
-      </CardContent>
-    </Card>
-  );
+  return <DumbbellLoading label="Loading revenue chart..." />;
 }
 
 // ============================================================================

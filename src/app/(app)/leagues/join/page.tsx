@@ -60,19 +60,35 @@ export default function JoinLeaguePage() {
     setError(null);
 
     try {
+      const normalizedCode = inviteCode.trim();
+
       const res = await fetch('/api/leagues/join-by-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: inviteCode.trim() }),
+        body: JSON.stringify({ code: normalizedCode }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to join league');
+        // If league join fails, try team invite join
+        const teamRes = await fetch(`/api/invite/team/${encodeURIComponent(normalizedCode)}`, {
+          method: 'POST',
+        });
+        const teamData = await teamRes.json();
+
+        if (!teamRes.ok) {
+          throw new Error(teamData.error || data.error || 'Invalid invite code');
+        }
+
+        setJoinedLeagueName(teamData.leagueName || 'the league');
+        setJoinedLeagueId(teamData.leagueId);
+        setSuccess(true);
+        await refetch();
+        return;
       }
 
-      // Success
+      // League join success
       setJoinedLeagueName(data.leagueName || 'the league');
       setJoinedLeagueId(data.leagueId);
       setSuccess(true);

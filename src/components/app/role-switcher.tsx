@@ -6,6 +6,7 @@ import { LucideIcon } from 'lucide-react';
 
 import { useRole, Role } from '@/contexts/role-context';
 import { useLeague } from '@/contexts/league-context';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -46,8 +47,8 @@ const roleConfigs: Record<Role, RoleConfig> = {
   },
   captain: {
     icon: Users,
-    label: 'Captain',
-    description: 'Team leader',
+    label: 'Player (C)',
+    description: 'Captain view',
     color: 'text-blue-600 dark:text-blue-400',
     bgColor: 'bg-blue-100 dark:bg-blue-900/30',
   },
@@ -67,6 +68,7 @@ const roleConfigs: Record<Role, RoleConfig> = {
 export function RoleSwitcher() {
   const { activeRole, availableRoles, setActiveRole, isLoading } = useRole();
   const { activeLeague } = useLeague();
+  const router = useRouter();
 
   // Don't show if no league selected or only one role
   if (!activeLeague || availableRoles.length <= 1) {
@@ -122,7 +124,18 @@ export function RoleSwitcher() {
           return (
             <DropdownMenuItem
               key={role}
-              onClick={() => setActiveRole(role)}
+              onClick={() => {
+                setActiveRole(role);
+                if (activeLeague?.league_id) {
+                  if (role === 'host') {
+                    router.push(`/leagues/${activeLeague.league_id}/settings`);
+                  } else if (role === 'governor') {
+                    router.push(`/leagues/${activeLeague.league_id}/submissions`);
+                  } else if (role === 'player' || role === 'captain') {
+                    router.push(`/leagues/${activeLeague.league_id}`);
+                  }
+                }
+              }}
               className="gap-3 p-2 cursor-pointer"
             >
               <div className={`flex size-8 items-center justify-center rounded-md ${config.bgColor}`}>

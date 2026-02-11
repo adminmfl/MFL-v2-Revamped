@@ -43,7 +43,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -467,13 +467,7 @@ export default function PaymentsPage() {
       {/* Data Table */}
       <div className="px-4 lg:px-6">
         {isLoading ? (
-          <div className="space-y-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
+          <DumbbellLoading label="Loading payments..." />
         ) : error ? (
           <Card className="border-destructive">
             <CardContent className="p-6 text-center text-destructive">

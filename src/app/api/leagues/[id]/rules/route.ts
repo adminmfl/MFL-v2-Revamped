@@ -85,8 +85,8 @@ export async function DELETE(
 
         const supabase = getSupabaseServiceRole()
 
-        const isHost = await userHasAnyRole(userId, leagueId, ['host'])
-        if (!isHost) return buildError('Only hosts can manage league rules', 403)
+        const canManageRules = await userHasAnyRole(userId, leagueId, ['host', 'governor'])
+        if (!canManageRules) return buildError('Only hosts or governors can manage league rules', 403)
 
         const league = await getLeagueById(leagueId)
         if (!league) return buildError('League not found', 404)
@@ -120,8 +120,8 @@ export async function POST(
 
         if (!userId) return buildError('Unauthorized', 401)
 
-        const isHost = await userHasAnyRole(userId, leagueId, ['host'])
-        if (!isHost) return buildError('Only hosts can manage league rules', 403)
+        const canManageRules = await userHasAnyRole(userId, leagueId, ['host', 'governor'])
+        if (!canManageRules) return buildError('Only hosts or governors can manage league rules', 403)
 
         const supabase = getSupabaseServiceRole()
         const formData = await req.formData()

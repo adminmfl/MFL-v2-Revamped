@@ -144,7 +144,7 @@ export function FinalizeTournamentView({ challengeId, leagueId, matches, onPubli
                         <div className="flex justify-end pt-4">
                             <Button onClick={handleFinalize} disabled={submitting} className="gap-2">
                                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trophy className="h-4 w-4" />}
-                                Save & Publish
+                                Save Scores
                             </Button>
                         </div>
                     </div>

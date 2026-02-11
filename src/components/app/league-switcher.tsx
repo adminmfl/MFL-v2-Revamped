@@ -47,6 +47,11 @@ export function LeagueSwitcher({ trigger, onOpenChange }: LeagueSwitcherProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = React.useState(false);
 
+  const highestRole = React.useCallback((roles: LeagueRole[]): LeagueRole | null => {
+    const order: LeagueRole[] = ['host', 'governor', 'captain', 'player'];
+    return order.find((role) => roles.includes(role)) || null;
+  }, []);
+
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     onOpenChange?.(open);
@@ -71,7 +76,7 @@ export function LeagueSwitcher({ trigger, onOpenChange }: LeagueSwitcherProps) {
           {activeLeague?.name || 'Select League'}
         </span>
         <span className="truncate text-xs text-muted-foreground">
-          {activeRole ? `Viewing as ${capitalize(activeRole)}` : 'No league selected'}
+          {activeRole ? `Viewing as ${getRoleDisplay(activeRole).label}` : 'No league selected'}
         </span>
       </div>
       <ChevronsUpDown className="ml-auto size-4" />
@@ -96,11 +101,30 @@ export function LeagueSwitcher({ trigger, onOpenChange }: LeagueSwitcherProps) {
   const handleLeagueSelect = (league: LeagueWithRoles) => {
     setActiveLeague(league);
 
-    const nextPath = pathname?.startsWith('/leagues/')
-      ? pathname.replace(/^\/leagues\/[^/]+/, `/leagues/${league.league_id}`)
-      : `/leagues/${league.league_id}`;
+    const preferredRole = league.roles.includes('captain')
+      ? 'captain'
+      : league.roles.includes('player')
+        ? 'player'
+        : null;
 
-    router.push(nextPath);
+    const nextRole = preferredRole || (highestRole(league.roles) as LeagueRole | null);
+
+    if (nextRole) {
+      setActiveRole(nextRole);
+      if (nextRole === 'host') {
+        router.push(`/leagues/${league.league_id}/settings`);
+      } else if (nextRole === 'governor') {
+        router.push(`/leagues/${league.league_id}/submissions`);
+      } else {
+        router.push(`/leagues/${league.league_id}`);
+      }
+    } else {
+      const nextPath = pathname?.startsWith('/leagues/')
+        ? pathname.replace(/^\/leagues\/[^/]+/, `/leagues/${league.league_id}`)
+        : `/leagues/${league.league_id}`;
+      router.push(nextPath);
+    }
+
     router.refresh();
   };
 
@@ -131,7 +155,18 @@ export function LeagueSwitcher({ trigger, onOpenChange }: LeagueSwitcherProps) {
                 return (
                   <DropdownMenuItem
                     key={role}
-                    onClick={() => setActiveRole(role)}
+                    onClick={() => {
+                      setActiveRole(role);
+                      if (activeLeague?.league_id) {
+                        if (role === 'host') {
+                          router.push(`/leagues/${activeLeague.league_id}/settings`);
+                        } else if (role === 'governor') {
+                          router.push(`/leagues/${activeLeague.league_id}/submissions`);
+                        } else if (role === 'player' || role === 'captain') {
+                          router.push(`/leagues/${activeLeague.league_id}`);
+                        }
+                      }
+                    }}
                     className="gap-2 px-2 py-1.5 cursor-pointer text-sm"
                   >
                     <div className={`flex size-5 items-center justify-center rounded-sm ${display.color}`}>
@@ -172,15 +207,27 @@ export function LeagueSwitcher({ trigger, onOpenChange }: LeagueSwitcherProps) {
                   )}
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <div className="truncate font-medium text-sm">{league.name}</div>
-                  <div className="flex items-center gap-0.5 mt-0.5">
-                    {league.roles.map((role) => (
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="truncate font-medium text-sm">{league.name}</span>
+                    {league.status === 'completed' && (
+                      <Badge
+                        variant="secondary"
+                        className="text-[12px] px-1.5 py-0.5 h-4"
+                      >
+                        Completed
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-0.5 mt-0.5 flex-wrap">
+                    {league.roles
+                      .filter((role) => !(role === 'player' && league.roles.includes('captain')))
+                      .map((role) => (
                       <Badge
                         key={role}
                         variant="outline"
                         className="text-[8px] px-0.5 py-0 h-3"
                       >
-                        {capitalize(role)}
+                        {getRoleDisplay(role).label}
                       </Badge>
                     ))}
                   </div>
@@ -224,7 +271,18 @@ export function LeagueSwitcher({ trigger, onOpenChange }: LeagueSwitcherProps) {
                   return (
                     <DropdownMenuItem
                       key={role}
-                      onClick={() => setActiveRole(role)}
+                      onClick={() => {
+                        setActiveRole(role);
+                        if (activeLeague?.league_id) {
+                          if (role === 'host') {
+                            router.push(`/leagues/${activeLeague.league_id}/settings`);
+                          } else if (role === 'governor') {
+                            router.push(`/leagues/${activeLeague.league_id}/submissions`);
+                          } else if (role === 'player' || role === 'captain') {
+                            router.push(`/leagues/${activeLeague.league_id}`);
+                          }
+                        }
+                      }}
                       className="gap-2 p-2 cursor-pointer"
                     >
                       <div className={`flex size-6 items-center justify-center rounded-sm ${display.color}`}>
@@ -265,17 +323,30 @@ export function LeagueSwitcher({ trigger, onOpenChange }: LeagueSwitcherProps) {
                     )}
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <div className="truncate font-medium">{league.name}</div>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      {league.roles.slice(0, 2).map((role) => (
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="truncate font-medium">{league.name}</span>
+                    </div>
+                    <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                      {league.roles
+                        .filter((role) => !(role === 'player' && league.roles.includes('captain')))
+                        .slice(0, 2)
+                        .map((role) => (
                         <Badge
                           key={role}
                           variant="outline"
                           className="text-[10px] px-1 py-0 h-4"
                         >
-                          {capitalize(role)}
+                          {getRoleDisplay(role).label}
                         </Badge>
                       ))}
+                      {league.status === 'completed' && (
+                        <Badge
+                          variant="secondary"
+                          className="text-xs px-2 py-0.5 h-5"
+                        >
+                          Completed
+                        </Badge>
+                      )}
                       {league.roles.length > 2 && (
                         <span className="text-[10px] text-muted-foreground">
                           +{league.roles.length - 2}
@@ -310,14 +381,6 @@ export function LeagueSwitcher({ trigger, onOpenChange }: LeagueSwitcherProps) {
       </SidebarMenuItem>
     </SidebarMenu>
   );
-}
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-function capitalize(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 export default LeagueSwitcher;

@@ -201,11 +201,8 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
     const [challengeToDelete, setChallengeToDelete] = React.useState<Challenge | null>(null);
     const [deleting, setDeleting] = React.useState(false);
 
-    // Close dialog state
-    const [closeConfirmOpen, setCloseConfirmOpen] = React.useState(false);
-    const [challengeToClose, setChallengeToClose] = React.useState<Challenge | null>(null);
+    // Publish state
     const [publishingId, setPublishingId] = React.useState<string | null>(null);
-    const [closingId, setClosingId] = React.useState<string | null>(null);
 
     // Tournament Manager state
     const [tournamentManagerOpen, setTournamentManagerOpen] = React.useState(false);
@@ -565,32 +562,6 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
         }
     };
 
-    const handleOpenCloseConfirm = (challenge: Challenge) => {
-        setChallengeToClose(challenge);
-        setCloseConfirmOpen(true);
-    };
-
-    const handleCloseChallenge = async () => {
-        if (!challengeToClose) return;
-        setClosingId(challengeToClose.id);
-        try {
-            const res = await fetch(`/api/leagues/${leagueId}/challenges/${challengeToClose.id}/close`, {
-                method: 'POST',
-            });
-            const json = await res.json();
-            if (!res.ok || !json.success) {
-                throw new Error(json.error || 'Failed to close challenge');
-            }
-            toast.success('Challenge closed successfully');
-            setCloseConfirmOpen(false);
-            setChallengeToClose(null);
-            fetchChallenges();
-        } catch (err: any) {
-            toast.error(err?.message || 'Failed to close challenge');
-        } finally {
-            setClosingId(null);
-        }
-    };
 
     const fetchSubmissions = async (challenge: Challenge) => {
         try {
@@ -667,7 +638,7 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
             if (!res.ok || !json.success) {
                 throw new Error(json.error || 'Failed to publish scores');
             }
-            toast.success('Scores published and challenge closed');
+            toast.success('Scores published');
             fetchChallenges();
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Failed to publish scores');
@@ -900,7 +871,7 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
                                                 <Shield className="size-3" />
                                                 Manage Matches
                                             </Button>
-                                            {challenge.status === 'submission_closed' && (
+                                            {['submission_closed', 'published'].includes(challenge.status) && (
                                                 <Button
                                                     size="sm"
                                                     onClick={() => {
@@ -908,7 +879,7 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
                                                         setTournamentFinalizeOpen(true);
                                                     }}
                                                 >
-                                                    Score & Finalize
+                                                    Edit Scores
                                                 </Button>
                                             )}
                                         </>
@@ -934,29 +905,17 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
                                         </Button>
                                     )}
 
-                                    {challenge.status === 'published' && (
-                                        <>
-                                            {challenge.challenge_type === 'tournament' && (
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => {
-                                                        setManageChallenge(challenge);
-                                                        setTournamentFinalizeOpen(true);
-                                                    }}
-                                                >
-                                                    Edit Scores
-                                                </Button>
-                                            )}
-                                            <Button
-                                                size="sm"
-                                                variant="destructive"
-                                                onClick={() => handleOpenCloseConfirm(challenge)}
-                                                disabled={closingId === challenge.id}
-                                            >
-                                                Finalize & Close
-                                            </Button>
-                                        </>
+                                    {challenge.status === 'published' && challenge.challenge_type === 'tournament' && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => {
+                                                setManageChallenge(challenge);
+                                                setTournamentFinalizeOpen(true);
+                                            }}
+                                        >
+                                            Edit Scores
+                                        </Button>
                                     )}
                                 </div>
 
@@ -1373,24 +1332,6 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDeleteConfirm} disabled={deleting} className="bg-destructive text-destructive-foreground">
                             {deleting ? 'Deleting...' : 'Delete'}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Close Confirmation */}
-            <AlertDialog open={closeConfirmOpen} onOpenChange={setCloseConfirmOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Close Challenge?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will finalize "{challengeToClose?.name}". Points will be added to team scores. This cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleCloseChallenge} disabled={closingId !== null}>
-                            {closingId ? 'Closing...' : 'Close Challenge'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

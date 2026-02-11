@@ -1,7 +1,6 @@
 "use client";
 
 import { use, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useTournamentMatches } from '@/hooks/use-tournament-matches';
 import { useRole } from '@/contexts/role-context';
 import { TournamentMatchesList } from '@/components/league/tournament/matches-list';
@@ -9,12 +8,10 @@ import { TournamentStandingsTable } from '@/components/league/tournament/standin
 import { MatchDialog } from '@/components/league/tournament/match-dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ChevronLeft, Plus, Settings } from 'lucide-react';
-import { ArrowLeft } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 export default function ChallengeDetailPage({ params }: { params: Promise<{ id: string; challengeId: string }> }) {
     const { id: leagueId, challengeId } = use(params);
-    const router = useRouter();
     const { isHost, isGovernor } = useRole();
     const isAdmin = isHost || isGovernor;
 
@@ -47,9 +44,6 @@ export default function ChallengeDetailPage({ params }: { params: Promise<{ id: 
         <div className="flex flex-col gap-6 p-4 md:p-6 max-w-7xl mx-auto w-full">
             {/* Header */}
             <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                    <ArrowLeft className="size-5" />
-                </Button>
                 <div className="flex-1">
                     <h1 className="text-2xl font-bold tracking-tight">Tournament Challenge</h1>
                     <p className="text-sm text-muted-foreground">Manage fixtures and view standings.</p>

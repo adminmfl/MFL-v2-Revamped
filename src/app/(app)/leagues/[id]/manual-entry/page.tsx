@@ -496,6 +496,22 @@ export default function ManualEntryPage({
   const showSteps = workoutCategory === 'steps';
   const showHoles = workoutCategory === 'golf';
 
+  // Build a lookup map to resolve custom activity UUIDs to display names
+  const activityNameMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    (activitiesData?.activities || []).forEach((a) => {
+      map.set(a.value, a.activity_name);
+      if (a.custom_activity_id) map.set(a.custom_activity_id, a.activity_name);
+      if (a.activity_id) map.set(a.activity_id, a.activity_name);
+    });
+    return map;
+  }, [activitiesData]);
+
+  const resolveWorkoutType = (wt: string | null) => {
+    if (!wt) return '';
+    return activityNameMap.get(wt) || wt;
+  };
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -639,7 +655,7 @@ export default function ManualEntryPage({
                         <span className="font-medium">{row.label}</span>
                         <span className={cn('text-sm', statusColor)}>
                           {row.entry
-                            ? `${row.entry.type === 'workout' ? 'Workout' : 'Rest Day'}${row.entry.workout_type ? ` - ${row.entry.workout_type}` : ''}${row.entry.status ? ` - ${row.entry.status}` : ''}`
+                            ? `${row.entry.type === 'workout' ? 'Workout' : 'Rest Day'}${row.entry.workout_type ? ` - ${resolveWorkoutType(row.entry.workout_type)}` : ''}${row.entry.status ? ` - ${row.entry.status}` : ''}`
                             : row.state === 'missed'
                               ? 'Missed day'
                               : row.state === 'upcoming'

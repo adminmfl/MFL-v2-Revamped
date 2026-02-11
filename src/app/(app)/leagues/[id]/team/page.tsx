@@ -47,7 +47,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-import { Skeleton } from '@/components/ui/skeleton';
+import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import { TeamsTable } from '@/components/teams';
 
 /* ============================================================================
@@ -55,17 +55,7 @@ import { TeamsTable } from '@/components/teams';
 ============================================================================ */
 
 function PageSkeleton() {
-  return (
-    <div className="flex flex-col gap-6 p-6">
-      <Skeleton className="h-10 w-64" />
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        <Skeleton className="h-32" />
-        <Skeleton className="h-32" />
-        <Skeleton className="h-32" />
-      </div>
-      <Skeleton className="h-96" />
-    </div>
-  );
+  return <DumbbellLoading label="Loading team..." />;
 }
 
 /* ============================================================================

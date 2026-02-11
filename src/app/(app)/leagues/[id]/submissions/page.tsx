@@ -77,7 +77,7 @@ import {
 } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Skeleton } from '@/components/ui/skeleton';
+import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
@@ -139,28 +139,7 @@ interface TeamOption {
 // ============================================================================
 
 function PageSkeleton() {
-  return (
-    <div className="@container/main flex flex-1 flex-col gap-4 lg:gap-6">
-      <div className="flex flex-col gap-4 px-4 lg:px-6">
-        <div className="flex items-start gap-4">
-          <Skeleton className="size-14 rounded-xl" />
-          <div className="space-y-2">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-64" />
-          </div>
-        </div>
-      </div>
-      <div className="grid grid-cols-4 gap-4 px-4 lg:px-6">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-20" />
-        ))}
-      </div>
-      <div className="px-4 lg:px-6 space-y-4">
-        <Skeleton className="h-10 w-full max-w-md" />
-        <Skeleton className="h-96 rounded-lg" />
-      </div>
-    </div>
-  );
+  return <DumbbellLoading label="Loading submissions..." />;
 }
 
 // ============================================================================

@@ -345,7 +345,7 @@ export async function updateLeagueLogoUrl(
 }
 
 /**
- * Update league rules document URL (host only)
+ * Update league rules document URL (host or governor)
  */
 export async function updateLeagueRulesDocUrl(
   leagueId: string,
@@ -354,7 +354,7 @@ export async function updateLeagueRulesDocUrl(
 ): Promise<boolean> {
   try {
     const role = await getUserRoleInLeague(userId, leagueId);
-    if (role !== 'host') {
+    if (role !== 'host' && role !== 'governor') {
       return false;
     }
 
@@ -375,7 +375,7 @@ export async function updateLeagueRulesDocUrl(
 }
 
 /**
- * Update league rules summary (host only)
+ * Update league rules summary (host or governor)
  */
 export async function updateLeagueRulesSummary(
   leagueId: string,
@@ -384,7 +384,7 @@ export async function updateLeagueRulesSummary(
 ): Promise<boolean> {
   try {
     const role = await getUserRoleInLeague(userId, leagueId);
-    if (role !== 'host') {
+    if (role !== 'host' && role !== 'governor') {
       return false;
     }
 
