@@ -1136,9 +1136,9 @@ export default function SubmitActivityPage({
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Submit Activity</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Log Today's Activity</h1>
           <p className="text-muted-foreground">
-            Log your workout or rest day to earn points
+            Add today's activity to help your team
             {activeLeague?.team_name && (
               <> - <span className="font-medium">{activeLeague.team_name}</span></>
             )}
@@ -1187,7 +1187,7 @@ export default function SubmitActivityPage({
                   }
                 >
                   <SelectTrigger id="activity-type">
-                    <SelectValue placeholder="Select an activity type" />
+                    <SelectValue placeholder="Choose your activity done today" />
                   </SelectTrigger>
                   <SelectContent>
                     {activityTypes.map((type) => (
@@ -1322,7 +1322,7 @@ export default function SubmitActivityPage({
 
               {/* Photo Upload */}
               <div className="space-y-2">
-                <Label htmlFor="proof-file">Proof Screenshot *</Label>
+                <Label htmlFor="proof-file">Upload Proof (Required for approval) *</Label>
                 <input
                   id="proof-file"
                   ref={fileInputRef}
@@ -1371,7 +1371,7 @@ export default function SubmitActivityPage({
                 <Label htmlFor="notes">Notes (Optional)</Label>
                 <Textarea
                   id="notes"
-                  placeholder="How did it feel?"
+                  placeholder="Share a quick note (optional)"
                   rows={2}
                   value={formData.notes}
                   onChange={(e) =>
@@ -1410,7 +1410,7 @@ export default function SubmitActivityPage({
                       </>
                     ) : (
                       <>
-                        Submit Activity
+                        Log Today's Activity
                         <ArrowRight className="ml-2 size-4" />
                       </>
                     )}
@@ -1630,7 +1630,7 @@ export default function SubmitActivityPage({
                 </div>
 
                 <div>
-                  <span className="text-muted-foreground block text-xs">Proof Screenshot</span>
+                  <span className="text-muted-foreground block text-xs">Upload Proof (Required for approval)</span>
                   {imagePreview ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -1705,7 +1705,7 @@ export default function SubmitActivityPage({
       <AlertDialog open={overwriteDialogOpen} onOpenChange={setOverwriteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Overwrite Existing Entry?</AlertDialogTitle>
+            <AlertDialogTitle>Replace Today's Entry?</AlertDialogTitle>
             <AlertDialogDescription asChild className="space-y-4 pt-2 text-left">
               <div>
                 <p>
@@ -1785,7 +1785,7 @@ export default function SubmitActivityPage({
                 )}
 
                 <p>
-                  Submitting this new entry will <strong>overwrite</strong> the existing one permanently.
+                  This will replace your earlier entry for today.
                 </p>
               </div>
             </AlertDialogDescription>
@@ -1801,7 +1801,7 @@ export default function SubmitActivityPage({
                   handleSubmissionFlow(true); // Retry with overwrite=true
                 }}
               >
-                Overwrite & Submit
+                Replace & Submit
               </Button>
             </div>
           </AlertDialogFooter>

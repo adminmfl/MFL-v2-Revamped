@@ -367,7 +367,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
             <div className="rounded-lg border bg-card shadow-sm p-3 sm:p-4">
               <div className="mb-3">
                 <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-base sm:text-lg font-semibold">Overall standings</h2>
+                  <h2 className="text-base sm:text-lg font-semibold">League standings</h2>
                   {(() => (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -399,8 +399,9 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
                     </DropdownMenu>
                   ))()}
                 </div>
-                <p className="text-xs sm:text-sm text-muted-foreground">This is the overall leaderboard including challenge scores</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Combined activity + challenge points</p>
               </div>
+              <p className="text-xs text-muted-foreground mb-2">Log today to move up the rankings.</p>
               <div className="overflow-hidden">
                 <LeagueTeamsTable teams={teams} showAvgRR={true} />
               </div>
