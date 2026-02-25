@@ -104,7 +104,7 @@ export function RealTimeScoreboardTable({ dates, teams }: RealTimeScoreboardTabl
                     </Avatar>
                     <div className="min-w-0">
                       <p className="font-semibold text-sm leading-tight">{t.team_name}</p>
-                      <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">2-day delay</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">Pending verification</p>
                     </div>
                   </div>
                 </TableCell>

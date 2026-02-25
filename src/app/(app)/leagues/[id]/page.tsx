@@ -823,7 +823,7 @@ export default function LeagueDashboardPage({
               </div>
             )}
           </div>
-          <p className="text-muted-foreground">One workout closer to your best self !</p>
+          <p className="text-muted-foreground">Add today's effort. Push your team forward.</p>
           {isTrialPeriod && (
             <Badge className="mt-2 bg-amber-50 text-amber-700 border-amber-200">
               Trial Period
@@ -874,7 +874,7 @@ export default function LeagueDashboardPage({
               >
                 <Link href={`/leagues/${id}/submit?type=workout`}>
                   <Dumbbell className="mr-2 size-4" />
-                  Add Activity
+                  Log Today's Activity
                 </Link>
               </Button>
               <Button
@@ -885,7 +885,7 @@ export default function LeagueDashboardPage({
               >
                 <Link href={`/leagues/${id}/submit?type=rest`}>
                   <Moon className="mr-2 size-4" />
-                  Take Rest
+                  Mark Rest Day
                 </Link>
               </Button>
             </div>
@@ -967,7 +967,7 @@ export default function LeagueDashboardPage({
               >
                 <Link href={`/leagues/${id}/submit?type=workout`}>
                   <Dumbbell className="mr-2 size-4" />
-                  Add Activity
+                  Log Today's Activity
                 </Link>
               </Button>
               <Button
@@ -978,7 +978,7 @@ export default function LeagueDashboardPage({
               >
                 <Link href={`/leagues/${id}/submit?type=rest`}>
                   <Moon className="mr-2 size-4" />
-                  Take Rest
+                  Mark Rest Day
                 </Link>
               </Button>
             </div>

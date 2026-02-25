@@ -47,7 +47,7 @@ const dynamicRoutePatterns: [RegExp, (match: RegExpMatchArray) => string][] = [
   [/^\/leagues\/([^/]+)\/my-team-view$/, () => 'My Team'],
   [/^\/leagues\/([^/]+)\/team\/manage$/, () => 'Team Management'],
   [/^\/leagues\/([^/]+)\/leaderboard$/, () => 'Leaderboard'],
-  [/^\/leagues\/([^/]+)\/submit$/, () => 'Submit Activity'],
+  [/^\/leagues\/([^/]+)\/submit$/, () => 'Log Today\'s Activity'],
   [/^\/leagues\/([^/]+)\/manual-entry$/, () => 'Manual Workout Entry'],
   [/^\/leagues\/([^/]+)\/validate$/, () => 'Validate Activities'],
   [/^\/leagues\/([^/]+)\/teams$/, () => 'All Teams'],
