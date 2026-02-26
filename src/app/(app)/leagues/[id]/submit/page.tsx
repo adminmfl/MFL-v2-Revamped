@@ -1302,21 +1302,7 @@ export default function SubmitActivityPage({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Activity Date</Label>
-                  <p className="text-xs text-muted-foreground">Only today or yesterday can be selected.</p>
-                  <Select
-                    value={isTodaySelected ? 'today' : 'yesterday'}
-                    onValueChange={(value) =>
-                      setActivityDate(value === 'today' ? today : yesterday)
-                    }
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="today">Today ({format(today, 'MMM d, yyyy')})</SelectItem>
-                      <SelectItem value="yesterday">Yesterday ({format(yesterday, 'MMM d, yyyy')})</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <p className="text-xs text-muted-foreground">Today ({format(today, 'MMM d, yyyy')})</p>
                 </div>
               </div>
 

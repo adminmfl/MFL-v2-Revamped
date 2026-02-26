@@ -143,22 +143,6 @@ export async function POST(
       );
     }
 
-    // Captains have a 2-day window to approve/reject workout submissions
-    if (isCaptainOfTeam && !canOverride && submission.type === 'workout') {
-      const createdAt = submission.created_date ? new Date(submission.created_date) : null;
-      if (createdAt && Number.isFinite(createdAt.getTime())) {
-        const now = Date.now();
-        const ageMs = now - createdAt.getTime();
-        const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
-        if (ageMs > twoDaysMs) {
-          return NextResponse.json(
-            { error: 'Captains can only validate workouts within 2 days of submission' },
-            { status: 403 }
-          );
-        }
-      }
-    }
-
     // Captains can override their team's submissions (including their own)
     // Hosts/Governors can override any submission
     // Note: Removed the restriction that prevented captains from overriding already graded submissions

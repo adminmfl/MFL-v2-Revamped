@@ -1,14 +1,14 @@
 /**
  * GET /api/cron/auto-rest-day - Auto-assign rest days for missing submissions
  * 
- * This cron job runs ONCE PER DAY at 11:00 UTC and processes leagues with auto_rest_day_enabled=true.
+ * This cron job runs ONCE PER DAY at 10:30 UTC (4:00 PM IST) and processes leagues with auto_rest_day_enabled=true.
  * For each league member with rest days remaining:
- * - Calculate their local "yesterday" based on league timezone (or UTC if not set)
+ * - Calculate their local "yesterday" based on IST (UTC+5:30)
  * - Check if they have submission for that day → skip if yes
  * - If no submission and rest days available, auto-assign as rest day (approved)
- * 
- * By running at 11:00 UTC daily, this catches missing submissions across all global timezones
- * consistently and fairly.
+ *
+ * By running at 4:00 PM IST daily, this gives players until 4 PM to submit before
+ * a rest day is auto-assigned for the previous day.
  * 
  * Security: Validates CRON_SECRET header from Vercel
  */
@@ -190,8 +190,6 @@ export async function GET(req: NextRequest) {
     let totalProcessed = 0;
 
     // Step 1: Get all active leagues with auto_rest_day_enabled = true
-    // Note: Leagues table currently doesn't have timezone field, so we use UTC for now
-    // TODO: (future-proofing)Add timezone column to leagues table for per-league timezone support
     const { data: enabledLeagues, error: leaguesError } = await supabase
       .from('leagues')
       .select('league_id, rest_days, status')
@@ -220,8 +218,7 @@ export async function GET(req: NextRequest) {
     for (const league of enabledLeagues) {
       logCron('LEAGUE_START', { league: league.league_id, rest_days: league.rest_days });
 
-      // For now, use UTC. Once timezone column is added to leagues, use that instead.
-      const leagueTimezoneOffset = 0; // UTC offset in hours
+      const leagueTimezoneOffset = 5.5; // IST offset in hours (UTC+5:30)
 
       // Get all active members in this league
       const { data: members, error: membersError } = await supabase
