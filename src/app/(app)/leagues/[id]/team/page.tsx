@@ -110,6 +110,11 @@ function TeamMemberView({
           }
         }
 
+        // Sort by points DESC, then RR DESC
+        membersWithPoints.sort((a: any, b: any) => {
+          if (b.points !== a.points) return b.points - a.points;
+          return (b.avg_rr || 0) - (a.avg_rr || 0);
+        });
         setMembers(membersWithPoints);
       } catch (err) {
         console.error(err);

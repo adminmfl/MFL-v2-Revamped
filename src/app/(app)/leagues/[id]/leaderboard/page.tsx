@@ -470,7 +470,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
         <div className="rounded-lg border bg-card shadow-sm p-3 sm:p-4">
           <div className="mb-3">
             <h2 className="text-base sm:text-lg font-semibold">Individual Rankings</h2>
-            <p className="text-xs sm:text-sm text-muted-foreground">Top 20% performers</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Top performers</p>
           </div>
           <div className="overflow-hidden">
             <LeagueIndividualsTable individuals={individuals} showAvgRR={true} />

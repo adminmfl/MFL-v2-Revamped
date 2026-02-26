@@ -440,7 +440,7 @@ export default function LeagueDashboardPage({
           rows.push({ date: ymd, label, subtitle, status: statusLabel, pointsLabel, submission: entry });
         }
 
-        if (!cancelled) setRecentDays(rows);
+        if (!cancelled) setRecentDays(rows.reverse());
       } catch {
         if (!cancelled) setRecentDays([]);
       }
@@ -1026,7 +1026,7 @@ export default function LeagueDashboardPage({
                       {mySummary?.points.toLocaleString() ?? '—'}
                     </div>
                   </div>
-                  <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
+                  <div className="rounded-md border border-primary/20 bg-primary/10 dark:bg-primary/20 px-3 py-2.5 text-center">
                     <div className="text-xs text-muted-foreground">Avg RR</div>
                     <div className="text-base font-semibold text-foreground tabular-nums">
                       {mySummary?.avgRR !== null && typeof mySummary?.avgRR === 'number'
@@ -1045,7 +1045,9 @@ export default function LeagueDashboardPage({
                   <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2.5 text-center">
                     <div className="text-[11px] text-muted-foreground">Rest Days Remaining</div>
                     <div className="text-sm font-semibold text-foreground tabular-nums">
-                      {mySummary?.restUnused !== null && typeof mySummary?.restUnused === 'number' ? mySummary.restUnused.toLocaleString() : '—'}
+                      {mySummary?.restUnused !== null && typeof mySummary?.restUnused === 'number'
+                        ? `${mySummary.restUnused} (of ${league.rest_days})`
+                        : '—'}
                     </div>
                   </div>
                 </div>
@@ -1413,6 +1415,10 @@ export default function LeagueDashboardPage({
                 <span className="text-muted-foreground">
                   <span className="font-semibold text-foreground">{daysRemaining}</span> days remaining
                 </span>
+              </div>
+              <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+                <span>{formatDate(league.start_date)} — {formatDate(league.end_date)}</span>
+                <span><span className="font-semibold text-foreground">{league.league_capacity || 0}</span> players</span>
               </div>
             </CardContent>
           </Card>
