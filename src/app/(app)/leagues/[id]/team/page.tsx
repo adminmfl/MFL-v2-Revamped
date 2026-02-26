@@ -1,17 +1,11 @@
 'use client';
 
-import React, { use, useState, useMemo, useEffect } from 'react';
+import React, { use, useState, useEffect } from 'react';
 import {
   Users,
   Trophy,
   Target,
   Crown,
-  Shield,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
 } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
@@ -20,15 +14,11 @@ import { useRole } from '@/contexts/role-context';
 import {
   Card,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
 import {
   Table,
@@ -38,14 +28,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import { TeamsTable } from '@/components/teams';
@@ -79,8 +61,6 @@ function TeamMemberView({
 }: TeamMemberViewProps) {
   const [members, setMembers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
   const [teamRank, setTeamRank] = useState('#--');
   const [teamPoints, setTeamPoints] = useState('--');
@@ -109,13 +89,14 @@ function TeamMemberView({
           const pointsMap = new Map(
             leaderboardJson.data.individuals.map((i: any) => [
               String(i.user_id),
-              Number(i.points || 0),
+              { points: Number(i.points || 0), avg_rr: Number(i.avg_rr || 0) },
             ])
           );
 
           membersWithPoints = membersWithPoints.map((m: any) => ({
             ...m,
-            points: pointsMap.get(String(m.user_id)) ?? 0,
+            points: pointsMap.get(String(m.user_id))?.points ?? 0,
+            avg_rr: pointsMap.get(String(m.user_id))?.avg_rr ?? 0,
           }));
         }
 
@@ -140,21 +121,6 @@ function TeamMemberView({
     fetchData();
   }, [leagueId, teamId]);
 
-  const filteredMembers = useMemo(
-    () =>
-      members.filter((m) =>
-        m.username.toLowerCase().includes(searchQuery.toLowerCase())
-      ),
-    [members, searchQuery]
-  );
-
-  const paginatedMembers = useMemo(() => {
-    const start = pagination.pageIndex * pagination.pageSize;
-    return filteredMembers.slice(start, start + pagination.pageSize);
-  }, [filteredMembers, pagination]);
-
-  const pageCount = Math.ceil(filteredMembers.length / pagination.pageSize);
-
   if (isLoading) return <PageSkeleton />;
 
   /* ========================================================================= */
@@ -170,7 +136,7 @@ function TeamMemberView({
           <div>
             <h1 className="text-2xl font-bold">{teamName}</h1>
             <p className="text-muted-foreground">
-              {isCaptain ? 'Team Captain View' : 'Team Members'}
+              {members.length} members in your team
             </p>
           </div>
         </div>
@@ -196,37 +162,30 @@ function TeamMemberView({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="hidden sm:table-cell">#</TableHead>
+              <TableHead>#</TableHead>
               <TableHead>Member</TableHead>
-              <TableHead className="hidden sm:table-cell">Role</TableHead>
               <TableHead className="text-center">Rest Days</TableHead>
               <TableHead className="text-center">Points</TableHead>
+              <TableHead className="text-center">RR</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedMembers.map((m, i) => (
+            {members.map((m, i) => (
               <TableRow key={m.league_member_id}>
-                <TableCell className="hidden sm:table-cell">
-                  {pagination.pageIndex * pagination.pageSize + i + 1}
+                <TableCell>
+                  {i + 1}
                 </TableCell>
-                <TableCell className="flex items-center gap-3">
-                  <Avatar>
-                    <AvatarImage src={(m as any).profile_picture_url || undefined} />
-                    <AvatarFallback>
-                      {m.username.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  {m.username}
-                </TableCell>
-                <TableCell className="hidden sm:table-cell">
-                  {m.is_captain ? (
-                    <Badge>
-                      <Shield className="size-3 mr-1" />
-                      Captain
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline">Player</Badge>
-                  )}
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <Avatar>
+                      <AvatarImage src={(m as any).profile_picture_url || undefined} />
+                      <AvatarFallback>
+                        {m.username.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span>{m.username}</span>
+                    {m.is_captain && <Crown className="size-4 text-yellow-500" />}
+                  </div>
                 </TableCell>
                 <TableCell className="text-center text-muted-foreground text-sm">
                   {(m as any).rest_days_used ?? 0}
@@ -234,58 +193,15 @@ function TeamMemberView({
                 <TableCell className="text-center font-medium">
                   {m.points}
                 </TableCell>
+                <TableCell className="text-center font-medium">
+                  {(m.avg_rr ?? 0).toFixed(2)}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">
-          Page {pagination.pageIndex + 1} of {pageCount || 1}
-        </span>
-        <div className="flex gap-1">
-          <Button
-            size="icon"
-            variant="outline"
-            onClick={() => setPagination({ ...pagination, pageIndex: 0 })}
-            disabled={pagination.pageIndex === 0}
-          >
-            <ChevronsLeft className="size-4" />
-          </Button>
-          <Button
-            size="icon"
-            variant="outline"
-            onClick={() =>
-              setPagination({ ...pagination, pageIndex: pagination.pageIndex - 1 })
-            }
-            disabled={pagination.pageIndex === 0}
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-          <Button
-            size="icon"
-            variant="outline"
-            onClick={() =>
-              setPagination({ ...pagination, pageIndex: pagination.pageIndex + 1 })
-            }
-            disabled={pagination.pageIndex >= pageCount - 1}
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-          <Button
-            size="icon"
-            variant="outline"
-            onClick={() =>
-              setPagination({ ...pagination, pageIndex: pageCount - 1 })
-            }
-            disabled={pagination.pageIndex >= pageCount - 1}
-          >
-            <ChevronsRight className="size-4" />
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

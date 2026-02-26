@@ -214,7 +214,10 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
 
   const normalizationActive = Boolean(data?.normalization?.active);
   const teams = (viewRawTotals && canToggleRaw && rawTeams) ? rawTeams : (data?.teams || []);
-  const individuals = data?.individuals || [];
+  const allIndividuals = data?.individuals || [];
+  // Show only top 20% of players in the individual leaderboard
+  const top20pctCount = Math.max(1, Math.ceil(allIndividuals.length * 0.2));
+  const individuals = allIndividuals.slice(0, top20pctCount);
   const stats = data?.stats || { total_submissions: 0, approved: 0, pending: 0, rejected: 0, total_rr: 0 };
   const dateRange = data?.dateRange;
   const pendingWindow = (viewRawTotals && canToggleRaw && rawPendingWindow) ? rawPendingWindow : data?.pendingWindow;
@@ -467,7 +470,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ id: stri
         <div className="rounded-lg border bg-card shadow-sm p-3 sm:p-4">
           <div className="mb-3">
             <h2 className="text-base sm:text-lg font-semibold">Individual Rankings</h2>
-            <p className="text-xs sm:text-sm text-muted-foreground">Personal standings</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Top 20% performers</p>
           </div>
           <div className="overflow-hidden">
             <LeagueIndividualsTable individuals={individuals} showAvgRR={true} />
