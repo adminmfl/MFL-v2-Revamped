@@ -253,8 +253,11 @@ export function useLeagueLeaderboard(
               total_points: displayTotal, // overwrite displayed total to normalized base + challenge bonus
             };
           });
-          // Sort by normalized display total and reassign ranks
-          normalizedTeams.sort((a, b) => b.total_points - a.total_points);
+          // Sort by normalized display total, then avg_rr DESC as tiebreaker
+          normalizedTeams.sort((a, b) => {
+            if (b.total_points !== a.total_points) return b.total_points - a.total_points;
+            return b.avg_rr - a.avg_rr;
+          });
           const reRanked = normalizedTeams.map((t, idx) => ({ ...t, rank: idx + 1 }));
 
           // Normalize pending window (today/yesterday) pointsByDate using team member counts

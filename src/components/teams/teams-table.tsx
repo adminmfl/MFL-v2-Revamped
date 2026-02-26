@@ -126,6 +126,11 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
   const [logoRemovingTeamId, setLogoRemovingTeamId] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
+  // Edit team name states
+  const [editNameDialogOpen, setEditNameDialogOpen] = React.useState(false);
+  const [editingTeamName, setEditingTeamName] = React.useState("");
+  const [isSavingName, setIsSavingName] = React.useState(false);
+
   const canManageTeams = isHost || isGovernor;
   const canManageLogos = isHost;
 
@@ -205,6 +210,39 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
       setSelectedTeam(null);
     } else {
       toast.error("Failed to delete team");
+    }
+  };
+
+  const handleEditNameClick = (team: TeamWithDetails) => {
+    setSelectedTeam(team);
+    setEditingTeamName(team.team_name);
+    setEditNameDialogOpen(true);
+  };
+
+  const handleEditNameConfirm = async () => {
+    if (!selectedTeam || !editingTeamName.trim()) return;
+
+    setIsSavingName(true);
+    try {
+      const res = await fetch(`/api/leagues/${leagueId}/teams/${selectedTeam.team_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ team_name: editingTeamName.trim() }),
+      });
+      const json = await res.json();
+
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || 'Failed to update team name');
+      }
+
+      toast.success(`Team renamed to "${editingTeamName.trim()}"`);
+      setEditNameDialogOpen(false);
+      setSelectedTeam(null);
+      await refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update team name');
+    } finally {
+      setIsSavingName(false);
     }
   };
 
@@ -460,6 +498,11 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
                   <DropdownMenuSeparator />
                 </>
               )}
+              <DropdownMenuItem onClick={() => handleEditNameClick(row.original)} className="text-xs">
+                <Pencil className="mr-1.5 size-3.5" />
+                Edit Name
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => handleViewTeamMembersClick(row.original)} className="text-xs">
                 <Users className="mr-1.5 size-3.5" />
                 View Members
@@ -854,6 +897,49 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
           }}
         />
       )}
+
+      {/* Edit Team Name Dialog */}
+      <AlertDialog open={editNameDialogOpen} onOpenChange={setEditNameDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Edit Team Name</AlertDialogTitle>
+            <AlertDialogDescription>
+              Enter a new name for &quot;{selectedTeam?.team_name}&quot;.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            value={editingTeamName}
+            onChange={(e) => setEditingTeamName(e.target.value)}
+            placeholder="Team name"
+            maxLength={100}
+            className="mt-2"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && editingTeamName.trim()) {
+                handleEditNameConfirm();
+              }
+            }}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSavingName}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleEditNameConfirm}
+              disabled={isSavingName || !editingTeamName.trim()}
+            >
+              {isSavingName ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 size-4" />
+                  Save
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
