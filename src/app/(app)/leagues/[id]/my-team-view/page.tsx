@@ -4,8 +4,7 @@
  */
 'use client';
 
-import { use, useState, useEffect, useMemo } from 'react';
-import Link from 'next/link';
+import { use, useState, useEffect } from 'react';
 import {
   Users,
   Trophy,
@@ -13,32 +12,15 @@ import {
   Crown,
   Shield,
   Flame,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   AlertCircle,
-  Eye,
-  Gift,
-  ArrowRight,
+  Star,
 } from 'lucide-react';
 
 import { useLeague } from '@/contexts/league-context';
 import { useRole } from '@/contexts/role-context';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -47,21 +29,22 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 import type { TeamMember } from '@/hooks/use-league-teams';
 
 // ============================================================================
-// Loading Skeleton
+// Helpers
 // ============================================================================
+
+function capitalizeName(name: string) {
+  if (!name) return '';
+  return name
+    .split(' ')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
 
 function PageSkeleton() {
   return <DumbbellLoading label="Loading team..." />;
@@ -80,21 +63,21 @@ export default function MyTeamViewPage({
   const { activeLeague } = useLeague();
   const { activeRole, canSubmitWorkouts } = useRole();
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [teamRank, setTeamRank] = useState<string>('#--');
   const [teamPoints, setTeamPoints] = useState<string>('--');
   const [teamAvgRR, setTeamAvgRR] = useState<string>('--');
+  const [teamActivityPoints, setTeamActivityPoints] = useState<number | null>(null);
+  const [teamChallengePoints, setTeamChallengePoints] = useState<number | null>(null);
   const [teamLogoUrl, setTeamLogoUrl] = useState<string | null>(null);
 
   const userTeamId = activeLeague?.team_id;
   const userTeamName = activeLeague?.team_name;
   const teamCapacity = activeLeague?.league_capacity || 20;
 
-  // Fetch team members
+  // Fetch team members + merge points & RR from leaderboard
   useEffect(() => {
     async function fetchMembers() {
       if (!userTeamId) {
@@ -115,24 +98,37 @@ export default function MyTeamViewPage({
         }
 
         if (result.success) {
-          // Attach default points, then try to fetch full leaderboard to merge individual points
-          let membersWithPoints = (result.data || []).map((m: any) => ({ ...m, points: 0 }));
+          let membersWithPoints = (result.data || []).map((m: any) => ({
+            ...m,
+            points: 0,
+            avg_rr: 0,
+          }));
 
           try {
             const lbRes = await fetch(`/api/leagues/${leagueId}/leaderboard?full=true`);
             const lbJson = await lbRes.json();
             if (lbRes.ok && lbJson?.success && lbJson.data?.individuals) {
-              console.debug('[MyTeamView] leaderboard individuals count:', lbJson.data.individuals.length);
-              console.debug('[MyTeamView] sample individuals:', lbJson.data.individuals.slice(0, 5));
-              const pts = new Map<string, number>(
-                lbJson.data.individuals.map((i: any) => [String(i.user_id), Number(i.points || 0)])
+              const statsMap = new Map<string, { points: number; avg_rr: number }>(
+                lbJson.data.individuals.map((i: any) => [
+                  String(i.user_id),
+                  { points: Number(i.points || 0), avg_rr: Number(i.avg_rr || 0) },
+                ])
               );
-              console.debug('[MyTeamView] built points map size:', pts.size);
-              membersWithPoints = membersWithPoints.map((m: any) => ({ ...m, points: pts.get(String(m.user_id)) || 0 }));
+              membersWithPoints = membersWithPoints.map((m: any) => ({
+                ...m,
+                points: statsMap.get(String(m.user_id))?.points ?? 0,
+                avg_rr: statsMap.get(String(m.user_id))?.avg_rr ?? 0,
+              }));
             }
           } catch (err) {
             console.error('Error fetching leaderboard for points:', err);
           }
+
+          // Sort by points DESC, then avg_rr DESC
+          membersWithPoints.sort((a: any, b: any) => {
+            if (b.points !== a.points) return b.points - a.points;
+            return (b.avg_rr || 0) - (a.avg_rr || 0);
+          });
 
           setMembers(membersWithPoints);
         }
@@ -147,23 +143,6 @@ export default function MyTeamViewPage({
     fetchMembers();
   }, [leagueId, userTeamId]);
 
-  // Filter members based on search
-  const filteredMembers = useMemo(() => {
-    return members.filter(
-      (member) =>
-        member.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        member.email.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [searchQuery, members]);
-
-  // Pagination
-  const paginatedMembers = useMemo(() => {
-    const start = pagination.pageIndex * pagination.pageSize;
-    return filteredMembers.slice(start, start + pagination.pageSize);
-  }, [filteredMembers, pagination]);
-
-  const pageCount = Math.ceil(filteredMembers.length / pagination.pageSize);
-
   // Get captain info
   const captain = members.find((m) => m.is_captain);
 
@@ -173,29 +152,37 @@ export default function MyTeamViewPage({
       title: 'Team Rank',
       value: teamRank,
       description: 'League standing',
-      detail: 'Rank updates daily',
       icon: Trophy,
     },
     {
       title: 'Team Members',
       value: `${members.length}/${teamCapacity}`,
       description: 'Current roster',
-      detail: 'Active members',
       icon: Users,
     },
     {
       title: 'Team Points',
       value: String(teamPoints),
       description: 'Total score',
-      detail: 'Combined team effort',
       icon: Target,
     },
     {
       title: 'RR',
       value: parseFloat(teamAvgRR).toFixed(1),
       description: 'Run Rate',
-      detail: 'Average per workout',
       icon: Flame,
+    },
+    {
+      title: 'Activity Points',
+      value: typeof teamActivityPoints === 'number' ? teamActivityPoints.toLocaleString() : '—',
+      description: 'Workout points',
+      icon: Star,
+    },
+    {
+      title: 'Challenge Points',
+      value: typeof teamChallengePoints === 'number' ? teamChallengePoints.toLocaleString() : '—',
+      description: 'Bonus points',
+      icon: Star,
     },
   ];
 
@@ -213,10 +200,12 @@ export default function MyTeamViewPage({
             const pts = team.total_points ?? team.points ?? 0;
             setTeamPoints(String(pts));
             setTeamAvgRR(String(team.avg_rr ?? 0));
+            setTeamActivityPoints(typeof team.points === 'number' ? Math.max(0, team.points) : null);
+            setTeamChallengePoints(typeof team.challenge_bonus === 'number' ? Math.max(0, team.challenge_bonus) : null);
           }
         }
 
-        // Fetch team logo from teamleagues
+        // Fetch team logo
         const logoRes = await fetch(`/api/leagues/${leagueId}/teams/${userTeamId}`);
         const logoJson = await logoRes.json();
         if (logoRes.ok && logoJson?.success && logoJson.data?.logo_url) {
@@ -230,7 +219,7 @@ export default function MyTeamViewPage({
     fetchTeamStats();
   }, [leagueId, userTeamId]);
 
-  // Check if user can view team (must be a player)
+  // Access check
   if (!canSubmitWorkouts) {
     return (
       <div className="@container/main flex flex-1 flex-col gap-4 lg:gap-6">
@@ -248,7 +237,7 @@ export default function MyTeamViewPage({
     );
   }
 
-  // User not assigned to a team
+  // Not assigned to a team
   if (!userTeamId || !userTeamName) {
     return (
       <div className="@container/main flex flex-1 flex-col items-center justify-center gap-4 min-h-[400px]">
@@ -300,7 +289,7 @@ export default function MyTeamViewPage({
               className="bg-amber-500/10 text-amber-600 border-amber-200"
             >
               <Crown className="size-3 mr-1" />
-              Captain: {captain.username}
+              Captain: {capitalizeName(captain.username)}
             </Badge>
           )}
           <Badge variant="outline">
@@ -321,7 +310,7 @@ export default function MyTeamViewPage({
         </div>
       )}
 
-      {/* Stats + Donate Cards (2,2,1) */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-2 gap-1 px-4 lg:px-6">
         {stats.map((stat, index) => {
           const StatIcon = stat.icon;
@@ -340,48 +329,17 @@ export default function MyTeamViewPage({
             </Card>
           );
         })}
-
-        <Link
-          href={`/leagues/${leagueId}/rest-day-donations`}
-          className="block col-span-2"
-        >
-          <Card className="hover:shadow-md transition-all hover:border-primary/30 cursor-pointer group">
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className="size-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shrink-0">
-                <Gift className="size-6 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold group-hover:text-primary transition-colors">Donate Rest Days</h3>
-                <p className="text-sm text-muted-foreground">Help a teammate in need</p>
-              </div>
-              <ArrowRight className="size-5 text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all" />
-            </CardContent>
-          </Card>
-        </Link>
       </div>
 
-      {/* Team Members Table */}
+      {/* Team Members Table — all members, no search, no pagination */}
       <div className="px-4 lg:px-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-semibold">Team Members</h2>
-            <p className="text-sm text-muted-foreground">
-              {members.length} member{members.length !== 1 ? 's' : ''} in your team
-            </p>
-          </div>
-
-          <div className="relative flex-1 sm:max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              placeholder="Search members..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold">Team Members</h2>
+          <p className="text-sm text-muted-foreground">
+            {members.length} member{members.length !== 1 ? 's' : ''} in your team
+          </p>
         </div>
 
-        {/* Members Table */}
         <div className="rounded-lg border">
           <Table>
             <TableHeader className="bg-muted/50">
@@ -391,14 +349,15 @@ export default function MyTeamViewPage({
                 <TableHead className="hidden sm:table-cell">Role</TableHead>
                 <TableHead className="text-center">Rest Days</TableHead>
                 <TableHead className="text-center">Points</TableHead>
+                <TableHead className="text-center">RR</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedMembers.length > 0 ? (
-                paginatedMembers.map((member, index) => (
+              {members.length > 0 ? (
+                members.map((member, index) => (
                   <TableRow key={member.league_member_id}>
                     <TableCell className="text-muted-foreground">
-                      {pagination.pageIndex * pagination.pageSize + index + 1}
+                      {index + 1}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -423,7 +382,7 @@ export default function MyTeamViewPage({
                           )}
                         </div>
                         <div>
-                          <span className="font-medium">{member.username}</span>
+                          <span className="font-medium">{capitalizeName(member.username)}</span>
                         </div>
                       </div>
                     </TableCell>
@@ -443,112 +402,25 @@ export default function MyTeamViewPage({
                     <TableCell className="text-center font-medium tabular-nums">
                       {(member as any).points ?? 0}
                     </TableCell>
+                    <TableCell className="text-center font-medium tabular-nums">
+                      <div className="flex items-center justify-center gap-1">
+                        <Star className="size-3 text-yellow-500" />
+                        {((member as any).avg_rr ?? 0).toFixed(2)}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
-                    {searchQuery
-                      ? 'No members found matching your search.'
-                      : 'No members in this team yet.'}
+                  <TableCell colSpan={6} className="h-24 text-center">
+                    No members in this team yet.
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
         </div>
-
-        {/* Pagination */}
-        {filteredMembers.length > 0 && (
-          <div className="flex items-center justify-between mt-4">
-            <div className="text-sm text-muted-foreground">
-              {filteredMembers.length} member(s) total
-            </div>
-            <div className="flex items-center gap-6">
-              <div className="hidden items-center gap-2 lg:flex">
-                <Label htmlFor="members-rows" className="text-sm">
-                  Rows per page
-                </Label>
-                <Select
-                  value={pagination.pageSize.toString()}
-                  onValueChange={(v) =>
-                    setPagination({
-                      ...pagination,
-                      pageSize: Number(v),
-                      pageIndex: 0,
-                    })
-                  }
-                >
-                  <SelectTrigger className="w-16" id="members-rows">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[5, 10, 20].map((size) => (
-                      <SelectItem key={size} value={size.toString()}>
-                        {size}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="text-sm">
-                Page {pagination.pageIndex + 1} of {pageCount || 1}
-              </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="size-8"
-                  onClick={() => setPagination({ ...pagination, pageIndex: 0 })}
-                  disabled={pagination.pageIndex === 0}
-                >
-                  <ChevronsLeft className="size-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="size-8"
-                  onClick={() =>
-                    setPagination({
-                      ...pagination,
-                      pageIndex: pagination.pageIndex - 1,
-                    })
-                  }
-                  disabled={pagination.pageIndex === 0}
-                >
-                  <ChevronLeft className="size-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="size-8"
-                  onClick={() =>
-                    setPagination({
-                      ...pagination,
-                      pageIndex: pagination.pageIndex + 1,
-                    })
-                  }
-                  disabled={pagination.pageIndex >= pageCount - 1}
-                >
-                  <ChevronRight className="size-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="size-8"
-                  onClick={() =>
-                    setPagination({ ...pagination, pageIndex: pageCount - 1 })
-                  }
-                  disabled={pagination.pageIndex >= pageCount - 1}
-                >
-                  <ChevronsRight className="size-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
 }
-

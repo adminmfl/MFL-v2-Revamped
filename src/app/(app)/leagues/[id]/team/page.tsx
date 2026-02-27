@@ -32,6 +32,14 @@ import {
 import { DumbbellLoading } from '@/components/ui/dumbbell-loading';
 import { TeamsTable } from '@/components/teams';
 
+function capitalizeName(name: string) {
+  if (!name) return '';
+  return name
+    .split(' ')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
 /* ============================================================================
    Skeleton
 ============================================================================ */
@@ -188,7 +196,7 @@ function TeamMemberView({
                         {m.username.slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <span>{m.username}</span>
+                    <span>{capitalizeName(m.username)}</span>
                     {m.is_captain && <Crown className="size-4 text-yellow-500" />}
                   </div>
                 </TableCell>

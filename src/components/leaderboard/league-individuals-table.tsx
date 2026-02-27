@@ -24,6 +24,14 @@ import { cn } from '@/lib/utils';
 
 import type { IndividualRanking } from '@/hooks/use-league-leaderboard';
 
+function capitalizeName(name: string) {
+  if (!name) return '';
+  return name
+    .split(' ')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
 // ============================================================================
 // Rank Badge
 // ============================================================================
@@ -106,7 +114,7 @@ export function LeagueIndividualsTable({
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-semibold text-sm whitespace-nowrap">{player.username}</p>
+                      <p className="font-semibold text-sm whitespace-nowrap">{capitalizeName(player.username)}</p>
                       {player.team_name && (
                         <p className="text-xs text-muted-foreground whitespace-nowrap">
                           {player.team_name}
