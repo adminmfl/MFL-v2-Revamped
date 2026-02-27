@@ -811,7 +811,8 @@ export default function LeagueDashboardPage({
         <div className="w-full">
           <div className="flex items-center gap-3 mb-1 w-full">
             <h1 className="text-2xl font-bold tracking-tight">
-              Welcome back, {user?.name || 'User'}!
+              <span className="text-sm font-normal text-muted-foreground">Welcome back, </span>
+              {(user?.name || 'User').split(' ')[0]}!
             </h1>
             {(user as any)?.profile_picture_url && (
               <div className="ml-auto">
