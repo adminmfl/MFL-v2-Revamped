@@ -106,7 +106,7 @@ interface TeamsTableProps {
 export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState("");
-  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 });
+  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 100 });
 
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
@@ -646,19 +646,6 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="relative flex-1 sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search teams..."
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-      </div>
-
       {/* Table */}
       <div className="rounded-lg border overflow-hidden">
         <Table className="w-full table-fixed">
@@ -725,86 +712,6 @@ export function TeamsTable({ leagueId, isHost, isGovernor }: TeamsTableProps) {
           </TableBody>
         </Table>
       </div>
-
-      {/* Pagination */}
-      {(data?.teams.length || 0) > 0 && (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          {/* Left info */}
-          <div className="text-sm text-muted-foreground text-center sm:text-left">
-            {table.getFilteredRowModel().rows.length} team(s) total
-          </div>
-
-          {/* Right controls */}
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            {/* Rows per page */}
-            <div className="flex items-center gap-2">
-              <Label className="text-xs">Rows</Label>
-              <Select
-                value={`${pagination.pageSize}`}
-                onValueChange={(value) =>
-                  setPagination({ ...pagination, pageSize: Number(value) })
-                }
-              >
-                <SelectTrigger className="h-8 w-16 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[5, 10, 20].map((size) => (
-                    <SelectItem key={size} value={`${size}`}>
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Page info */}
-            <div className="text-xs">
-              Page {pagination.pageIndex + 1} / {table.getPageCount() || 1}
-            </div>
-
-            {/* Arrows */}
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-7"
-                onClick={() => table.setPageIndex(0)}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <ChevronsLeft className="size-3" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-7"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <ChevronLeft className="size-3" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-7"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-              >
-                <ChevronRight className="size-3" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-7"
-                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                disabled={!table.getCanNextPage()}
-              >
-                <ChevronsRight className="size-3" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <input
         ref={fileInputRef}

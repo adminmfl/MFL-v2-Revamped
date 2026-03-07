@@ -29,19 +29,23 @@ async function getMemberFinalRestDays(
     // Get league config
     const { data: league } = await supabase
         .from('leagues')
-        .select('rest_days')
+        .select('rest_days, start_date')
         .eq('league_id', leagueId)
         .single();
 
     const totalAllowed = league?.rest_days ?? 1;
 
-    // Count auto rest days (from effortentry)
-    const { count: autoRestDays } = await supabase
+    // Count auto rest days (from effortentry) - only from league start date
+    let restDayQuery = supabase
         .from('effortentry')
         .select('*', { count: 'exact', head: true })
         .eq('league_member_id', leagueMemberId)
         .eq('type', 'rest')
         .eq('status', 'approved');
+    if (league?.start_date) {
+        restDayQuery = restDayQuery.gte('date', league.start_date);
+    }
+    const { count: autoRestDays } = await restDayQuery;
 
     // Get approved donations received
     const { data: receivedDonations } = await supabase

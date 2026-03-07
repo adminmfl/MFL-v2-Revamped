@@ -61,6 +61,7 @@ export default function AdminChallengesPage() {
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editingChallenge, setEditingChallenge] = React.useState<PresetChallenge | null>(null);
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+  const [submitting, setSubmitting] = React.useState(false);
 
   const [formData, setFormData] = React.useState({
     name: '',
@@ -132,6 +133,8 @@ export default function AdminChallengesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     try {
       let docUrl = editingChallenge?.doc_url ?? null;
 
@@ -168,6 +171,8 @@ export default function AdminChallengesPage() {
       fetchChallenges();
     } catch {
       toast.error('Failed to save challenge');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -388,14 +393,23 @@ export default function AdminChallengesPage() {
               </Select>
             </div>
 
-            <div>
-              <Label>Rules document (optional)</Label>
+            <div className="space-y-2">
+              <Label>Rules document <span className="text-xs text-muted-foreground">(optional — existing doc is kept unless replaced)</span></Label>
+              {editingChallenge?.doc_url && !selectedFile && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground rounded-md border px-3 py-2 bg-muted/30">
+                  <FileText className="size-3.5 shrink-0" />
+                  <span className="truncate">Current document attached</span>
+                  <a href={editingChallenge.doc_url} target="_blank" rel="noopener noreferrer" className="text-primary underline shrink-0">View</a>
+                </div>
+              )}
               <Input type="file" onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)} />
             </div>
 
             <DialogFooter>
-              <Button variant="outline" type="button" onClick={() => setDialogOpen(false)}>Cancel</Button>
-              <Button type="submit">{editingChallenge ? 'Update' : 'Create'}</Button>
+              <Button variant="outline" type="button" onClick={() => setDialogOpen(false)} disabled={submitting}>Cancel</Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? 'Saving...' : (editingChallenge ? 'Update' : 'Create')}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

@@ -15,6 +15,10 @@ import {
   Dumbbell,
   ChevronRight,
   Calendar,
+  Activity,
+  Target,
+  Flame,
+  Award,
 } from 'lucide-react';
 
 import { useLeague, LeagueWithRoles } from '@/contexts/league-context';
@@ -23,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import {
   Card,
   CardAction,
+  CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
@@ -49,6 +54,7 @@ interface StatCard {
   change: number;
   changeLabel: string;
   description: string;
+  icon?: React.ElementType;
 }
 
 // ============================================================================
@@ -66,36 +72,142 @@ export default function DashboardPage() {
     setIsMounted(true);
   }, []);
 
-  // Calculate stats
-  const stats: StatCard[] = React.useMemo(() => {
+  // League involvement stats
+  const leagueStats = React.useMemo(() => {
+    const activeLeagues = userLeagues.filter((l) => l.status === 'active').length;
     const hostingCount = userLeagues.filter((l) => l.is_host).length;
     const governorCount = userLeagues.filter((l) => l.roles.includes('governor')).length;
     const captainCount = userLeagues.filter((l) => l.roles.includes('captain')).length;
-
-    return [
-      {
-        title: 'Total Leagues',
-        value: userLeagues.length,
-        change: 0,
-        changeLabel: 'Growing strong',
-        description: 'Leagues you are a member of',
-      },
-      {
-        title: 'Hosting',
-        value: hostingCount,
-        change: 0,
-        changeLabel: hostingCount > 0 ? 'League creator' : 'Create your first',
-        description: 'Leagues you created',
-      },
-      {
-        title: 'Leadership Roles',
-        value: governorCount + captainCount,
-        change: 0,
-        changeLabel: 'Governor & Captain',
-        description: 'Management positions held',
-      },
-    ];
+    return { totalLeagues: userLeagues.length, activeLeagues, hostingCount, leadershipRoles: governorCount + captainCount };
   }, [userLeagues]);
+
+  const leagueStatCards: StatCard[] = [
+    { title: 'Total Leagues', value: leagueStats.totalLeagues, change: 0, changeLabel: leagueStats.totalLeagues > 0 ? 'Growing strong' : 'Join a league', description: 'Leagues you are part of', icon: Trophy },
+    { title: 'Active Leagues', value: leagueStats.activeLeagues, change: 0, changeLabel: leagueStats.activeLeagues > 0 ? 'In progress' : 'No active leagues', description: 'Currently running leagues', icon: Target },
+    { title: 'Hosting', value: leagueStats.hostingCount, change: 0, changeLabel: leagueStats.hostingCount > 0 ? 'League creator' : 'Create your first', description: 'Leagues you created', icon: Crown },
+    { title: 'Leadership Roles', value: leagueStats.leadershipRoles, change: 0, changeLabel: 'Governor & Captain', description: 'Management positions', icon: Shield },
+  ];
+
+  // Activities logged across all leagues
+  const [activitiesLogged, setActivitiesLogged] = React.useState<number>(0);
+  const [activitiesLoading, setActivitiesLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    let mounted = true;
+    async function fetchActivities() {
+      if (!userLeagues || userLeagues.length === 0) { if (mounted) setActivitiesLogged(0); return; }
+      setActivitiesLoading(true);
+      try {
+        const results = await Promise.all(
+          userLeagues.map((l) => fetch(`/api/leagues/${l.league_id}/my-submissions?status=approved`).then((r) => r.json()).catch(() => ({ success: false, data: { submissions: [] } })))
+        );
+        const dateSet = new Set<string>();
+        for (const res of results) {
+          if (res?.success && Array.isArray(res.data?.submissions)) {
+            for (const s of res.data.submissions) { if (s?.date) dateSet.add(s.date); }
+          }
+        }
+        if (mounted) setActivitiesLogged(dateSet.size);
+      } catch { if (mounted) setActivitiesLogged(0); }
+      finally { if (mounted) setActivitiesLoading(false); }
+    }
+    fetchActivities();
+    return () => { mounted = false; };
+  }, [userLeagues]);
+
+  // Challenge points
+  const [challengePoints, setChallengePoints] = React.useState(0);
+  const [challengeLoading, setChallengeLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    let mounted = true;
+    async function fetchChallengePoints() {
+      if (!userLeagues || userLeagues.length === 0) { if (mounted) setChallengePoints(0); return; }
+      setChallengeLoading(true);
+      try {
+        const results = await Promise.all(
+          userLeagues.map((l) => fetch(`/api/leagues/${l.league_id}/challenges`).then((r) => r.json()).catch(() => ({ success: false })))
+        );
+        let total = 0;
+        for (const res of results) {
+          if (!res?.success || !Array.isArray(res.data?.active)) continue;
+          for (const ch of res.data.active) {
+            const mySub = ch.my_submission;
+            if (mySub && (mySub.status === 'approved' || mySub.status === 'accepted')) {
+              const pts = mySub.awarded_points != null ? Number(mySub.awarded_points) : Number(ch.total_points || 0);
+              if (!Number.isNaN(pts) && pts > 0) total += pts;
+            }
+          }
+        }
+        if (mounted) setChallengePoints(total);
+      } catch { if (mounted) setChallengePoints(0); }
+      finally { if (mounted) setChallengeLoading(false); }
+    }
+    fetchChallengePoints();
+    return () => { mounted = false; };
+  }, [userLeagues]);
+
+  const totalPoints = activitiesLogged + challengePoints;
+
+  // Streaks
+  const [currentStreak, setCurrentStreak] = React.useState(0);
+  const [bestStreak, setBestStreak] = React.useState(0);
+  const [streaksLoading, setStreaksLoading] = React.useState(false);
+
+  function addDaysYMD(dateString: string, days: number) {
+    const [y, m, d] = dateString.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + days);
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+  }
+  function todayYMD() {
+    const dt = new Date();
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+  }
+
+  React.useEffect(() => {
+    let mounted = true;
+    async function computeStreaks() {
+      if (!userLeagues || userLeagues.length === 0) { if (mounted) { setCurrentStreak(0); setBestStreak(0); } return; }
+      setStreaksLoading(true);
+      try {
+        const results = await Promise.all(
+          userLeagues.map((l) => fetch(`/api/leagues/${l.league_id}/my-submissions?status=approved`).then((r) => r.json()).catch(() => ({ success: false, data: { submissions: [] } })))
+        );
+        let overallBest = 0, overallCurrent = 0;
+        for (const res of results) {
+          if (!res?.success || !Array.isArray(res.data?.submissions)) continue;
+          const dates = Array.from(new Set((res.data.submissions as any[]).map((s: any) => s.date).filter(Boolean))).sort();
+          if (dates.length === 0) continue;
+          const dateSet = new Set(dates);
+          let longest = 0;
+          for (const d of dates) {
+            if (!dateSet.has(addDaysYMD(d, -1))) {
+              let len = 1, next = addDaysYMD(d, 1);
+              while (dateSet.has(next)) { len++; next = addDaysYMD(next, 1); }
+              if (len > longest) longest = len;
+            }
+          }
+          const today = todayYMD();
+          let curLen = 0;
+          if (dateSet.has(today)) { let cursor = today; while (dateSet.has(cursor)) { curLen++; cursor = addDaysYMD(cursor, -1); } }
+          if (longest > overallBest) overallBest = longest;
+          if (curLen > overallCurrent) overallCurrent = curLen;
+        }
+        if (mounted) { setBestStreak(overallBest); setCurrentStreak(overallCurrent); }
+      } catch { if (mounted) { setBestStreak(0); setCurrentStreak(0); } }
+      finally { if (mounted) setStreaksLoading(false); }
+    }
+    computeStreaks();
+    return () => { mounted = false; };
+  }, [userLeagues]);
+
+  const activityStats: StatCard[] = [
+    { title: 'Activities Logged', value: activitiesLoading ? '...' : activitiesLogged, change: 0, changeLabel: 'Start logging!', description: 'Total workouts submitted', icon: Dumbbell },
+    { title: 'Total Points', value: activitiesLoading || challengeLoading ? '...' : totalPoints, change: 0, changeLabel: 'Earn points', description: 'Points earned across leagues', icon: Award },
+    { title: 'Current Streak', value: streaksLoading ? '...' : `${currentStreak} days`, change: 0, changeLabel: 'Build your streak', description: 'Consecutive active days', icon: Flame },
+    { title: 'Best Streak', value: streaksLoading ? '...' : `${bestStreak} days`, change: 0, changeLabel: 'Set a record', description: 'Your longest streak ever', icon: Trophy },
+  ];
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -168,23 +280,31 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Insights Section */}
-      <div className="flex flex-col gap-3">
-        <div className="px-4 lg:px-6">
-          <h2 className="text-lg font-semibold">Insights</h2>
-          <p className="text-sm text-muted-foreground">
-            Your activity overview and league participation stats
-          </p>
-        </div>
-
-        {!isMounted || isLoading ? (
-          <SectionCardsSkeleton />
-        ) : (
-          <SectionCards stats={stats} />
-        )}
-
-        <div className="px-4 lg:px-6" />
+      {/* Activity Overview */}
+      <div className="px-4 lg:px-6">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Activity className="size-5 text-primary" />
+          Activity Overview
+        </h2>
       </div>
+      {!isMounted || isLoading ? (
+        <SectionCardsSkeleton />
+      ) : (
+        <SectionCards stats={activityStats} />
+      )}
+
+      {/* League Involvement */}
+      <div className="px-4 lg:px-6">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Trophy className="size-5 text-primary" />
+          League Involvement
+        </h2>
+      </div>
+      {!isMounted || isLoading ? (
+        <SectionCardsSkeleton />
+      ) : (
+        <SectionCards stats={leagueStatCards} />
+      )}
     </div >
   );
 }
@@ -199,11 +319,15 @@ function SectionCards({ stats }: { stats: StatCard[] }) {
       {stats.map((stat, index) => {
         const isPositive = stat.change >= 0;
         const TrendIcon = isPositive ? TrendingUp : TrendingDown;
+        const StatIcon = stat.icon;
 
         return (
           <Card key={index} className="@container/card p-2.5 sm:p-4">
             <CardHeader className="p-0 sm:p-4 sm:pb-1.5">
-              <CardDescription className="text-[11px] sm:text-xs">{stat.title}</CardDescription>
+              <CardDescription className="flex items-center gap-2 text-[11px] sm:text-xs">
+                {StatIcon && <StatIcon className="size-4" />}
+                {stat.title}
+              </CardDescription>
               <CardTitle className="text-lg sm:text-xl font-semibold tabular-nums @[250px]/card:text-2xl">
                 {stat.value}
               </CardTitle>

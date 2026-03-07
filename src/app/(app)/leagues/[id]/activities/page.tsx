@@ -363,6 +363,8 @@ export default function LeagueActivitiesPage({
               : await removeActivity(activityId);
             if (success) successCount++;
             else errorCount++;
+            // If activity was removed, skip frequency/minimum updates
+            if (change.enabled === false) continue;
           }
 
           if (change.frequency !== undefined || change.frequency_type !== undefined) {

@@ -151,6 +151,7 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
     // Edit dialog state
     const [editOpen, setEditOpen] = React.useState(false);
     const [editChallenge, setEditChallenge] = React.useState<Challenge | null>(null);
+    const [editLoading, setEditLoading] = React.useState(false);
     const [editForm, setEditForm] = React.useState({
         name: '',
         description: '',
@@ -384,8 +385,9 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
 
     const handleEditSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!editChallenge) return;
+        if (!editChallenge || editLoading) return;
 
+        setEditLoading(true);
         try {
             let docUrl = editForm.docUrl || null;
 
@@ -429,6 +431,8 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
             fetchChallenges();
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Update failed');
+        } finally {
+            setEditLoading(false);
         }
     };
 
@@ -1410,7 +1414,14 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="edit-doc">Update Rules Document (Optional)</Label>
+                            <Label htmlFor="edit-doc">Rules Document <span className="text-xs text-muted-foreground">(optional — existing doc is kept unless replaced)</span></Label>
+                            {editForm.docUrl && !selectedFile && (
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground rounded-md border px-3 py-2 bg-muted/30">
+                                    <FileText className="size-3.5 shrink-0" />
+                                    <span className="truncate">Current document attached</span>
+                                    <a href={editForm.docUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline shrink-0">View</a>
+                                </div>
+                            )}
                             <Input
                                 id="edit-doc"
                                 type="file"
@@ -1419,8 +1430,10 @@ export default function ConfigureChallengesPage({ params }: { params: Promise<{ 
                             />
                         </div>
                         <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-                            <Button type="submit">Save Changes</Button>
+                            <Button type="button" variant="outline" onClick={() => setEditOpen(false)} disabled={editLoading}>Cancel</Button>
+                            <Button type="submit" disabled={editLoading}>
+                                {editLoading ? 'Saving...' : 'Save Changes'}
+                            </Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>
