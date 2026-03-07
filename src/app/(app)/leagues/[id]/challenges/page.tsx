@@ -193,20 +193,44 @@ export default function ChallengesPage({ params }: { params: Promise<{ id: strin
     setLoadingWorkouts(true);
 
     try {
-      // Fetch approved workouts within the challenge period
-      const params = new URLSearchParams();
-      if (challenge.start_date) params.set('startDate', challenge.start_date);
-      if (challenge.end_date) params.set('endDate', challenge.end_date);
+      // Fetch two things in parallel:
+      // 1. Approved workouts within the challenge period (candidates)
+      // 2. ALL approved workouts for this player (to check uniqueness history)
+      const periodParams = new URLSearchParams({ status: 'approved' });
+      if (challenge.start_date) periodParams.set('startDate', challenge.start_date);
+      if (challenge.end_date) periodParams.set('endDate', challenge.end_date);
 
-      const res = await fetch(`/api/leagues/${leagueId}/my-submissions?${params}`);
-      const json = await res.json();
+      const allParams = new URLSearchParams({ status: 'approved' });
 
-      if (res.ok && json.success) {
-        // Filter to only approved workouts (not rest days)
-        const workouts = (json.data?.submissions || []).filter(
-          (s: any) => s.type === 'workout' && s.status === 'approved'
+      const [periodRes, allRes] = await Promise.all([
+        fetch(`/api/leagues/${leagueId}/my-submissions?${periodParams}`),
+        fetch(`/api/leagues/${leagueId}/my-submissions?${allParams}`),
+      ]);
+
+      const periodJson = await periodRes.json();
+      const allJson = await allRes.json();
+
+      if (periodRes.ok && periodJson.success && allRes.ok && allJson.success) {
+        const periodWorkouts = (periodJson.data?.submissions || []).filter(
+          (s: any) => s.type === 'workout'
         );
-        setApprovedWorkouts(workouts);
+        const allWorkouts = (allJson.data?.submissions || []).filter(
+          (s: any) => s.type === 'workout'
+        );
+
+        // For each challenge-period workout, check if the workout_type was done before that date
+        const uniqueOnly = periodWorkouts.filter((w: any) => {
+          const wDate = String(w.date).slice(0, 10);
+          const wType = w.workout_type;
+          if (!wType) return false;
+          // Check if any earlier entry has the same workout_type
+          const hasPrior = allWorkouts.some(
+            (other: any) => other.workout_type === wType && String(other.date).slice(0, 10) < wDate
+          );
+          return !hasPrior;
+        });
+
+        setApprovedWorkouts(uniqueOnly);
       } else {
         setApprovedWorkouts([]);
       }
@@ -356,7 +380,11 @@ export default function ChallengesPage({ params }: { params: Promise<{ id: strin
             const canSubmit =
               challenge.status === 'active' &&
               challenge.challenge_type !== 'tournament' &&
-              (!challenge.my_submission || challenge.my_submission.status === 'rejected') &&
+              (
+                !challenge.my_submission ||
+                challenge.my_submission.status === 'rejected' ||
+                (challenge.is_unique_workout && challenge.my_submission.status === 'approved')
+              ) &&
               (challenge.my_submission?.status !== 'rejected' || canReuploadSubmission(challenge.my_submission));
 
             const startDate = challenge.start_date ? format(parseISO(challenge.start_date), 'MMM d') : '';
@@ -467,7 +495,11 @@ export default function ChallengesPage({ params }: { params: Promise<{ id: strin
                 <div className="mt-auto px-6 pb-5">
                   {canSubmit && (
                     <Button size="sm" onClick={() => handleOpenSubmit(challenge)}>
-                      {challenge.my_submission?.status === 'rejected' ? 'Resubmit Proof' : 'Submit Proof'}
+                      {challenge.my_submission?.status === 'rejected'
+                        ? 'Resubmit Proof'
+                        : challenge.is_unique_workout && challenge.my_submission?.status === 'approved'
+                          ? 'Change Selection'
+                          : 'Submit Proof'}
                     </Button>
                   )}
 
@@ -552,7 +584,12 @@ export default function ChallengesPage({ params }: { params: Promise<{ id: strin
           <div className="space-y-3 max-h-[50vh] overflow-y-auto">
             {loadingWorkouts && <p className="text-sm text-muted-foreground">Loading workouts...</p>}
             {!loadingWorkouts && approvedWorkouts.length === 0 && (
-              <p className="text-sm text-muted-foreground">No approved workouts found in the challenge period.</p>
+              <div className="text-center py-4 space-y-2">
+                <p className="text-sm font-medium">No unique activities found</p>
+                <p className="text-xs text-muted-foreground">
+                  You don&apos;t have any approved workouts with an activity you&apos;ve never done before during this challenge period. Try a new activity you haven&apos;t logged in this league yet.
+                </p>
+              </div>
             )}
             {approvedWorkouts.map((w: any) => (
               <div

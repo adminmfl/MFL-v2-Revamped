@@ -246,7 +246,8 @@ export function useLeagueLeaderboard(
           const normalizedTeams = data.teams.map((t) => {
             const memberCount = Math.max(1, t.member_count);
             const normalizedBase = Math.round(t.points * (variance.maxSize / memberCount));
-            const displayTotal = normalizedBase + (t.challenge_bonus || 0);
+            const normalizedChallenge = Math.round((t.challenge_bonus || 0) * (variance.maxSize / memberCount));
+            const displayTotal = normalizedBase + normalizedChallenge;
             return {
               ...t,
               normalized_points: normalizedBase,

@@ -58,7 +58,7 @@ async function ensureChallengeInLeague(leagueId: string, challengeId: string) {
   const supabase = getSupabaseServiceRole();
   const { data, error } = await supabase
     .from('leagueschallenges')
-    .select('id, league_id, status, challenge_type, start_date, end_date')
+    .select('id, league_id, status, challenge_type, start_date, end_date, is_unique_workout')
     .eq('id', challengeId)
     .maybeSingle();
 
@@ -253,6 +253,9 @@ export async function POST(
       if (existing) {
         if (existing.status === 'rejected') {
           isResubmission = true;
+        } else if ((challenge as any).is_unique_workout && existing.status === 'approved') {
+          // Unique workout challenges allow re-selection of a different workout
+          isResubmission = true;
         } else {
           return buildError('You already submitted for this challenge', 409);
         }
@@ -360,7 +363,7 @@ export async function POST(
         return buildError('This workout is outside the challenge period', 400);
       }
 
-      // 3. Check uniqueness: has this player EVER done this workout_type before in this league?
+      // 3. Check uniqueness: has this player done this workout_type BEFORE this date in this league?
       const { data: priorEntries, error: priorError } = await supabase
         .from('effortentry')
         .select('id, date')
@@ -368,7 +371,7 @@ export async function POST(
         .eq('workout_type', entry.workout_type)
         .eq('type', 'workout')
         .eq('status', 'approved')
-        .neq('id', workoutEntryId) // exclude this entry itself
+        .lt('date', entryDate) // only entries before the selected date
         .limit(1);
 
       if (priorError) {
@@ -392,7 +395,7 @@ export async function POST(
       league_member_id: membership.leagueMemberId,
       proof_url: isUniqueWorkout ? uniqueWorkoutProofUrl : proofUrl,
       status: isUniqueWorkout ? 'approved' : 'pending',
-      awarded_points: isUniqueWorkout ? (Number(challengeData.total_points) || 1) : null,
+      awarded_points: isUniqueWorkout ? 1 : null,
       workout_entry_id: isUniqueWorkout ? workoutEntryId : null,
       submission_date: uniqueWorkoutDate,
       team_id: null,
