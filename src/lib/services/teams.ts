@@ -407,13 +407,24 @@ export async function getTeamMembers(
     // Get member IDs for queries
     const memberIds = members.map(m => m.league_member_id);
 
-    // Get rest days used count for all members in one query
-    const { data: restDaysCounts } = await supabase
+    // Get league start_date for filtering
+    const { data: leagueData } = await supabase
+      .from('leagues')
+      .select('start_date')
+      .eq('league_id', leagueId)
+      .single();
+
+    // Get rest days used count for all members in one query (only from league start date)
+    let restQuery = supabase
       .from('effortentry')
       .select('league_member_id')
       .in('league_member_id', memberIds)
       .eq('type', 'rest')
       .eq('status', 'approved');
+    if (leagueData?.start_date) {
+      restQuery = restQuery.gte('date', leagueData.start_date);
+    }
+    const { data: restDaysCounts } = await restQuery;
 
     // Build a map of member_id -> rest_days_used count
     const restDaysMap = new Map<string, number>();

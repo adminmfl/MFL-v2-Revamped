@@ -121,6 +121,9 @@ export default function LeagueSettingsPage({
   });
 
   const canEditStructure = formData.status === 'draft';
+  const today = new Date().toISOString().slice(0, 10);
+  const canEditStartDate = canEditStructure || !formData.start_date || formData.start_date >= today;
+  const canEditEndDate = canEditStructure || !formData.end_date || formData.end_date >= today;
   const isTeamsConfigured = (teamsData?.teams?.length ?? 0) > 0;
   const isActivitiesConfigured = (activitiesData?.activities?.length ?? 0) > 0;
   const setupCompletedCount = Number(isTeamsConfigured) + Number(isActivitiesConfigured);
@@ -275,6 +278,7 @@ export default function LeagueSettingsPage({
 
     try {
       const payload: Record<string, string | number | boolean> = {
+        league_name: formData.league_name,
         rest_days: Number(formData.rest_days),
         auto_rest_day_enabled: formData.auto_rest_day_enabled,
         description: formData.description,
@@ -282,14 +286,15 @@ export default function LeagueSettingsPage({
         max_team_capacity: Number(formData.max_team_capacity),
       };
 
+      // Always send dates — backend will validate if they can be changed
+      if (canEditStartDate) payload.start_date = formData.start_date;
+      if (canEditEndDate) payload.end_date = formData.end_date;
+
       if (canEditStructure) {
         Object.assign(payload, {
-          league_name: formData.league_name,
           is_public: formData.is_public,
           is_exclusive: formData.is_exclusive,
           num_teams: Number(formData.num_teams),
-          start_date: formData.start_date,
-          end_date: formData.end_date,
         });
       }
 
@@ -479,7 +484,6 @@ export default function LeagueSettingsPage({
                       }))
                     }
                     placeholder="Enter league name"
-                    disabled={!canEditStructure}
                     className="bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground"
                   />
                 </div>
@@ -515,7 +519,7 @@ export default function LeagueSettingsPage({
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
                     <Label>Schedule</Label>
-                    <FieldInfoButton text="Start and end dates are locked after launch." />
+                    <FieldInfoButton text="Dates can be edited if they haven't passed yet." />
                   </div>
                 </div>
                 <div className="w-full max-w-md flex gap-2">
@@ -525,7 +529,7 @@ export default function LeagueSettingsPage({
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, start_date: e.target.value }))
                     }
-                    disabled={!canEditStructure}
+                    disabled={!canEditStartDate}
                     className="flex-1 min-w-0 bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground text-[12px] sm:text-sm px-2.5"
                   />
                   <Input
@@ -534,7 +538,7 @@ export default function LeagueSettingsPage({
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, end_date: e.target.value }))
                     }
-                    disabled={!canEditStructure}
+                    disabled={!canEditEndDate}
                     className="flex-1 min-w-0 bg-black/10 border-2 border-muted-foreground/20 shadow-sm text-foreground text-[12px] sm:text-sm px-2.5"
                   />
                 </div>

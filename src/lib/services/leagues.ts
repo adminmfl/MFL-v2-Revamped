@@ -480,6 +480,22 @@ export async function updateLeague(
         allowedUpdates.max_team_capacity = data.max_team_capacity;
       }
       if (data.description !== undefined) allowedUpdates.description = data.description;
+      // League name is always editable (league_id stays constant)
+      if (data.league_name !== undefined) allowedUpdates.league_name = data.league_name;
+      // Allow date edits if the date hasn't passed yet
+      const today = new Date().toISOString().slice(0, 10);
+      if (data.start_date !== undefined) {
+        const currentStart = league.start_date;
+        if (!currentStart || currentStart >= today) {
+          allowedUpdates.start_date = data.start_date;
+        }
+      }
+      if (data.end_date !== undefined) {
+        const currentEnd = league.end_date;
+        if (!currentEnd || currentEnd >= today) {
+          allowedUpdates.end_date = data.end_date;
+        }
+      }
     }
 
     if (Object.keys(allowedUpdates).length === 0) {

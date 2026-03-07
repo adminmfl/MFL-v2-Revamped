@@ -565,8 +565,11 @@ export async function GET(
       }
     });
 
+    // Use deduplicated entries (one per member per day) for team aggregation
+    const deduplicatedEntries = Array.from(uniqueEntriesMap.values());
+
     // Aggregate entries by team
-    (entries || []).forEach((entry) => {
+    deduplicatedEntries.forEach((entry) => {
       const memberInfo = memberToUser.get(entry.league_member_id);
       if (!memberInfo?.team_id) return;
 
@@ -666,13 +669,17 @@ export async function GET(
         rrAggByTeam.set(ts.team_id, { total_rr: 0, rr_count: 0 });
       }
 
-      // Populate pendingEntries from main entries list
+      // Populate pendingEntries from main entries list (deduplicated: one per member per day)
       // Filter entries that are IN the pending window dates.
-      pendingEntries = (entries || []).filter(e => pendingWindowDates.includes(e.date));
+      const pendingDedup = new Map<string, any>();
+      (entries || []).filter(e => pendingWindowDates.includes(e.date) && e.status === 'approved').forEach(e => {
+        const key = `${e.league_member_id}_${e.date}`;
+        const existing = pendingDedup.get(key);
+        if (!existing || (!existing.rr_value && e.rr_value)) pendingDedup.set(key, e);
+      });
+      pendingEntries = Array.from(pendingDedup.values());
 
       for (const entry of pendingEntries) {
-        if (!pendingWindowDates.includes(entry.date)) continue;
-        if (entry.status !== 'approved') continue;
 
         const memberInfo = memberToUser.get(entry.league_member_id);
         if (!memberInfo?.team_id) continue;
